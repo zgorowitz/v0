@@ -18,6 +18,12 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         <div className="relative min-h-screen">
           {/* Logo and hamburger menu in top bar */}
           <div className="absolute top-4 left-4 right-4 z-20 flex items-start justify-between">
+            {/* Hamburger menu button */}
+            <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
+              <Menu className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
+            </SidebarTrigger>
+
             {/* Logo and Name */}
             <div className="flex flex-col items-center gap-2">
               <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
@@ -32,12 +38,6 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
                 }}
               />
             </div>
-
-            {/* Hamburger menu button */}
-            <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
-              <Menu className="h-4 w-4" />
-              <span className="sr-only">Toggle menu</span>
-            </SidebarTrigger>
           </div>
 
           {/* Main content */}
