@@ -17,20 +17,20 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       <SidebarInset>
         <div className="relative min-h-screen">
           {/* Logo and hamburger menu in top bar */}
-          <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-12 h-12 bg-cover bg-center bg-no-repeat rounded-lg shadow-lg border-2 border-white"
-                style={{
-                  backgroundImage: "url('/images/background.png')",
-                }}
-              />
+          <div className="absolute top-4 left-4 right-4 z-20 flex items-start justify-between">
+            {/* Logo and Name */}
+            <div className="flex flex-col items-center gap-2">
               <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Laburandik
                 </span>
               </div>
+              <div
+                className="w-8 h-8 bg-cover bg-center bg-no-repeat rounded-lg shadow-lg border-2 border-white"
+                style={{
+                  backgroundImage: "url('/images/background.png')",
+                }}
+              />
             </div>
 
             {/* Hamburger menu button */}
