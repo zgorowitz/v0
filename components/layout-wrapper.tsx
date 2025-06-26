@@ -1,9 +1,11 @@
 "use client"
 
 import type React from "react"
+import { Menu } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 
 interface LayoutWrapperProps {
   children: React.ReactNode
@@ -11,28 +13,34 @@ interface LayoutWrapperProps {
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset>
         <div className="relative min-h-screen">
-          {/* Logo in top-left corner */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-3">
-            <div
-              className="w-12 h-12 bg-cover bg-center bg-no-repeat rounded-lg shadow-lg border-2 border-white"
-              style={{
-                backgroundImage: "url('/images/background.png')",
-              }}
-            />
-            <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Laburandik
-              </span>
+          {/* Logo and hamburger menu in top bar */}
+          <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div
+                className="w-12 h-12 bg-cover bg-center bg-no-repeat rounded-lg shadow-lg border-2 border-white"
+                style={{
+                  backgroundImage: "url('/images/background.png')",
+                }}
+              />
+              <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Laburandik
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Sidebar trigger for mobile */}
-          <div className="absolute top-4 right-4 z-20 md:hidden">
-            <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg" />
+            {/* Hamburger menu button */}
+            <SidebarTrigger asChild>
+              <Button variant="outline" size="icon" className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
+                <Menu className="h-4 w-4" />
+                <span className="sr-only">Toggle menu</span>
+              </Button>
+            </SidebarTrigger>
           </div>
 
           {/* Main content */}
