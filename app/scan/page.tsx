@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, X, Flashlight, FlashlightOff } from "lucide-react"
+import { Loader2, X, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { fetchItemDetails } from "@/lib/api"
 import { BarcodeScanner } from "@/lib/barcode-scanner"
+import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function ScanPage() {
-  const router = useRouter()
   const [showCamera, setShowCamera] = useState(false)
   const [itemDetails, setItemDetails] = useState(null)
   const [error, setError] = useState("")
@@ -183,35 +182,8 @@ export default function ScanPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen flex-col p-4">
-      {/* Background Image Container - 50% of screen with white border */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          className="w-1/2 h-1/2 bg-cover bg-center bg-no-repeat border-4 border-white rounded-lg shadow-2xl"
-          style={{
-            backgroundImage: "url('/images/background.png')",
-          }}
-        />
-      </div>
-
-      {/* Gradient overlays for blending */}
-      <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-transparent to-gray-100" />
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-100 via-transparent to-gray-100" />
-
-      {/* Light overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/5" />
-
-      {/* Content */}
-      <div className="relative z-10">
-        <Button
-          variant="ghost"
-          className="w-fit mb-4 bg-white/30 hover:bg-white/40 text-gray-800 backdrop-blur-sm border border-white/20"
-          onClick={() => router.push("/")}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-
+    <LayoutWrapper>
+      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
             <CardTitle className="text-xl">Barcode Scanner</CardTitle>
@@ -387,7 +359,7 @@ export default function ScanPage() {
             </p>
           </CardFooter>
         </Card>
-      </div>
-    </main>
+      </main>
+    </LayoutWrapper>
   )
 }
