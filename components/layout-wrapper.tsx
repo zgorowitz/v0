@@ -5,7 +5,6 @@ import { Menu } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
 
 interface LayoutWrapperProps {
   children: React.ReactNode
@@ -35,11 +34,9 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
             </div>
 
             {/* Hamburger menu button */}
-            <SidebarTrigger asChild>
-              <Button variant="outline" size="icon" className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle menu</span>
-              </Button>
+            <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
+              <Menu className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
             </SidebarTrigger>
           </div>
 
