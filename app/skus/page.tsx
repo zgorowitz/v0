@@ -1,16 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Search, Package2, RefreshCw } from "lucide-react"
+import { Loader2, Search, Package2, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { fetchAllSKUs } from "@/lib/api"
+import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function SKUsPage() {
-  const router = useRouter()
   const [skus, setSKUs] = useState([])
   const [filteredSKUs, setFilteredSKUs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -66,41 +65,16 @@ export default function SKUsPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen flex-col p-4">
-      {/* Background Image Container - 50% of screen with white border */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          className="w-1/2 h-1/2 bg-cover bg-center bg-no-repeat border-4 border-white rounded-lg shadow-2xl"
-          style={{
-            backgroundImage: "url('/images/background.png')",
-          }}
-        />
-      </div>
-
-      {/* Gradient overlays for blending */}
-      <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-transparent to-gray-100" />
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-100 via-transparent to-gray-100" />
-
-      {/* Light overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/5" />
-
-      {/* Content */}
-      <div className="relative z-10">
+    <LayoutWrapper>
+      <main className="flex min-h-[calc(100vh-5rem)] flex-col p-4">
         <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="ghost"
-            className="w-fit bg-white/30 hover:bg-white/40 text-gray-800 backdrop-blur-sm border border-white/20"
-            onClick={() => router.push("/")}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
+          <h1 className="text-2xl font-bold text-gray-800">All SKUs</h1>
           <Button
             variant="outline"
             size="sm"
             onClick={loadSKUs}
             disabled={loading}
-            className="bg-white/30 hover:bg-white/40 text-gray-800 border-white/30 backdrop-blur-sm"
+            className="bg-white/90 hover:bg-white"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
@@ -206,7 +180,7 @@ export default function SKUsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </main>
+      </main>
+    </LayoutWrapper>
   )
 }
