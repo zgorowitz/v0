@@ -48,10 +48,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-4 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Scan className="h-4 w-4" />
-          </div>
+        <div className="flex items-center gap-3 px-4 py-2">
+          <div
+            className="w-10 h-10 bg-cover bg-center bg-no-repeat rounded-lg shadow-md border border-gray-200"
+            style={{
+              backgroundImage: "url('/images/background.png')",
+            }}
+          />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-semibold">Laburandik</span>
             <span className="truncate text-xs text-muted-foreground">Scanner App</span>

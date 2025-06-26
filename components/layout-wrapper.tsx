@@ -24,19 +24,11 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
               <span className="sr-only">Toggle menu</span>
             </SidebarTrigger>
 
-            {/* Logo and Name */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Laburandik
-                </span>
-              </div>
-              <div
-                className="w-8 h-8 bg-cover bg-center bg-no-repeat rounded-lg shadow-lg border-2 border-white"
-                style={{
-                  backgroundImage: "url('/images/background.png')",
-                }}
-              />
+            {/* Just the stylized name */}
+            <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Laburandik
+              </span>
             </div>
           </div>
 
