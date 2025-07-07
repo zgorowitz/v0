@@ -94,7 +94,7 @@ export async function GET(request, { params }) {
     item_id: params.id,
     sku: "TEST-SKU-001",
     quantity: 1,
-    image: null,
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
     title: "Test Product"
   });
 }
