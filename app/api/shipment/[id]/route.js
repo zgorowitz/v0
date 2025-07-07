@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
 // Get access token from environment variables
-const accessToken = process.env.MERCADOLIBRE_ACCESS_TOKEN;
+const accessToken = process.env.ACCESS_TOKEN;
 
 // Reusable fetch function with authentication
 async function apiRequest(url) {
@@ -109,7 +109,7 @@ export async function GET(request, { params }) {
   ];
 
   // Return first item for now (same as your original logic)
-  return NextResponse.json(mockProducts[0]);
+  return NextResponse.json(mockProducts);
 }
   
 //   try {
@@ -128,13 +128,6 @@ export async function GET(request, { params }) {
     
 //     // Extract shipment information
 //     const shipmentInfo = await extractShipmentInfo(id);
-    
-//     // Return the first item (or modify as needed for multiple items)
-//     const result = shipmentInfo.length > 0 ? shipmentInfo[0] : null;
-    
-//     if (!result) {
-//       return NextResponse.json({ error: 'No shipment data found' }, { status: 404 });
-//     }
     
 //     return NextResponse.json(result);
     
