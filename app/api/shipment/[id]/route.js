@@ -89,66 +89,66 @@ async function extractShipmentInfo(shipmentId) {
 
 // API Route Handler
 export async function GET(request, { params }) {
-  const mockProducts = [
-    {
-      order_id: "12345678",
-      item_id: params.id,
-      sku: "TEST-SKU-001",
-      quantity: 1,
-      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-      title: "Premium Wireless Headphones"
-    },
-    {
-      order_id: "87654321",
-      item_id: params.id,
-      sku: "TEST-SKU-002", 
-      quantity: 2,
-      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
-      title: "Running Shoes"
+  try {
+    const { id } = params;
+    
+    // Validate shipment ID
+    if (!id) {
+      return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
     }
-  ];
-
-  // Return first item for now (same as your original logic)
-  return NextResponse.json(mockProducts);
+    
+    // Check if access token is configured
+    if (!accessToken) {
+      console.error('MERCADOLIBRE_ACCESS_TOKEN not configured');
+      return NextResponse.json({ error: 'API configuration error' }, { status: 500 });
+    }
+    
+    // Extract shipment information
+    const shipmentInfo = await extractShipmentInfo(id);
+    
+    return NextResponse.json(shipmentInfo);
+    
+  } catch (error) {
+    console.error('API Error:', error);
+    
+    // Handle specific error types
+    if (error.message.includes('status: 404')) {
+      return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
+    }
+    
+    if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
+      return NextResponse.json({ error: 'Authentication failed - check API credentials' }, { status: 401 });
+    }
+    
+    if (error.message.includes('status: 429')) {
+      return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
+    }
+    
+    return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
+  }
 }
-  
-//   try {
-//     const { id } = params;
-    
-//     // Validate shipment ID
-//     if (!id) {
-//       return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
+
+//   const mockProducts = [
+//     {
+//       order_id: "12345678",
+//       item_id: params.id,
+//       sku: "TEST-SKU-001",
+//       quantity: 1,
+//       image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
+//       title: "Premium Wireless Headphones"
+//     },
+//     {
+//       order_id: "87654321",
+//       item_id: params.id,
+//       sku: "TEST-SKU-002", 
+//       quantity: 2,
+//       image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
+//       title: "Running Shoes"
 //     }
-    
-//     // Check if access token is configured
-//     if (!accessToken) {
-//       console.error('MERCADOLIBRE_ACCESS_TOKEN not configured');
-//       return NextResponse.json({ error: 'API configuration error' }, { status: 500 });
-//     }
-    
-//     // Extract shipment information
-//     const shipmentInfo = await extractShipmentInfo(id);
-    
-//     return NextResponse.json(result);
-    
-//   } catch (error) {
-//     console.error('API Error:', error);
-    
-//     // Handle specific error types
-//     if (error.message.includes('status: 404')) {
-//       return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
-//     }
-    
-//     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-//       return NextResponse.json({ error: 'Authentication failed - check API credentials' }, { status: 401 });
-//     }
-    
-//     if (error.message.includes('status: 429')) {
-//       return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
-//     }
-    
-//     return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
-//   }
+//   ];
+
+//   // Return first item for now (same as your original logic)
+//   return NextResponse.json(mockProducts);
 // }
 ;
 // const API_BASE_URL = 'https://api.mercadolibre.com';
