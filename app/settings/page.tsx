@@ -47,7 +47,7 @@ export default function SettingsPage() {
             <CardTitle className="text-xl">Settings</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-6">
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="apiKey">Mercado Libre API Key</Label>
               <Input
                 id="apiKey"
@@ -67,7 +67,7 @@ export default function SettingsPage() {
                 onChange={(e) => setSettings({ ...settings, apiSecret: e.target.value })}
                 placeholder="Enter your API secret"
               />
-            </div>
+            </div> */}
 
             <div className="flex items-center justify-between">
               <Label htmlFor="hardwareScanner">Use Hardware Scanner</Label>
