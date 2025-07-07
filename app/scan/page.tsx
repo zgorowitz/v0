@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Loader2, X, Flashlight, FlashlightOff } from "lucide-react"
+import { Loader2, X, Flashlight, FlashlightOff, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { extractShipmentInfo } from "@/lib/api"
@@ -10,30 +10,40 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function ScanPage() {
   const [showCamera, setShowCamera] = useState(false)
-  const [itemDetails, setItemDetails] = useState(null)
+  const [items, setItems] = useState(null)
+  const [currentItemIndex, setCurrentItemIndex] = useState(0)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [flashlightOn, setFlashlightOn] = useState(false)
   const [lastScannedCode, setLastScannedCode] = useState("")
-  const [manualMode, setManualMode] = useState(false)
-  const [manualInput, setManualInput] = useState("")
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const scannerRef = useRef(null)
   const scanningRef = useRef(false)
+  
+  // Add access token - you may need to get this from your auth system
+  const accessToken = process.env.NEXT_PUBLIC_MERCADOLIBRE_ACCESS_TOKEN
 
   useEffect(() => {
-    // Auto-start camera when page loads only if not in manual mode
-    if (!manualMode) {
-      startCamera()
-    }
+    // Auto-start camera when page loads
+    startCamera()
 
     // Cleanup when component unmounts
     return () => {
       stopCamera()
     }
   }, [])
+
+  // Navigate to previous item
+  const goToPreviousItem = () => {
+    setCurrentItemIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1))
+  }
+
+  // Navigate to next item
+  const goToNextItem = () => {
+    setCurrentItemIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0))
+  }
 
   // Start camera for scanning
   const startCamera = async () => {
@@ -112,12 +122,10 @@ export default function ScanPage() {
 
     setTimeout(() => {
       if (scanningRef.current && showCamera) {
-        const isOrderId = Math.random() > 0.5
-        const mockBarcode = isOrderId
-          ? `ORD-${Math.floor(10000000 + Math.random() * 90000000)}`
-          : `SKU-${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 90)}`
+        // For testing, use a valid shipment ID format
+        const mockShipmentId = `45129712335`
 
-        processScannedCode(mockBarcode)
+        processScannedCode(mockShipmentId)
       }
     }, detectionTime)
   }
@@ -134,10 +142,21 @@ export default function ScanPage() {
     }
 
     try {
-      const details = await extractShipmentInfo(code)
-      setItemDetails(details)
-      // Stop camera after successful scan and data retrieval
-      stopCamera()
+      // Check if access token is available
+      if (!accessToken) {
+        throw new Error("Access token not configured")
+      }
+
+      const shipmentItems = await extractShipmentInfo(code, accessToken)
+      
+      if (shipmentItems && shipmentItems.length > 0) {
+        setItems(shipmentItems)
+        setCurrentItemIndex(0) // Reset to first item
+        // Stop camera after successful scan and data retrieval
+        stopCamera()
+      } else {
+        throw new Error("No items found for this shipment")
+      }
     } catch (err) {
       setError(`Failed to fetch details: ${err.message}`)
       console.error("API error:", err)
@@ -179,76 +198,28 @@ export default function ScanPage() {
 
   // Restart scanning
   const restartScanning = () => {
-    setItemDetails(null)
+    setItems(null)
+    setCurrentItemIndex(0)
     setError("")
     setLastScannedCode("")
-    setManualMode(false)
     startCamera()
   }
 
-  // Handle manual input submission
-  const handleManualSubmit = () => {
-    if (manualInput.trim()) {
-      processScannedCode(manualInput.trim())
-      setManualInput("")
-    }
-  }
+  // Get the current item to display
+  const currentItem = items && items[currentItemIndex]
 
   return (
     <LayoutWrapper>
       <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-xl">Barcode Scanner</CardTitle>
-              {!itemDetails && !loading && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setManualMode(!manualMode)
-                    if (!manualMode) {
-                      stopCamera()
-                    } else {
-                      startCamera()
-                    }
-                  }}
-                >
-                  {manualMode ? "Use Camera" : "Manual Entry"}
-                </Button>
-              )}
-            </div>
+            <CardTitle className="text-xl">Barcode Scanner</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {/* Manual Entry Mode */}
-            {manualMode && !itemDetails && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Enter Shipment ID or Barcode</label>
-                  <input
-                    type="text"
-                    value={manualInput}
-                    onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="Enter code manually..."
-                    className="w-full p-2 border rounded-md"
-                    onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleManualSubmit} disabled={!manualInput.trim()} className="flex-1">
-                    Submit Code
-                  </Button>
-                  <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
-                    Use Camera
-                  </Button>
-                </div>
-              </div>
-            )}
-
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
 
             {/* Camera Preview */}
-            {showCamera && !manualMode && (
+            {showCamera && (
               <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
@@ -322,44 +293,93 @@ export default function ScanPage() {
               </div>
             )}
 
-            {itemDetails && (
+            {/* Scanned Item Details with Carousel */}
+            {currentItem && (
               <div className="mt-4 border rounded-lg p-4 bg-white">
-                <h3 className="font-medium text-lg mb-3 text-green-700">✓ Scan Successful</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium text-lg text-green-700">✓ Scan Successful</h3>
+                  {items.length > 1 && (
+                    <span className="text-sm text-gray-500">
+                      Item {currentItemIndex + 1} of {items.length}
+                    </span>
+                  )}
+                </div>
+
+                {/* Navigation controls for multiple items */}
+                {items.length > 1 && (
+                  <div className="flex justify-between items-center mb-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPreviousItem}
+                      className="p-2"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex gap-1">
+                      {items.map((_, index) => (
+                        <button
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            index === currentItemIndex ? 'bg-gray-800' : 'bg-gray-300'
+                          }`}
+                          onClick={() => setCurrentItemIndex(index)}
+                        />
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNextItem}
+                      className="p-2"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Item image */}
+                {currentItem.image && (
+                  <div className="mb-4">
+                    <img 
+                      src={currentItem.image} 
+                      alt={currentItem.title} 
+                      className="w-full h-48 object-contain bg-gray-50 rounded"
+                    />
+                  </div>
+                )}
+
+                {/* Item details */}
                 <div className="grid gap-2 text-sm">
                   <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Scanned Code:</span>
+                    <span className="text-gray-500 font-medium">Shipment ID:</span>
                     <span className="font-mono text-xs">{lastScannedCode}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Order ID:</span>
-                    <span className="font-mono">{itemDetails.order_id}</span>
+                    <span className="font-mono">{currentItem.order_id}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Item ID:</span>
-                    <span className="font-mono text-xs">{itemDetails.item_id}</span>
+                    <span className="font-mono text-xs">{currentItem.item_id}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">SKU:</span>
-                    <span className="font-mono text-xs">{itemDetails.sku || 'N/A'}</span>
+                    <span className="font-mono text-xs">{currentItem.sku || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Title:</span>
-                    <span className="text-right max-w-48 truncate">{itemDetails.title}</span>
+                    <span className="text-right max-w-48" title={currentItem.title}>
+                      {currentItem.title}
+                    </span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Quantity:</span>
-                    <span className="font-medium">{itemDetails.quantity}</span>
+                    <span className="font-medium">{currentItem.quantity}</span>
                   </div>
-                  
-                  {/* Optional: Add image if you want */}
-                  {itemDetails.image && (
-                    <div className="mt-2">
-                      <img src={itemDetails.image} alt={itemDetails.title} className="w-full h-32 object-cover rounded" />
-                    </div>
-                  )}
                 </div>
 
-                {/* Action buttons remain the same */}
+                {/* Action buttons */}
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" size="sm" className="flex-1" onClick={restartScanning}>
                     Scan Another
@@ -368,15 +388,15 @@ export default function ScanPage() {
                     size="sm"
                     className="flex-1"
                     onClick={() => {
+                      const dataToExport = {
+                        shipmentId: lastScannedCode,
+                        totalItems: items.length,
+                        currentItem: currentItemIndex + 1,
+                        item: currentItem,
+                        allItems: items
+                      }
                       navigator.clipboard?.writeText(
-                        JSON.stringify(
-                          {
-                            scannedCode: lastScannedCode,
-                            ...itemDetails,
-                          },
-                          null,
-                          2,
-                        ),
+                        JSON.stringify(dataToExport, null, 2)
                       )
                     }}
                   >
@@ -385,8 +405,9 @@ export default function ScanPage() {
                 </div>
               </div>
             )}
+
             {/* Error State - Show restart button */}
-            {error && !showCamera && !itemDetails && !manualMode && (
+            {error && !showCamera && !items && (
               <div className="text-center p-8">
                 <Button onClick={startCamera} className="w-full">
                   Try Again
@@ -396,11 +417,7 @@ export default function ScanPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-xs text-gray-400">
-              {manualMode 
-                ? "Enter shipment ID manually or switch to camera mode" 
-                : showCamera 
-                  ? "Point camera at barcode to scan automatically" 
-                  : "Camera will open automatically"}
+              {showCamera ? "Point camera at barcode to scan automatically" : "Camera will open automatically"}
             </p>
           </CardFooter>
         </Card>

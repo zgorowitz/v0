@@ -89,14 +89,27 @@ async function extractShipmentInfo(shipmentId) {
 
 // API Route Handler
 export async function GET(request, { params }) {
-  return NextResponse.json({
-    order_id: "12345678",
-    item_id: params.id,
-    sku: "TEST-SKU-001",
-    quantity: 1,
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-    title: "Test Product"
-  });
+  const mockProducts = [
+    {
+      order_id: "12345678",
+      item_id: params.id,
+      sku: "TEST-SKU-001",
+      quantity: 1,
+      image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
+      title: "Premium Wireless Headphones"
+    },
+    {
+      order_id: "87654321",
+      item_id: params.id,
+      sku: "TEST-SKU-002", 
+      quantity: 2,
+      image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
+      title: "Running Shoes"
+    }
+  ];
+
+  // Return first item for now (same as your original logic)
+  return NextResponse.json(mockProducts[0]);
 }
   
 //   try {
