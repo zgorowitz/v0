@@ -16,6 +16,8 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false)
   const [flashlightOn, setFlashlightOn] = useState(false)
   const [lastScannedCode, setLastScannedCode] = useState("")
+  const [manualMode, setManualMode] = useState(false)
+  const [manualInput, setManualInput] = useState("")
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const scannerRef = useRef(null)
@@ -181,14 +183,66 @@ export default function ScanPage() {
     startCamera()
   }
 
+  // Manual input handling
+  const handleManualInput = (e) => {
+    setManualInput(e.target.value)
+  }
+
+  const handleManualSubmit = () => {const handleManualSubmit = () => {
+    if (manualInput.trim()) {
+      processScannedCode(manualInput.trim())
+      setManualInput("")
+    }
+  }
+
   return (
     <LayoutWrapper>
       <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
-            <CardTitle className="text-xl">Barcode Scanner</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl">Barcode Scanner</CardTitle>
+              {!itemDetails && !loading && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setManualMode(!manualMode)
+                    if (!manualMode) stopCamera()
+                    else startCamera()
+                  }}
+                >
+                  {manualMode ? "Use Camera" : "Manual Entry"}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            {/* Manual Entry Mode */}
+            {manualMode && !itemDetails && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Enter Shipment ID or Barcode</label>
+                  <input
+                    type="text"
+                    value={manualInput}
+                    onChange={(e) => setManualInput(e.target.value)}
+                    placeholder="Enter code manually..."
+                    className="w-full p-2 border rounded-md"
+                    onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={handleManualSubmit} disabled={!manualInput.trim()} className="flex-1">
+                    Submit Code
+                  </Button>
+                  <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
+                    Use Camera
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
 
             {/* Camera Preview */}
