@@ -89,52 +89,62 @@ async function extractShipmentInfo(shipmentId) {
 
 // API Route Handler
 export async function GET(request, { params }) {
-  try {
-    const { id } = params;
-    
-    // Validate shipment ID
-    if (!id) {
-      return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
-    }
-    
-    // Check if access token is configured
-    if (!accessToken) {
-      console.error('MERCADOLIBRE_ACCESS_TOKEN not configured');
-      return NextResponse.json({ error: 'API configuration error' }, { status: 500 });
-    }
-    
-    // Extract shipment information
-    const shipmentInfo = await extractShipmentInfo(id);
-    
-    // Return the first item (or modify as needed for multiple items)
-    const result = shipmentInfo.length > 0 ? shipmentInfo[0] : null;
-    
-    if (!result) {
-      return NextResponse.json({ error: 'No shipment data found' }, { status: 404 });
-    }
-    
-    return NextResponse.json(result);
-    
-  } catch (error) {
-    console.error('API Error:', error);
-    
-    // Handle specific error types
-    if (error.message.includes('status: 404')) {
-      return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
-    }
-    
-    if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-      return NextResponse.json({ error: 'Authentication failed - check API credentials' }, { status: 401 });
-    }
-    
-    if (error.message.includes('status: 429')) {
-      return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
-    }
-    
-    return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
-  }
+  return NextResponse.json({
+    order_id: "12345678",
+    item_id: params.id,
+    sku: "TEST-SKU-001",
+    quantity: 1,
+    image: null,
+    title: "Test Product"
+  });
 }
-
+  
+//   try {
+//     const { id } = params;
+    
+//     // Validate shipment ID
+//     if (!id) {
+//       return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
+//     }
+    
+//     // Check if access token is configured
+//     if (!accessToken) {
+//       console.error('MERCADOLIBRE_ACCESS_TOKEN not configured');
+//       return NextResponse.json({ error: 'API configuration error' }, { status: 500 });
+//     }
+    
+//     // Extract shipment information
+//     const shipmentInfo = await extractShipmentInfo(id);
+    
+//     // Return the first item (or modify as needed for multiple items)
+//     const result = shipmentInfo.length > 0 ? shipmentInfo[0] : null;
+    
+//     if (!result) {
+//       return NextResponse.json({ error: 'No shipment data found' }, { status: 404 });
+//     }
+    
+//     return NextResponse.json(result);
+    
+//   } catch (error) {
+//     console.error('API Error:', error);
+    
+//     // Handle specific error types
+//     if (error.message.includes('status: 404')) {
+//       return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
+//     }
+    
+//     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
+//       return NextResponse.json({ error: 'Authentication failed - check API credentials' }, { status: 401 });
+//     }
+    
+//     if (error.message.includes('status: 429')) {
+//       return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
+//     }
+    
+//     return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
+//   }
+// }
+;
 // const API_BASE_URL = 'https://api.mercadolibre.com';
 
 // // Reusable fetch function with authentication
