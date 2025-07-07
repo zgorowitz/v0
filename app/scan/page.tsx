@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Loader2, X, Flashlight, FlashlightOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { fetchItemDetails } from "@/lib/api"
+import { extractShipmentInfo } from "@/lib/api"
 import { BarcodeScanner } from "@/lib/barcode-scanner"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 
@@ -130,7 +130,7 @@ export default function ScanPage() {
     }
 
     try {
-      const details = await fetchItemDetails(code)
+      const details = await extractShipmentInfo(code)
       setItemDetails(details)
       // Stop camera after successful scan and data retrieval
       stopCamera()
@@ -266,7 +266,7 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Scanned Item Details */}
+
             {itemDetails && (
               <div className="mt-4 border rounded-lg p-4 bg-white">
                 <h3 className="font-medium text-lg mb-3 text-green-700">✓ Scan Successful</h3>
@@ -277,27 +277,15 @@ export default function ScanPage() {
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Order ID:</span>
-                    <span className="font-mono">{itemDetails.orderId}</span>
+                    <span className="font-mono">{itemDetails.order_id}</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Status:</span>
-                    <span
-                      className={`font-medium px-2 py-1 rounded text-xs ${
-                        itemDetails.status === "Delivered"
-                          ? "bg-green-100 text-green-800"
-                          : itemDetails.status === "Shipped"
-                            ? "bg-blue-100 text-blue-800"
-                            : itemDetails.status === "Processing"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {itemDetails.status}
-                    </span>
+                    <span className="text-gray-500 font-medium">Item ID:</span>
+                    <span className="font-mono text-xs">{itemDetails.item_id}</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">SKU / Item ID:</span>
-                    <span className="font-mono text-xs">{itemDetails.sku}</span>
+                    <span className="text-gray-500 font-medium">SKU:</span>
+                    <span className="font-mono text-xs">{itemDetails.sku || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Title:</span>
@@ -307,17 +295,16 @@ export default function ScanPage() {
                     <span className="text-gray-500 font-medium">Quantity:</span>
                     <span className="font-medium">{itemDetails.quantity}</span>
                   </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Buyer:</span>
-                    <span>{itemDetails.buyerName}</span>
-                  </div>
-                  <div className="flex flex-col gap-1 mt-2 pt-2 border-t">
-                    <span className="text-gray-500 font-medium">Shipping Info:</span>
-                    <span className="text-xs bg-gray-50 p-2 rounded">{itemDetails.shippingInfo}</span>
-                  </div>
+                  
+                  {/* Optional: Add image if you want */}
+                  {itemDetails.image && (
+                    <div className="mt-2">
+                      <img src={itemDetails.image} alt={itemDetails.title} className="w-full h-32 object-cover rounded" />
+                    </div>
+                  )}
                 </div>
 
-                {/* Action buttons */}
+                {/* Action buttons remain the same */}
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" size="sm" className="flex-1" onClick={restartScanning}>
                     Scan Another
@@ -343,7 +330,6 @@ export default function ScanPage() {
                 </div>
               </div>
             )}
-
             {/* Error State - Show restart button */}
             {error && !showCamera && !itemDetails && (
               <div className="text-center p-8">
