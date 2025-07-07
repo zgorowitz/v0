@@ -24,8 +24,10 @@ export default function ScanPage() {
   const scanningRef = useRef(false)
 
   useEffect(() => {
-    // Auto-start camera when page loads
-    startCamera()
+    // Auto-start camera when page loads only if not in manual mode
+    if (!manualMode) {
+      startCamera()
+    }
 
     // Cleanup when component unmounts
     return () => {
@@ -180,15 +182,12 @@ export default function ScanPage() {
     setItemDetails(null)
     setError("")
     setLastScannedCode("")
+    setManualMode(false)
     startCamera()
   }
 
-  // Manual input handling
-  const handleManualInput = (e) => {
-    setManualInput(e.target.value)
-  }
-
-  const handleManualSubmit = () => {const handleManualSubmit = () => {
+  // Handle manual input submission
+  const handleManualSubmit = () => {
     if (manualInput.trim()) {
       processScannedCode(manualInput.trim())
       setManualInput("")
@@ -208,8 +207,11 @@ export default function ScanPage() {
                   size="sm"
                   onClick={() => {
                     setManualMode(!manualMode)
-                    if (!manualMode) stopCamera()
-                    else startCamera()
+                    if (!manualMode) {
+                      stopCamera()
+                    } else {
+                      startCamera()
+                    }
                   }}
                 >
                   {manualMode ? "Use Camera" : "Manual Entry"}
@@ -246,7 +248,7 @@ export default function ScanPage() {
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
 
             {/* Camera Preview */}
-            {showCamera && (
+            {showCamera && !manualMode && (
               <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
@@ -320,7 +322,6 @@ export default function ScanPage() {
               </div>
             )}
 
-
             {itemDetails && (
               <div className="mt-4 border rounded-lg p-4 bg-white">
                 <h3 className="font-medium text-lg mb-3 text-green-700">✓ Scan Successful</h3>
@@ -385,7 +386,7 @@ export default function ScanPage() {
               </div>
             )}
             {/* Error State - Show restart button */}
-            {error && !showCamera && !itemDetails && (
+            {error && !showCamera && !itemDetails && !manualMode && (
               <div className="text-center p-8">
                 <Button onClick={startCamera} className="w-full">
                   Try Again
@@ -395,7 +396,11 @@ export default function ScanPage() {
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-xs text-gray-400">
-              {showCamera ? "Point camera at barcode to scan automatically" : "Camera will open automatically"}
+              {manualMode 
+                ? "Enter shipment ID manually or switch to camera mode" 
+                : showCamera 
+                  ? "Point camera at barcode to scan automatically" 
+                  : "Camera will open automatically"}
             </p>
           </CardFooter>
         </Card>
