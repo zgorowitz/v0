@@ -270,7 +270,8 @@ export default function ScanPage() {
 
             {/* Camera Preview */}
             {showCamera && !manualMode && (
-              <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              // <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              <div className="relative w-full h-[50vh] min-h-[300px] max-h-[500px] bg-black rounded-lg overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
                 {/* Camera overlay with scanning frame */}
