@@ -5,7 +5,7 @@ import { Loader2, X, Flashlight, FlashlightOff, ChevronLeft, ChevronRight } from
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { extractShipmentInfo } from "@/lib/api"
-import { QRBarcodeScanner } from "@/lib/qr-barcode"
+import { BarcodeScanner } from "@/lib/barcode-scanner"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function ScanPage() {
@@ -90,7 +90,7 @@ export default function ScanPage() {
       scanningRef.current = true
 
       // Initialize the barcode scanner
-      scannerRef.current = new QRBarcodeScanner()
+      scannerRef.current = new BarcodeScanner()
 
       // Start scanning with the video element
       await scannerRef.current.startScanning(videoRef.current, (result) => {
