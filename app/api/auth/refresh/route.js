@@ -69,8 +69,8 @@ async function refreshTokensFromProvider(refreshToken) {
     },
     body: new URLSearchParams({
       grant_type: 'refresh_token',
-      client_id: process.env.CLIENT_ID,
-      client_secret: process.env.CLIENT_SECRET,
+      client_id: process.env.MERCADO_LIBRE_APP_ID,
+      client_secret: process.env.MERCADO_LIBRE_CLIENT_SECRET,
       refresh_token: refreshToken
     })
   };

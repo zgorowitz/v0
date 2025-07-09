@@ -3,11 +3,11 @@
 export async function GET(request) {
     try {
       // Get client ID from environment variables
-      const clientId = process.env.CLIENT_ID;
+      const clientId = process.env.MERCADO_LIBRE_APP_ID;
       
       if (!clientId) {
         console.error('CLIENT_ID environment variable is not set');
-        return Response.redirect('/?error=missing_config');
+        return Response.redirect('/settings?error=missing_config');
       }
   
       // Build MercadoLibre OAuth authorization URL
@@ -28,6 +28,6 @@ export async function GET(request) {
       console.error('Error initiating OAuth flow:', error);
       
       // Redirect back to main app with error
-      return Response.redirect('/?error=oauth_init_failed');
+      return Response.redirect('settings/?error=oauth_init_failed');
     }
   }
