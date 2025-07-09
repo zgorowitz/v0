@@ -165,6 +165,13 @@ export default function SettingsPage() {
                         View Profile →
                       </a>
                     )}
+                    <Button 
+                      onClick={() => window.location.href = '/api/auth/initiate'}
+                      className="w-full mt-3"
+                      variant="secondary"
+                    >
+                      Connect a different account
+                    </Button>
                   </div>
                 ) : (
                   <div className="text-center py-2">
