@@ -388,14 +388,19 @@ export default function ScanPage() {
                     </Button>
                   </div>
                 )}
-
+                <div className="py-1">
+                    <span className="text-gray-500 font-medium">Title:</span>
+                    <div className="mt-1 text-sm leading-relaxed">
+                      {currentItem.title}
+                    </div>
+                </div>
                 <div className="grid gap-2 text-sm">
-                  <div className="flex justify-between py-1">
+                  {/* <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Title:</span>
                     <span className="text-right max-w-48 truncate" title={currentItem.title}>
                       {currentItem.title}
                     </span>
-                  </div>
+                  </div> */}
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Envio ID - Codigo de Barras:</span>
                     <span className="font-mono text-xs">{lastScannedCode}</span>
@@ -410,36 +415,30 @@ export default function ScanPage() {
                     </div> */}
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">SKU:</span>
-                    <span className="font-mono text-xs">{currentItem.seller_sku || 'N/A'}</span>
+                    <span className="font-mono text-sm font-medium">{currentItem.seller_sku || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-gray-500 font-medium">Color:</span>
+                    <span className="font-mono text-sm font-medium">{currentItem.color || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-gray-500 font-medium">Diseño de la Tela:</span>
+                    <span className="font-mono text-sm font-medium">{currentItem.fabric_type || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Cantidad de Unidades:</span>
                     <span className="font-medium">{currentItem.quantity}</span>
                   </div>
                   <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Color:</span>
-                    <span className="text-xs">{currentItem.color || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
                     <span className="text-gray-500 font-medium">Talle:</span>
-                    <span className="text-xs">{currentItem.talle || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Diseño de la Tela:</span>
-                    <span className="text-xs">{currentItem.fabric_type || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Cantidad Disponible:</span>
-                    <span className="font-medium">{currentItem.available_quantity || 0}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Variation ID:</span>
-                    <span className="font-mono text-xs">{currentItem.variation_id || 'N/A'}</span>
+                    <span className="font-medium">{currentItem.talle || 'N/A'}</span>
                   </div>
                   <div className="pt-2 border-t">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                       <div><span className="text-gray-400">Order ID:</span> <span className="text-gray-600">{currentItem.order_id || 'N/A'}</span></div>
                       <div><span className="text-gray-400">Item ID:</span> <span className="text-gray-600">{currentItem.item_id || 'N/A'}</span></div>
+                      <div><span className="text-gray-400">Variation ID:</span> <span className="text-gray-600">{currentItem.variation_id || 'N/A'}</span></div>
+                      <div><span className="text-gray-400">Cantidad Disponible:</span> <span className="text-gray-600">{currentItem.available_quantity || 'N/A'}</span></div>
                     </div>
                   </div>
 
