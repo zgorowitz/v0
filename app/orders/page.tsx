@@ -1,145 +1,307 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Loader2, Package, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { fetchTodaysOrders } from "@/lib/api"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState([])
+  const [analytics, setAnalytics] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [lastUpdated, setLastUpdated] = useState(null)
+  const [error, setError] = useState(null)
+  const [sortField, setSortField] = useState('avg_orders_per_day')
+  const [sortDirection, setSortDirection] = useState('desc')
+  const [daysBack, setDaysBack] = useState(30)
+  const [visibleColumns, setVisibleColumns] = useState({
+    thumbnail: true,
+    seller_sku: true,
+    title: true,
+    color: true,
+    size: true,
+    available_quantity: true,
+    avg_orders_per_day: true,
+    days_left_inventory: true,
+    stock_status: true,
+    last_sale_date: false,
+    total_sales_quantity: false,
+    days_since_last_sale: false
+  })
 
-  useEffect(() => {
-    loadOrders()
-  }, [])
+  // All available columns with labels
+  const allColumns = {
+    thumbnail: 'Image',
+    seller_sku: 'SKU',
+    title: 'Title',
+    color: 'Color',
+    size: 'Size',
+    available_quantity: 'Stock',
+    avg_orders_per_day: 'Orders/Day',
+    days_left_inventory: 'Days Left',
+    stock_status: 'Status',
+    last_sale_date: 'Last Sale',
+    total_sales_quantity: 'Total Sales',
+    days_since_last_sale: 'Days Since Sale'
+  }
 
-  const loadOrders = async () => {
+  // Fetch analytics data
+  const fetchAnalytics = async () => {
     setLoading(true)
-    setError("")
-
+    setError(null)
+    
     try {
-      const ordersData = await fetchTodaysOrders()
-      setOrders(ordersData)
-      setLastUpdated(new Date())
-    } catch (err) {
-      setError(`Failed to load orders: ${err.message}`)
-      console.error("Orders API error:", err)
+      const response = await fetch(`/api/orders?days=${daysBack}`)
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch orders data')
+      }
+      
+      const data = await response.json()
+      setAnalytics(data.data || [])
+    } catch (error) {
+      console.error('Error fetching orders data:', error)
+      setError(error.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
-        return "bg-green-100 text-green-800"
-      case "shipped":
-        return "bg-blue-100 text-blue-800"
-      case "processing":
-        return "bg-yellow-100 text-yellow-800"
-      case "pending":
-        return "bg-orange-100 text-orange-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  // Load data on mount and when daysBack changes
+  useEffect(() => {
+    fetchAnalytics()
+  }, [daysBack])
+
+  // Handle column sorting
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
+
+  // Sort data
+  const sortedAnalytics = [...analytics].sort((a, b) => {
+    const aValue = a[sortField]
+    const bValue = b[sortField]
+    
+    if (aValue === null || aValue === undefined) return 1
+    if (bValue === null || bValue === undefined) return -1
+    
+    if (typeof aValue === 'number') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    }
+    
+    return sortDirection === 'asc' 
+      ? aValue.toString().localeCompare(bValue.toString())
+      : bValue.toString().localeCompare(aValue.toString())
+  })
+
+  // Toggle column visibility
+  const toggleColumn = (column) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [column]: !prev[column]
+    }))
+  }
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return '-'
+    return new Date(dateString).toLocaleDateString('es-AR')
+  }
+
+  // Get stock status color
+  const getStockStatusColor = (status) => {
+    switch (status) {
+      case 'out_of_stock': return 'text-red-600'
+      case 'low_stock': return 'text-yellow-600'
+      case 'moderate_stock': return 'text-blue-600'
+      default: return 'text-green-600'
     }
   }
 
   return (
     <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">Today's Orders</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadOrders}
-            disabled={loading}
-            className="bg-white/90 hover:bg-white"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
-
-        <Card className="w-full max-w-4xl mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
+      <div className="p-6 max-w-full">
+        <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-xl flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Today's Orders
-              {orders.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {orders.length}
-                </Badge>
-              )}
-            </CardTitle>
-            {lastUpdated && <p className="text-sm text-gray-500">Last updated: {lastUpdated.toLocaleTimeString()}</p>}
+            <CardTitle className="text-2xl">Orders & Inventory Analysis</CardTitle>
           </CardHeader>
           <CardContent>
-            {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm mb-4">{error}</div>}
-
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                <p className="mt-2 text-sm text-gray-500">Loading today's orders...</p>
+            {/* Controls */}
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Days to analyze:</label>
+                <select 
+                  value={daysBack} 
+                  onChange={(e) => setDaysBack(parseInt(e.target.value))}
+                  className="border border-gray-300 rounded px-3 py-1"
+                >
+                  <option value={7}>7 days</option>
+                  <option value={30}>30 days</option>
+                  <option value={60}>60 days</option>
+                  <option value={90}>90 days</option>
+                </select>
               </div>
-            ) : orders.length === 0 ? (
-              <div className="text-center py-8">
-                <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No orders found for today</p>
-                <Button variant="outline" className="mt-4" onClick={loadOrders}>
-                  Try Again
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {orders.map((order, index) => (
-                  <div
-                    key={order.orderId || index}
-                    className="border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm font-medium">{order.orderId}</span>
-                          <Badge className={getStatusColor(order.status)} variant="secondary">
-                            {order.status}
-                          </Badge>
-                        </div>
-                        <h3 className="font-medium text-gray-900 mb-1">{order.title}</h3>
-                        <p className="text-sm text-gray-600">SKU: {order.sku}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">Qty: {order.quantity}</p>
-                        {order.price && <p className="text-sm text-gray-600">${order.price}</p>}
-                      </div>
-                    </div>
+              
+              <Button 
+                onClick={fetchAnalytics}
+                disabled={loading}
+                className="bg-black text-white hover:bg-gray-800"
+              >
+                {loading ? 'Loading...' : 'Refresh'}
+              </Button>
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-600 mt-3 pt-3 border-t">
-                      <div>
-                        <span className="font-medium">Buyer:</span> {order.buyerName}
-                      </div>
-                      <div>
-                        <span className="font-medium">Order Time:</span> {order.orderTime}
-                      </div>
-                    </div>
-
-                    {order.shippingInfo !== "N/A" && (
-                      <div className="mt-2 text-xs text-gray-600">
-                        <span className="font-medium">Shipping:</span> {order.shippingInfo}
-                      </div>
-                    )}
-                  </div>
+            {/* Column Selection */}
+            <div className="mb-6 border border-gray-200 rounded p-4">
+              <h3 className="text-sm font-medium mb-3">Show/Hide Columns:</h3>
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                {Object.entries(allColumns).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[key]}
+                      onChange={() => toggleColumn(key)}
+                      className="rounded"
+                    />
+                    {label}
+                  </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
+                <p className="text-red-800">{error}</p>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {loading && (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto"></div>
+                <p className="mt-2 text-gray-600">Loading orders data...</p>
+              </div>
+            )}
+
+            {/* Orders Table */}
+            {!loading && !error && (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      {Object.entries(allColumns).map(([key, label]) => 
+                        visibleColumns[key] && (
+                          <th
+                            key={key}
+                            className="border border-gray-300 p-2 text-left cursor-pointer hover:bg-gray-200"
+                            onClick={() => handleSort(key)}
+                          >
+                            <div className="flex items-center gap-1">
+                              {label}
+                              {sortField === key && (
+                                <span className="text-xs">
+                                  {sortDirection === 'asc' ? '↑' : '↓'}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAnalytics.map((item, index) => (
+                      <tr key={`${item.item_id}_${item.variation_id || 'no_var'}`} className="hover:bg-gray-50">
+                        {visibleColumns.thumbnail && (
+                          <td className="border border-gray-300 p-2">
+                            {item.thumbnail && (
+                              <img 
+                                src={item.thumbnail} 
+                                alt={item.title}
+                                className="w-12 h-12 object-cover rounded"
+                              />
+                            )}
+                          </td>
+                        )}
+                        {visibleColumns.seller_sku && (
+                          <td className="border border-gray-300 p-2 font-mono text-sm">
+                            {item.seller_sku || '-'}
+                          </td>
+                        )}
+                        {visibleColumns.title && (
+                          <td className="border border-gray-300 p-2 max-w-xs">
+                            <div className="truncate" title={item.title}>
+                              {item.title}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.color && (
+                          <td className="border border-gray-300 p-2">
+                            {item.color || '-'}
+                          </td>
+                        )}
+                        {visibleColumns.size && (
+                          <td className="border border-gray-300 p-2">
+                            {item.size || '-'}
+                          </td>
+                        )}
+                        {visibleColumns.available_quantity && (
+                          <td className="border border-gray-300 p-2 text-center">
+                            {item.available_quantity}
+                          </td>
+                        )}
+                        {visibleColumns.avg_orders_per_day && (
+                          <td className="border border-gray-300 p-2 text-center">
+                            {item.avg_orders_per_day}
+                          </td>
+                        )}
+                        {visibleColumns.days_left_inventory && (
+                          <td className="border border-gray-300 p-2 text-center">
+                            {item.days_left_inventory === 999 ? '∞' : item.days_left_inventory}
+                          </td>
+                        )}
+                        {visibleColumns.stock_status && (
+                          <td className="border border-gray-300 p-2">
+                            <span className={`font-medium ${getStockStatusColor(item.stock_status)}`}>
+                              {item.stock_status.replace('_', ' ')}
+                            </span>
+                          </td>
+                        )}
+                        {visibleColumns.last_sale_date && (
+                          <td className="border border-gray-300 p-2">
+                            {formatDate(item.last_sale_date)}
+                          </td>
+                        )}
+                        {visibleColumns.total_sales_quantity && (
+                          <td className="border border-gray-300 p-2 text-center">
+                            {item.total_sales_quantity}
+                          </td>
+                        )}
+                        {visibleColumns.days_since_last_sale && (
+                          <td className="border border-gray-300 p-2 text-center">
+                            {item.days_since_last_sale || '-'}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                {sortedAnalytics.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No data found for the selected period.
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
     </LayoutWrapper>
   )
 }
