@@ -22,33 +22,72 @@ async function apiRequest(url) {
   return response.json();
 }
 
-// Get shipment data from MercadoLibre API
+// Get shipment items data from MercadoLibre API
 async function getShipmentData(shipmentId) {
   try {
-    const url = `${API_BASE_URL}/shipments/${shipmentId}`;
+    const url = `${API_BASE_URL}/shipments/${shipmentId}/items`;
     return await apiRequest(url);
   } catch (error) {
-    console.error('Error fetching shipment data:', error);
+    console.error('Error fetching shipment items data:', error);
     throw error;
   }
 }
 
-// Get both shipment and items data
+// Get variation data for a specific item
+async function getItemVariation(itemId, variationId) {
+  try {
+    const url = `${API_BASE_URL}/items/${itemId}/variations/${variationId}`;
+    return await apiRequest(url);
+  } catch (error) {
+    console.error(`Error fetching variation data for item ${itemId}, variation ${variationId}:`, error);
+    throw error;
+  }
+}
+
+// Get item details (for thumbnail and title)
+async function getItemDetails(itemId) {
+  try {
+    const url = `${API_BASE_URL}/items/${itemId}`;
+    return await apiRequest(url);
+  } catch (error) {
+    console.error(`Error fetching item details for item ${itemId}:`, error);
+    throw error;
+  }
+}
+
+// Get both shipment items and their variations data
 async function getShipmentWithItems(shipmentId) {
   try {
-    const shipmentData = await getShipmentData(shipmentId);
+    const shipmentItems = await getShipmentData(shipmentId);
     
-    // Extract unique item IDs
-    const itemIds = [...new Set(shipmentData.shipping_items.map(item => item.id))];
+    // Fetch variation data and item details for each item
+    const itemsWithVariations = await Promise.all(
+      shipmentItems.map(async (shipmentItem) => {
+        try {
+          const [variationData, itemDetails] = await Promise.all([
+            shipmentItem.variation_id ? getItemVariation(shipmentItem.item_id, shipmentItem.variation_id) : null,
+            getItemDetails(shipmentItem.item_id)
+          ]);
+          
+          return {
+            ...shipmentItem,
+            variationData,
+            itemDetails
+          };
+        } catch (error) {
+          console.error(`Error fetching data for item ${shipmentItem.item_id}:`, error);
+          return {
+            ...shipmentItem,
+            variationData: null,
+            itemDetails: null
+          };
+        }
+      })
+    );
     
-    // Fetch items data with required attributes
-    const itemIdsString = itemIds.join(',');
-    const url = `${API_BASE_URL}/items?ids=${itemIdsString}&attributes=id,title,thumbnail,pictures,seller_custom_field`;
-    const itemsData = await apiRequest(url);
-    
-    return { shipmentData, itemsData };
+    return itemsWithVariations;
   } catch (error) {
-    console.error('Error fetching items data:', error);
+    console.error('Error fetching shipment with items data:', error);
     throw error;
   }
 }
@@ -56,29 +95,43 @@ async function getShipmentWithItems(shipmentId) {
 // Extract and format shipment information
 async function extractShipmentInfo(shipmentId) {
   try {
-    const { shipmentData, itemsData } = await getShipmentWithItems(shipmentId);
-    console.log('---------  shipmentData', shipmentData);
-    console.log('---------  itemsData', itemsData); 
-    
-    // Create lookup map for item details
-    const itemsMap = new Map();
-    itemsData.forEach(item => {
-      if (item.body) {
-        itemsMap.set(item.body.id, item.body);
-      }
-    });
+    const shipmentItemsData = await getShipmentWithItems(shipmentId);
+    console.log('---------  shipmentItemsData', shipmentItemsData);
     
     // Process each shipping item
-    return shipmentData.shipping_items.map(shippingItem => {
-      const itemDetails = itemsMap.get(shippingItem.id);
-      console.log('---------  success', itemDetails?.id);
+    return shipmentItemsData.map(shipmentItem => {
+      const variation = shipmentItem.variationData;
+      const itemDetails = shipmentItem.itemDetails;
+      
+      console.log('---------  processing item', shipmentItem.item_id);
+      
+      // Extract seller_sku from attributes array
+      const sellerSku = variation?.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name || null;
+      
+      // Extract color from attribute_combinations array
+      const color = variation?.attribute_combinations?.find(attr => attr.id === 'COLOR')?.value_name || null;
+      
+      // Extract talle (size) from attribute_combinations array
+      const talle = variation?.attribute_combinations?.find(attr => attr.id === 'SIZE')?.value_name || null;
+      
+      // Extract fabric_type from attribute_combinations array (FABRIC_DESIGN)
+      const fabricType = variation?.attribute_combinations?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name || null;
+      
+      // Get thumbnail from item details only
+      const thumbnail = itemDetails?.thumbnail || null;
+      
       return {
-        order_id: shipmentData.order_id,
-        item_id: shippingItem.id,
-        sku: itemDetails?.seller_custom_field || null,
-        quantity: shippingItem.quantity,
-        image: itemDetails?.thumbnail || null,
-        title: itemDetails?.title || shippingItem.description
+        order_id: shipmentItem.order_id,
+        item_id: shipmentItem.item_id,
+        variation_id: shipmentItem.variation_id,
+        seller_sku: sellerSku,
+        color: color,
+        talle: talle,
+        available_quantity: variation?.available_quantity || 0,
+        fabric_type: fabricType,
+        thumbnail: thumbnail,
+        title: itemDetails?.title || shipmentItem.description || null,
+        quantity: shipmentItem.quantity
       };
     });
   } catch (error) {
@@ -127,114 +180,3 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
   }
 }
-
-//   const mockProducts = [
-//     {
-//       order_id: "12345678",
-//       item_id: params.id,
-//       sku: "TEST-SKU-001",
-//       quantity: 1,
-//       image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=300&fit=crop",
-//       title: "Premium Wireless Headphones"
-//     },
-//     {
-//       order_id: "87654321",
-//       item_id: params.id,
-//       sku: "TEST-SKU-002", 
-//       quantity: 2,
-//       image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop",
-//       title: "Running Shoes"
-//     }
-//   ];
-
-//   // Return first item for now (same as your original logic)
-//   return NextResponse.json(mockProducts);
-// }
-;
-// const API_BASE_URL = 'https://api.mercadolibre.com';
-
-// // Reusable fetch function with authentication
-// async function apiRequest(url) {
-//   const response = await fetch(url, {
-//     method: 'GET',
-//     headers: {
-//       'Authorization': `Bearer ${accessToken}`,
-//       'Content-Type': 'application/json'
-//     }
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(`HTTP error! status: ${response.status} - ${url}`);
-//   }
-
-//   return response.json();
-// }
-
-// // Get shipment data from MercadoLibre API
-// async function getShipmentData(shipmentId) {
-//   try {
-//     const url = `${API_BASE_URL}/shipments/${shipmentId}`;
-//     return await apiRequest(url, accessToken);
-//   } catch (error) {
-//     console.error('Error fetching shipment data:', error);
-//     throw error;
-//   }
-// }
-
-// // Get both shipment and items data
-// async function getShipmentWithItems(shipmentId) {
-//   try {
-//     const shipmentData = await getShipmentData(shipmentId, accessToken);
-    
-//     // Extract unique item IDs
-//     const itemIds = [...new Set(shipmentData.shipping_items.map(item => item.id))];
-    
-//     // Fetch items data with required attributes
-//     const itemIdsString = itemIds.join(',');
-//     const url = `${API_BASE_URL}/items?ids=${itemIdsString}&attributes=id,title,thumbnail,pictures,seller_custom_field`;
-//     const itemsData = await apiRequest(url, accessToken);
-    
-//     return { shipmentData, itemsData };
-//   } catch (error) {
-//     console.error('Error fetching items data:', error);
-//     throw error;
-//   }
-// }
-
-// // Extract and format shipment information
-// export async function extractShipmentInfo(shipmentId) {
-//   try {
-//     const { shipmentData, itemsData } = await getShipmentWithItems(shipmentId, accessToken);
-//     console.log('---------  shipmentData', shipmentData);
-//     console.log('---------  itemsData', itemsData); 
-//     // Create lookup map for item details
-//     const itemsMap = new Map();
-//     itemsData.forEach(item => {
-//       if (item.body) {
-//         itemsMap.set(item.body.id, item.body);
-//       }
-//     });
-    
-//     // Process each shipping item
-//     return shipmentData.shipping_items.map(shippingItem => {
-//       const itemDetails = itemsMap.get(shippingItem.id);
-//       console.log('---------  success', itemDetails.id);
-//       return {
-//         order_id: shipmentData.order_id,
-//         item_id: shippingItem.id,
-//         sku: itemDetails?.seller_custom_field || null,
-//         quantity: shippingItem.quantity,
-//         image: itemDetails?.thumbnail || null,
-//         title: itemDetails?.title || shippingItem.description
-//       };
-//     });
-//   } catch (error) {
-//     console.error('Error extracting shipment info:', error);
-//     throw error;
-//   }
-// }
-
-// Export other functions if needed elsewhere
-// export { getShipmentData, getShipmentWithItems, apiRequest };
-// const shipmentId = '45129712335'; 
-// extractShipmentInfo(shipmentId);

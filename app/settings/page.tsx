@@ -142,7 +142,19 @@ export default function SettingsPage() {
                         <p className="text-xs text-gray-600">ID: {userInfo.id}</p>
                       </div>
                     </div>
-                    
+                    {userInfo.seller_reputation && (
+                      <div className="mt-2 text-xs text-gray-700">
+                        <div>
+                          <span className="font-semibold">Seller Reputation:</span>
+                        </div>
+                        <div>
+                          Level: <span className="font-mono">{userInfo.seller_reputation.level_id || 'N/A'}</span>
+                        </div>
+                        <div>
+                          Power Seller Status: <span className="font-mono">{userInfo.seller_reputation.power_seller_status || 'N/A'}</span>
+                        </div>
+                      </div>
+                    )}
                     {userInfo.permalink && (
                       <a 
                         href={userInfo.permalink}
