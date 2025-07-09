@@ -99,9 +99,9 @@ export default function SettingsPage() {
               </div>
             ) : !authStatus.authenticated ? (
               <div className="text-center py-4">
-                <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-                  Connect your MercadoLibre account to use the API features.
-                </div>
+                {/* <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+                  Connect to your account.
+                </div> */}
                 <Button 
                   onClick={() => window.location.href = '/api/auth/initiate'}
                   className="w-full"
