@@ -23,6 +23,23 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
               <Menu className="h-4 w-4" />
               <span className="sr-only">Toggle menu</span>
             </SidebarTrigger>
+            {/* Back button */}
+            <button
+              onClick={() => router.back()}
+              className="bg-white/90 hover:bg-gray-200 shadow-lg border-gray-200 rounded p-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            {/* Home button */}ß
+            <Link
+              href="/"
+              className="bg-white/90 hover:bg-gray-200 shadow-lg border-gray-200 rounded p-2"
+              aria-label="Go home"
+            >
+              <Home className="h-4 w-4" />
+            </Link>
+          </div>
 
             {/* Just the stylized name */}
             <div className="text-2xl font-bold text-gray-800 drop-shadow-lg">

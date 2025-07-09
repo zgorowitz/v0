@@ -103,7 +103,7 @@ async function apiRequest(url, accessToken) {
   return response.json();
 }
 
-// Get all orders (paginated)
+// Get all orders (paginated) - FIXED URL FORMAT
 async function getAllOrders(accessToken, daysBack = 30) {
   const orders = [];
   let offset = 0;
@@ -113,12 +113,23 @@ async function getAllOrders(accessToken, daysBack = 30) {
   const toDate = new Date();
   const fromDate = new Date(toDate.getTime() - (daysBack * 24 * 60 * 60 * 1000));
   
-  const fromISO = fromDate.toISOString();
-  const toISO = toDate.toISOString();
+  // Format dates properly for MercadoLibre API
+  const fromISO = fromDate.toISOString().split('.')[0] + '-00:00';
+  const toISO = toDate.toISOString().split('.')[0] + '-00:00';
   
   try {
+    // First get user info to get seller ID
+    const userResponse = await apiRequest(`${API_BASE_URL}/users/me`, accessToken);
+    const sellerId = userResponse.id;
+    
+    console.log(`Fetching orders for seller ID: ${sellerId}`);
+    
     while (true) {
-      const url = `${API_BASE_URL}/orders/search?seller_id=me&order.date_created.from=${fromISO}&order.date_created.to=${toISO}&offset=${offset}&limit=${limit}`;
+      // FIXED: Use correct MercadoLibre API parameters
+      const url = `${API_BASE_URL}/orders/search?seller=${sellerId}&order.status=paid&order.date_created.from=${fromISO}&order.date_created.to=${toISO}&offset=${offset}&limit=${limit}&sort=date_desc`;
+      
+      console.log(`Fetching orders: ${url}`);
+      
       const response = await apiRequest(url, accessToken);
       
       if (!response.results || response.results.length === 0) {
@@ -128,12 +139,15 @@ async function getAllOrders(accessToken, daysBack = 30) {
       orders.push(...response.results);
       offset += limit;
       
+      console.log(`Fetched ${response.results.length} orders, total: ${orders.length}`);
+      
       // Prevent infinite loop
       if (offset >= response.paging.total || orders.length >= 1000) {
         break;
       }
     }
     
+    console.log(`Total orders fetched: ${orders.length}`);
     return orders;
   } catch (error) {
     console.error('Error fetching orders:', error);
