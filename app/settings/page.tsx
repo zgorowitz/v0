@@ -168,7 +168,7 @@ export default function SettingsPage() {
                     <Button 
                       onClick={() => window.location.href = '/api/auth/initiate'}
                       className="w-full mt-3"
-                      variant="secondary"
+                      // variant="secondary"
                     >
                       Connect a different account
                     </Button>

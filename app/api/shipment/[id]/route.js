@@ -3,23 +3,106 @@ import { kv } from '@vercel/kv'
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
-// Get access token from Vercel KV
-async function getAccessToken() {
+// Get access token from Vercel KV with validation and auto-refresh
+async function getValidAccessToken() {
   try {
     const userId = 'default_user';
     const tokenKey = `oauth_tokens:${userId}`;
     
+    // 1. GET TOKENS FROM STORAGE
     const storedTokens = await kv.hgetall(tokenKey);
     
     if (!storedTokens || !storedTokens.access_token) {
-      throw new Error('No access token found in storage');
+      throw new Error('No access token found in storage - please authenticate first');
     }
+
+    // 2. CHECK TOKEN EXPIRATION
+    const expiresAt = parseInt(storedTokens.expires_at);
+    const now = Date.now();
+    const isExpired = now >= expiresAt;
+
+    // 3. IF TOKEN NOT EXPIRED, RETURN IT
+    if (!isExpired) {
+      return storedTokens.access_token;
+    }
+
+    // 4. TOKEN IS EXPIRED - TRY TO REFRESH
+    console.log('Access token expired, attempting refresh...');
     
-    return storedTokens.access_token;
+    if (!storedTokens.refresh_token) {
+      throw new Error('Access token expired and no refresh token available - please re-authenticate');
+    }
+
+    // 5. REFRESH TOKEN
+    const newTokens = await refreshTokensInternal(storedTokens.refresh_token, userId);
+    console.log('Token refresh successful');
+    
+    return newTokens.access_token;
+
   } catch (error) {
-    console.error('Error getting access token from KV:', error);
+    console.error('Error getting valid access token:', error);
     throw error;
   }
+}
+
+// INTERNAL HELPER: Refresh tokens (same logic as refresh route)
+async function refreshTokensInternal(refreshToken, userId) {
+  const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token';
+  
+  const refreshRequest = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json'
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET,
+      refresh_token: refreshToken
+    })
+  };
+
+  const response = await fetch(tokenEndpoint, refreshRequest);
+  
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Token refresh failed: ${response.status} ${errorData}`);
+  }
+
+  const tokenData = await response.json();
+  
+  if (!tokenData.access_token) {
+    throw new Error('No access token in refresh response');
+  }
+
+  const newTokens = {
+    access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token || refreshToken,
+    expires_in: tokenData.expires_in || 3600,
+    token_type: tokenData.token_type || 'Bearer',
+    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
+  };
+
+  // Store new tokens
+  await storeTokensInKV(userId, newTokens);
+  
+  return newTokens;
+}
+
+// HELPER: Store tokens in Vercel KV
+async function storeTokensInKV(userId, tokens) {
+  const key = `oauth_tokens:${userId}`;
+  
+  await kv.hset(key, {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: tokens.expires_at.toString(),
+    token_type: tokens.token_type
+  });
+  
+  const ttlSeconds = Math.floor((tokens.expires_at - Date.now()) / 1000) + 300;
+  await kv.expire(key, ttlSeconds);
 }
 
 // Reusable fetch function with authentication
@@ -112,8 +195,8 @@ async function getShipmentWithItems(shipmentId, accessToken) {
 // Extract and format shipment information
 async function extractShipmentInfo(shipmentId) {
   try {
-    // Get access token from KV storage
-    const accessToken = await getAccessToken();
+    // Get VALID access token from KV storage (with auto-refresh)
+    const accessToken = await getValidAccessToken();
     
     const shipmentItemsData = await getShipmentWithItems(shipmentId, accessToken);
     console.log('---------  shipmentItemsData', shipmentItemsData);
@@ -170,7 +253,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
     }
     
-    // Extract shipment information (access token is obtained inside the function)
+    // Extract shipment information (access token validation and refresh handled inside)
     const shipmentInfo = await extractShipmentInfo(id);
     
     return NextResponse.json(shipmentInfo);
@@ -184,16 +267,20 @@ export async function GET(request, { params }) {
     }
     
     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-      return NextResponse.json({ error: 'Authentication failed - check API credentials' }, { status: 401 });
+      return NextResponse.json({ error: 'Authentication failed - token may be expired' }, { status: 401 });
     }
     
     if (error.message.includes('status: 429')) {
       return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
     }
     
-    // Handle KV storage errors
-    if (error.message.includes('No access token found in storage')) {
-      return NextResponse.json({ error: 'Access token not configured - please authenticate first' }, { status: 500 });
+    // Handle authentication errors
+    if (error.message.includes('No access token found') || error.message.includes('please authenticate first')) {
+      return NextResponse.json({ error: 'Not authenticated - please connect to MercadoLibre first', needs_auth: true }, { status: 401 });
+    }
+    
+    if (error.message.includes('Token refresh failed') || error.message.includes('please re-authenticate')) {
+      return NextResponse.json({ error: 'Session expired - please reconnect to MercadoLibre', needs_auth: true }, { status: 401 });
     }
     
     return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
