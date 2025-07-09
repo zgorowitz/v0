@@ -1,0 +1,96 @@
+// app/api/user/route.js
+
+import { kv } from '@vercel/kv';
+
+export async function GET(request) {
+  try {
+    // For now, using a fixed user ID - you might get this from session/auth later
+    const userId = 'default_user';
+    const tokenKey = `oauth_tokens:${userId}`;
+
+    // 1. GET ACCESS TOKEN FROM STORAGE
+    const storedTokens = await kv.hgetall(tokenKey);
+    
+    if (!storedTokens || !storedTokens.access_token) {
+      console.log('No access token found');
+      return Response.json(
+        { error: 'No access token available', needs_auth: true }, 
+        { status: 401 }
+      );
+    }
+
+    // 2. CHECK TOKEN EXPIRATION
+    const expiresAt = parseInt(storedTokens.expires_at);
+    const now = Date.now();
+    const isExpired = now >= expiresAt;
+
+    if (isExpired) {
+      console.log('Access token expired');
+      return Response.json(
+        { error: 'Access token expired', needs_auth: true }, 
+        { status: 401 }
+      );
+    }
+
+    // 3. FETCH USER DATA FROM MERCADOLIBRE
+    console.log('Fetching user data from MercadoLibre...');
+    
+    const response = await fetch('https://api.mercadolibre.com/users/me', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${storedTokens.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('MercadoLibre API error:', response.status);
+      
+      if (response.status === 401) {
+        return Response.json(
+          { error: 'Invalid access token', needs_auth: true }, 
+          { status: 401 }
+        );
+      }
+      
+      return Response.json(
+        { error: 'Failed to fetch user data', status: response.status }, 
+        { status: response.status }
+      );
+    }
+
+    const userData = await response.json();
+    console.log('User data fetched successfully');
+
+    // 4. EXTRACT AND RETURN RELEVANT USER INFO
+    const userInfo = {
+      id: userData.id,
+      nickname: userData.nickname,
+      permalink: userData.permalink,
+      thumbnail: userData.thumbnail ? {
+        picture_id: userData.thumbnail.picture_id,
+        picture_url: userData.thumbnail.picture_url
+      } : null,
+      // Optional: include some additional useful info
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      country_id: userData.country_id,
+      site_id: userData.site_id,
+      user_type: userData.user_type,
+      seller_reputation: userData.seller_reputation ? {
+        level_id: userData.seller_reputation.level_id,
+        power_seller_status: userData.seller_reputation.power_seller_status
+      } : null
+    };
+
+    return Response.json(userInfo);
+
+  } catch (error) {
+    console.error('User endpoint error:', error);
+    
+    return Response.json({
+      error: 'Internal server error',
+      details: error.message
+    }, { status: 500 });
+  }
+}
