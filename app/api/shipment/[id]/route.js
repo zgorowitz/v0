@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server'
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
 // Get access token from environment variables
-const accessToken = process.env.ACCESS_TOKEN;
+// const accessToken = process.env.ACCESS_TOKEN;
+const accessToken = 'APP_USR-6886489775331379-070902-82664b28750895e945916f2ee728d1c9-45810060';
 
 // Reusable fetch function with authentication
 async function apiRequest(url) {
