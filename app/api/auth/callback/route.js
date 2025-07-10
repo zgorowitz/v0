@@ -97,9 +97,5 @@ async function storeTokensInKV(tokens) {
     token_type: tokens.token_type
   });
   
-  // Set TTL with buffer
-  const ttlSeconds = Math.floor((tokens.expires_at - Date.now()) / 1000) + 300;
-  await kv.expire(key, ttlSeconds);
-  
-  console.log(`Tokens stored with TTL: ${ttlSeconds} seconds`);
+  console.log(`Tokens stored`);
 }

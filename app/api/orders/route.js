@@ -90,9 +90,6 @@ async function refreshTokensInternal(refreshToken, userId) {
       token_type: 'Bearer'
     });
 
-    const ttlSeconds = Math.floor((newTokens.expires_at - Date.now()) / 1000) + 300;
-    await kv.expire(`oauth_tokens:${userId}`, ttlSeconds);
-    
     console.log('Tokens refreshed successfully');
     return newTokens;
 

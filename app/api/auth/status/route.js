@@ -141,7 +141,4 @@ async function storeTokensInKV(userId, tokens) {
     expires_at: tokens.expires_at.toString(),
     token_type: tokens.token_type
   });
-  
-  const ttlSeconds = Math.floor((tokens.expires_at - Date.now()) / 1000) + 300;
-  await kv.expire(key, ttlSeconds);
 }

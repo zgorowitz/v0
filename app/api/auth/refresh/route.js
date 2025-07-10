@@ -112,9 +112,5 @@ async function storeTokensInKV(userId, tokens) {
     token_type: tokens.token_type
   });
   
-  // Set expiration slightly longer than token expiry for safety margin
-  const ttlSeconds = Math.floor((tokens.expires_at - Date.now()) / 1000) + 300; // 5 min buffer
-  await kv.expire(key, ttlSeconds);
-  
-  console.log(`Tokens stored with TTL: ${ttlSeconds} seconds`);
+  console.log(`Tokens stored`);
 }
