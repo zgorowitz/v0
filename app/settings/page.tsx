@@ -64,17 +64,22 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSaveSettings = () => {
-    setIsSaving(true)
-
-    // Save settings to localStorage
-    localStorage.setItem("scannerSettings", JSON.stringify(settings))
-
-    // Simulate API call to save settings
-    setTimeout(() => {
-      setIsSaving(false)
-    }, 1000)
-  }
+  const handleDisconnect = async () => {
+    try {
+      const res = await fetch('/api/auth/disconnect', { method: 'POST' });
+      if (res.ok) {
+        // Optionally clear any local state or storage here
+        setAuthStatus({ authenticated: false, loading: false, error: null });
+        setUserInfo(null);
+        // Optionally reload the page or redirect
+        window.location.reload();
+      } else {
+        alert('Failed to disconnect. Please try again.');
+      }
+    } catch (error) {
+      alert('Error disconnecting: ' + error.message);
+    }
+  };
 
   return (
     <LayoutWrapper>
@@ -165,13 +170,22 @@ export default function SettingsPage() {
                         View Profile →
                       </a>
                     )}
-                    <Button 
-                      onClick={() => window.location.href = '/api/auth/initiate'}
-                      className="w-full mt-3"
-                      // variant="secondary"
-                    >
-                      Connect a different account
-                    </Button>
+                    <div className="flex flex-col gap-2 mt-3">
+                      <Button 
+                        onClick={() => window.location.href = '/api/auth/initiate'}
+                        className="w-full mt-3"
+                        // variant="secondary"
+                      >
+                        Connect a different account
+                      </Button>
+                      <Button
+                        onClick={handleDisconnect}
+                        className="w-full"
+                        // variant="destructive"
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-2">

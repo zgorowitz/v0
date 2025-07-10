@@ -11,7 +11,7 @@ export default function Home() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
             <CardDescription className="text-gray-600">
-              Scan barcodes to retrieve product and order information
+            Escanea códigos de barras para obtener información del envio.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
