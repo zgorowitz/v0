@@ -64,6 +64,28 @@ export default function SettingsPage() {
     }
   }
 
+  const refreshUserInfo = async () => {
+    setLoadingUser(true)
+    try {
+      // Step 1: Refresh the token
+      const response = await fetch('/api/auth/refresh',{
+        method: 'POST'
+      })
+      if (!response.ok) {
+        console.error('Failed to refresh token:', response.status)
+        setUserInfo(null)
+        return
+      }
+      // Step 2: Fetch the user info again
+      await fetchUserInfo()
+    } catch (error) {
+      console.error('Error refreshing token:', error)
+      setUserInfo(null)
+    } finally {
+      setLoadingUser(false)
+    }
+  }
+
   const handleDisconnect = async () => {
     try {
       const res = await fetch('/api/auth/disconnect', { method: 'POST' });
@@ -121,7 +143,7 @@ export default function SettingsPage() {
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={fetchUserInfo}
+                    onClick={refreshUserInfo}
                     disabled={loadingUser}
                   >
                     {loadingUser ? 'Loading...' : 'Refresh'}

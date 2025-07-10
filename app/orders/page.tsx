@@ -7,56 +7,80 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function OrdersPage() {
   const [data, setData] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [meta, setMeta] = useState(null)
 
-  // Fetch orders data
-  const fetchOrders = async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      console.log('Fetching orders data...')
-      
-      const response = await fetch('/api/orders')
-      
-      console.log('Response status:', response.status)
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('API Error:', errorData)
-        
-        // Handle specific error types
-        if (errorData.needs_auth) {
-          throw new Error(`AUTHENTICATION_REQUIRED: ${errorData.message}`)
-        }
-        
-        throw new Error(`API_ERROR: ${errorData.message || 'Unknown error'}`)
-      }
-      
-      const result = await response.json()
-      console.log('Data received:', result)
-      
-      if (!result.success) {
-        throw new Error(`DATA_ERROR: Invalid response format`)
-      }
-      
-      setData(result.data || [])
-      setMeta(result.meta)
-      
-    } catch (error) {
-      console.error('Error fetching orders:', error)
-      setError(error.message)
-    } finally {
-      setLoading(false)
-    }
+  // At the top of your file
+let cachedOrders = null;
+let cachedAt = null;
+
+const fetchOrders = async () => {
+  if (cachedOrders && Date.now() - cachedAt < 1 * 60 * 60 * 1000) { // 5 min cache
+    setData(cachedOrders);
+    setLoading(false);
+    return;
   }
+  setLoading(true);
+  setError(null);
+  try {
+    const response = await fetch('/api/orders');
+    const result = await response.json();
+    setData(result.data || []);
+    cachedOrders = result.data || [];
+    cachedAt = Date.now();
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+  // Fetch orders data
+  // const fetchOrders = async () => {
+  //   setLoading(true)
+  //   setError(null)
+    
+  //   try {
+  //     console.log('Fetching orders data...')
+      
+  //     const response = await fetch('/api/orders')
+      
+  //     console.log('Response status:', response.status)
+      
+  //     if (!response.ok) {
+  //       const errorData = await response.json()
+  //       console.error('API Error:', errorData)
+        
+  //       // Handle specific error types
+  //       if (errorData.needs_auth) {
+  //         throw new Error(`AUTHENTICATION_REQUIRED: ${errorData.message}`)
+  //       }
+        
+  //       throw new Error(`API_ERROR: ${errorData.message || 'Unknown error'}`)
+  //     }
+      
+  //     const result = await response.json()
+  //     console.log('Data received:', result)
+      
+  //     if (!result.success) {
+  //       throw new Error(`DATA_ERROR: Invalid response format`)
+  //     }
+      
+  //     setData(result.data || [])
+  //     setMeta(result.meta)
+      
+  //   } catch (error) {
+  //     console.error('Error fetching orders:', error)
+  //     setError(error.message)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   // Load data on mount
-  useEffect(() => {
-    fetchOrders()
-  }, [])
+  // useEffect(() => {
+  //   fetchOrders()
+  // }, [])
 
   // Format date
   const formatDate = (dateString) => {
