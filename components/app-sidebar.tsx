@@ -30,11 +30,11 @@ const navItems = [
     url: "/orders",
     icon: Calendar,
   },
-  {
-    title: "All SKUs",
-    url: "/skus",
-    icon: Package,
-  },
+  // {
+  //   title: "All SKUs",
+  //   url: "/skus",
+  //   icon: Package,
+  // },
   {
     title: "Settings",
     url: "/settings",
