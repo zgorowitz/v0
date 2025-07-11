@@ -366,168 +366,158 @@ export default function ScanPage() {
 
             {/* Scanned Items Carousel */}
             
+{/* Scanned Items Carousel - Mobile Optimized */}
+            
             {currentItem && (
-  <div className="mt-6 max-w-md mx-auto">
-    {/* Navigation Header */}
-    {items.length > 1 && (
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-sm font-medium text-gray-900">
-          {currentItemIndex + 1} of {items.length}
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button
-            onClick={goToPreviousItem}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-            disabled={currentItemIndex === 0}
-          >
-            <ChevronLeft className="h-4 w-4 text-gray-600" />
-          </button>
-          
-          <div className="flex gap-1.5">
-            {items.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentItemIndex(index)}
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                  index === currentItemIndex 
-                    ? 'bg-gray-900 w-6' 
-                    : 'bg-gray-300 hover:bg-gray-400'
-                }`}
-              />
-            ))}
-          </div>
-          
-          <button
-            onClick={goToNextItem}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-            disabled={currentItemIndex === items.length - 1}
-          >
-            <ChevronRight className="h-4 w-4 text-gray-600" />
-          </button>
-        </div>
-      </div>
-    )}
+              <div className="mt-3 max-w-md mx-auto">
+                {/* Navigation Header */}
+                {items.length > 1 && (
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-medium text-gray-900">
+                      {currentItemIndex + 1} of {items.length}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={goToPreviousItem}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                        disabled={currentItemIndex === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4 text-gray-600" />
+                      </button>
+                      
+                      <div className="flex gap-1">
+                        {items.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentItemIndex(index)}
+                            className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                              index === currentItemIndex 
+                                ? 'bg-gray-900 w-5' 
+                                : 'bg-gray-300 hover:bg-gray-400'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      
+                      <button
+                        onClick={goToNextItem}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                        disabled={currentItemIndex === items.length - 1}
+                      >
+                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-    {/* Main Card */}
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      {/* Content */}
-      <div className="p-6 space-y-6">
-        {/* Title */}
-        <div>
-          <h3 className="font-semibold text-gray-900 text-lg leading-tight">
-            {currentItem.title}
-          </h3>
-        </div>
+                {/* Main Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Content */}
+                  <div className="p-4 space-y-4">
+                    {/* Title */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg leading-tight">
+                        {currentItem.title}
+                      </h3>
+                    </div>
 
-        {/* SKU - Big and prominent */}
-        <div className="bg-gray-50 rounded-xl p-4">
-          <div className="text-center">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SKU</div>
-            <div className="font-mono text-xl font-bold text-gray-900">
-              {currentItem.seller_sku || 'N/A'}
-            </div>
-          </div>
-        </div>
+                    {/* SKU - Big and prominent */}
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SKU</div>
+                        <div className="font-mono text-xl font-bold text-gray-900">
+                          {currentItem.seller_sku || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
 
-        {/* Talle and Color - Same line */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Talle</div>
-            <div className="font-semibold text-gray-900">{currentItem.talle || 'N/A'}</div>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Color</div>
-            <div className="font-semibold text-gray-900">{currentItem.color || 'N/A'}</div>
-          </div>
-        </div>
+                    {/* Talle and Color - Same line */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Talle</div>
+                        <div className="font-semibold text-gray-900">{currentItem.talle || 'N/A'}</div>
+                      </div>
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Color</div>
+                        <div className="font-semibold text-gray-900">{currentItem.color || 'N/A'}</div>
+                      </div>
+                    </div>
 
-        {/* Cantidad and Diseño - Same line */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Cantidad</div>
-            <div className="font-semibold text-gray-900">{currentItem.quantity}</div>
-          </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
-            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Diseño</div>
-            <div className="font-semibold text-gray-900">{currentItem.fabric_type || 'N/A'}</div>
-          </div>
-        </div>
+                    {/* Cantidad and Diseño - Same line */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Cantidad</div>
+                        <div className="font-semibold text-gray-900">{currentItem.quantity}</div>
+                      </div>
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Diseño</div>
+                        <div className="font-semibold text-gray-900">{currentItem.fabric_type || 'N/A'}</div>
+                      </div>
+                    </div>
 
-        {/* Cantidad Disponible */}
-{/* Image with Cantidad Disponible on top */}
-{currentItem.thumbnail && (
-  <div className="bg-gray-50 rounded-lg p-3">
-    <div className="text-center mb-2">
-      <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Disponible</div>
-      <div className="font-semibold text-gray-900 text-sm">{currentItem.available_quantity || 'N/A'}</div>
-    </div>
-    <div className="aspect-square flex items-center justify-center p-1">
-      <img 
-        src={currentItem.thumbnail} 
-        alt={currentItem.title} 
-        className="w-full h-full object-contain"
-      />
-    </div>
-  </div>
-)}
+                    {/* Image with Cantidad Disponible on top */}
+                    {currentItem.thumbnail && (
+                      <div className="bg-gray-50 rounded-lg p-2.5">
+                        <div className="text-center mb-2">
+                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Disponible</div>
+                          <div className="font-semibold text-gray-900 text-sm">{currentItem.available_quantity || 'N/A'}</div>
+                        </div>
+                        <div className="aspect-square flex items-center justify-center p-1">
+                          <img 
+                            src={currentItem.thumbnail} 
+                            alt={currentItem.title} 
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
 
-        {/* Product Image */}
-        {/* {currentItem.thumbnail && (
-          <div className="aspect-square bg-gray-50 rounded-lg flex items-center justify-center p-4">
-            <img 
-              src={currentItem.thumbnail} 
-              alt={currentItem.title} 
-              className="max-w-full max-h-full object-contain"
-            />
-          </div>
-        )} */}
+                    {/* Technical Info */}
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <TechDetail label="Order ID" value={currentItem.order_id} />
+                        <TechDetail label="Item ID" value={currentItem.item_id} />
+                        <TechDetail label="Variation ID" value={currentItem.variation_id} />
+                        <TechDetail label="Barcode" value={lastScannedCode} />
+                      </div>
+                    </div>
 
-        {/* Technical Info */}
-        <div className="pt-4 border-t border-gray-100">
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <TechDetail label="Order ID" value={currentItem.order_id} />
-            <TechDetail label="Item ID" value={currentItem.item_id} />
-            <TechDetail label="Variation ID" value={currentItem.variation_id} />
-            <TechDetail label="Barcode" value={lastScannedCode} />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          <button
-            onClick={restartScanning}
-            className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl transition-colors"
-          >
-            Scan Another
-          </button>
-          <button
-            onClick={() => {
-              navigator.clipboard?.writeText(
-                JSON.stringify(
-                  {
-                    shipmentId: lastScannedCode,
-                    totalItems: items.length,
-                    currentItem: {
-                      ...currentItem,
-                      itemNumber: currentItemIndex + 1
-                    },
-                    allItems: items
-                  },
-                  null,
-                  2,
-                ),
-              )
-            }}
-            className="flex-1 py-3 px-4 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors"
-          >
-            Copy Details
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={restartScanning}
+                        className="flex-1 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Scan Another
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(
+                            JSON.stringify(
+                              {
+                                shipmentId: lastScannedCode,
+                                totalItems: items.length,
+                                currentItem: {
+                                  ...currentItem,
+                                  itemNumber: currentItemIndex + 1
+                                },
+                                allItems: items
+                              },
+                              null,
+                              2,
+                            ),
+                          )
+                        }}
+                        className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Copy Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Error State - Show restart button */}
             {error && !showCamera && !items && !manualMode && (
@@ -538,15 +528,15 @@ export default function ScanPage() {
               </div>
             )}
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <p className="text-xs text-gray-400">
-              {manualMode 
-                ? "Enter shipment ID manually or switch to camera mode" 
-                : showCamera 
-                  ? "Point camera at barcode to scan automatically" 
-                  : "Camera will open automatically"}
-            </p>
-          </CardFooter>
+            <CardFooter className="flex justify-center">
+              <p className="text-xs text-gray-400">
+                {manualMode 
+                  ? "Enter shipment ID manually or switch to camera mode" 
+                  : showCamera 
+                    ? "Point camera at barcode to scan automatically" 
+                    : "Camera will open automatically"}
+              </p>
+            </CardFooter>
         </Card>
       </main>
     </LayoutWrapper>
