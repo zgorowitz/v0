@@ -434,7 +434,7 @@ function groupByVariations(analytics, orders) {
 }
 
 // Main function
-async function runOrderAnalytics(accessToken, daysBack = 7) {
+async function runOrderAnalytics(accessToken, daysBack = 30) {
   try {
 
     // Get orders
@@ -486,7 +486,7 @@ export async function GET(request) {
       data: analytics,
       meta: {
         total_items: analytics.length,
-        days_analyzed: 7,
+        days_analyzed: 30,
         generated_at: new Date().toISOString()
       }
     });
