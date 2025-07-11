@@ -219,7 +219,10 @@ async function extractShipmentInfo(shipmentId) {
       const fabricType = variation?.attribute_combinations?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name || null;
       
       // Get thumbnail from item details only
-      const thumbnail = itemDetails?.thumbnail || null;
+    //   const thumbnail = itemDetails?.thumbnail || null;
+      const firstPictureId = variation.picture_ids[0];
+      const thumbnail = itemDetails.pictures.find(pic => pic.id === firstPictureId)?.url;
+  
       
       return {
         order_id: shipmentItem.order_id,
