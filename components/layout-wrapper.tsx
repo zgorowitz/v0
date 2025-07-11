@@ -45,7 +45,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
               </button>
             </div>
           </div> */}
-          <div className="absolute top-4 left-0 right-0 z-20 flex items-center justify-between px-4">
+          <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4">
             {/* Menu and Back (left) */}
             <div className="flex items-center gap-2">
               <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg border-gray-200">

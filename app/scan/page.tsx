@@ -235,10 +235,10 @@ export default function ScanPage() {
 
   return (
     <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
+      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center pt-0 px-6 pb-6">
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
-            <div className="flex justify-between items-center">
+            {/* <div className="flex justify-between items-center"> */}
             {!currentItem && (
               <CardTitle className="text-xl">Barcode Scanner</CardTitle>
             )}
@@ -258,7 +258,7 @@ export default function ScanPage() {
                   {manualMode ? "Use Camera" : "Manual Entry"}
                 </Button>
               )}
-            </div>
+            {/* </div> */}
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {/* Manual Entry Mode */}
