@@ -239,7 +239,9 @@ export default function ScanPage() {
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
             <div className="flex justify-between items-center">
+            {!currentItem && (
               <CardTitle className="text-xl">Barcode Scanner</CardTitle>
+            )}
               {!items && !loading && (
                 <Button
                   variant="outline"
