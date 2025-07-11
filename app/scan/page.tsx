@@ -212,6 +212,24 @@ export default function ScanPage() {
     setCurrentItemIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0))
   }
 
+  const DetailRow = ({ label, value }) => (
+    <div className="flex justify-between items-center py-1">
+      <span className="text-gray-600 text-sm">{label}</span>
+      <span className="font-medium text-gray-900 text-sm">
+        {value || 'N/A'}
+      </span>
+    </div>
+  );
+  
+  const TechDetail = ({ label, value }) => (
+    <div className="space-y-1">
+      <div className="text-gray-500 font-medium">{label}</div>
+      <div className="font-mono text-gray-700 text-xs bg-gray-50 px-2 py-1 rounded">
+        {value || 'N/A'}
+      </div>
+    </div>
+  );
+
   // Get current item from array
   const currentItem = items && items[currentItemIndex]
 
@@ -345,133 +363,169 @@ export default function ScanPage() {
             )}
 
             {/* Scanned Items Carousel */}
+            
             {currentItem && (
-              <div className="mt-4 border rounded-lg p-4 bg-white">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium text-lg text-green-700">✓ Scan Successful</h3>
-                  {items.length > 1 && (
-                    <span className="text-sm text-gray-500">
-                      Item {currentItemIndex + 1} of {items.length}
-                    </span>
-                  )}
-                </div>
+  <div className="mt-6 max-w-md mx-auto">
+    {/* Navigation Header */}
+    {items.length > 1 && (
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-sm font-medium text-gray-900">
+          {currentItemIndex + 1} of {items.length}
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={goToPreviousItem}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+            disabled={currentItemIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4 text-gray-600" />
+          </button>
+          
+          <div className="flex gap-1.5">
+            {items.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentItemIndex(index)}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                  index === currentItemIndex 
+                    ? 'bg-gray-900 w-6' 
+                    : 'bg-gray-300 hover:bg-gray-400'
+                }`}
+              />
+            ))}
+          </div>
+          
+          <button
+            onClick={goToNextItem}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+            disabled={currentItemIndex === items.length - 1}
+          >
+            <ChevronRight className="h-4 w-4 text-gray-600" />
+          </button>
+        </div>
+      </div>
+    )}
 
-                {/* Navigation buttons for multiple items */}
-                {items.length > 1 && (
-                  <div className="flex justify-between items-center mb-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={goToPreviousItem}
-                      className="p-2"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex gap-1">
-                      {items.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentItemIndex(index)}
-                          className={`w-2 h-2 rounded-full transition-colors ${
-                            index === currentItemIndex ? 'bg-gray-800' : 'bg-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={goToNextItem}
-                      className="p-2"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-                <div className="bg-gray-50 border-b px-4 py-3 mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Product Title</h4>
-                  <p className="text-base leading-relaxed text-gray-900">
-                    {currentItem.title}
-                  </p>
-                </div>
-                
-                <div className="grid gap-2 text-sm"> 
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">SKU:</span>
-                    <span className="font-mono text-sm font-medium">{currentItem.seller_sku || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Color:</span>
-                    <span className="font-mono text-sm font-medium">{currentItem.color || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Diseño de la Tela:</span>
-                    <span className="font-mono text-sm font-medium">{currentItem.fabric_type || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Cantidad de Unidades:</span>
-                    <span className="font-medium">{currentItem.quantity}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Talle:</span>
-                    <span className="font-medium">{currentItem.talle || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Cantidad Disponible:</span>
-                    <span className="font-medium">{currentItem.available_quantity || 'N/A'}</span>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                      <div><span className="text-gray-400">Order ID:</span> <span className="text-gray-600">{currentItem.order_id || 'N/A'}</span></div>
-                      <div><span className="text-gray-400">Item ID:</span> <span className="text-gray-600">{currentItem.item_id || 'N/A'}</span></div>
-                      <div><span className="text-gray-400">Variation ID:</span> <span className="text-gray-600">{currentItem.variation_id || 'N/A'}</span></div>
-                      <div><span className="text-gray-400">Codigo de Barras:</span> <span className="text-gray-600">{lastScannedCode || 'N/A'}</span></div>
-                    </div>
-                  </div>
+    {/* Main Card */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Content */}
+      <div className="p-6 space-y-6">
+        {/* Title */}
+        <div>
+          <h3 className="font-semibold text-gray-900 text-lg leading-tight">
+            {currentItem.title}
+          </h3>
+        </div>
 
-                  {/* Product image */}
-                  {currentItem.thumbnail && (
-                    <div className="mt-2">
-                      <img 
-                        src={currentItem.thumbnail} 
-                        alt={currentItem.title} 
-                        className="w-full h-48 object-contain bg-gray-50 rounded"
-                      />
-                    </div>
-                  )}
-                </div>
+        {/* SKU - Big and prominent */}
+        <div className="bg-gray-50 rounded-xl p-4">
+          <div className="text-center">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SKU</div>
+            <div className="font-mono text-xl font-bold text-gray-900">
+              {currentItem.seller_sku || 'N/A'}
+            </div>
+          </div>
+        </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={restartScanning}>
-                    Scan Another
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(
-                        JSON.stringify(
-                          {
-                            shipmentId: lastScannedCode,
-                            totalItems: items.length,
-                            currentItem: {
-                              ...currentItem,
-                              itemNumber: currentItemIndex + 1
-                            },
-                            allItems: items
-                          },
-                          null,
-                          2,
-                        ),
-                      )
-                    }}
-                  >
-                    Copy Details
-                  </Button>
-                </div>
-              </div>
-            )}
+        {/* Talle and Color - Same line */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Talle</div>
+            <div className="font-semibold text-gray-900">{currentItem.talle || 'N/A'}</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Color</div>
+            <div className="font-semibold text-gray-900">{currentItem.color || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Cantidad and Diseño - Same line */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Cantidad</div>
+            <div className="font-semibold text-gray-900">{currentItem.quantity}</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Diseño</div>
+            <div className="font-semibold text-gray-900">{currentItem.fabric_type || 'N/A'}</div>
+          </div>
+        </div>
+
+        {/* Cantidad Disponible */}
+{/* Image with Cantidad Disponible on top */}
+{currentItem.thumbnail && (
+  <div className="bg-gray-50 rounded-lg p-3">
+    <div className="text-center mb-2">
+      <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Disponible</div>
+      <div className="font-semibold text-gray-900 text-sm">{currentItem.available_quantity || 'N/A'}</div>
+    </div>
+    <div className="aspect-square flex items-center justify-center p-1">
+      <img 
+        src={currentItem.thumbnail} 
+        alt={currentItem.title} 
+        className="w-full h-full object-contain"
+      />
+    </div>
+  </div>
+)}
+
+        {/* Product Image */}
+        {/* {currentItem.thumbnail && (
+          <div className="aspect-square bg-gray-50 rounded-lg flex items-center justify-center p-4">
+            <img 
+              src={currentItem.thumbnail} 
+              alt={currentItem.title} 
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        )} */}
+
+        {/* Technical Info */}
+        <div className="pt-4 border-t border-gray-100">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <TechDetail label="Order ID" value={currentItem.order_id} />
+            <TechDetail label="Item ID" value={currentItem.item_id} />
+            <TechDetail label="Variation ID" value={currentItem.variation_id} />
+            <TechDetail label="Barcode" value={lastScannedCode} />
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-2">
+          <button
+            onClick={restartScanning}
+            className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl transition-colors"
+          >
+            Scan Another
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard?.writeText(
+                JSON.stringify(
+                  {
+                    shipmentId: lastScannedCode,
+                    totalItems: items.length,
+                    currentItem: {
+                      ...currentItem,
+                      itemNumber: currentItemIndex + 1
+                    },
+                    allItems: items
+                  },
+                  null,
+                  2,
+                ),
+              )
+            }}
+            className="flex-1 py-3 px-4 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors"
+          >
+            Copy Details
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
             {/* Error State - Show restart button */}
             {error && !showCamera && !items && !manualMode && (

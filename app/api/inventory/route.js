@@ -1,4 +1,4 @@
-// app/api/orders/route.js
+// app/api/inventory/route.js
 
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
@@ -434,7 +434,7 @@ function groupByVariations(analytics, orders) {
 }
 
 // Main function
-async function runOrderAnalytics(accessToken, daysBack = 30) {
+async function runOrderAnalytics(accessToken, daysBack = 7) {
   try {
 
     // Get orders
@@ -446,9 +446,9 @@ async function runOrderAnalytics(accessToken, daysBack = 30) {
 
     // Display results
     console.log('='.repeat(60));    
-    console.log(JSON.stringify(groupedAnalytics[0], null, 2));
+    // console.log(JSON.stringify(groupedAnalytics[0], null, 2));
 
-    return analytics;
+    return groupedAnalytics;
     
   } catch (error) {
     console.error('❌Analytics failed:', error.message);
@@ -474,6 +474,7 @@ export async function GET(request) {
     const accessToken = await getValidAccessToken();
     
     // Get orders
+    // const orders = await getOrders(accessToken)
     
     // Process into analytics
     const analytics = await runOrderAnalytics(accessToken);
@@ -485,8 +486,7 @@ export async function GET(request) {
       data: analytics,
       meta: {
         total_items: analytics.length,
-        total_orders: orders.length,
-        days_analyzed: 30,
+        days_analyzed: 7,
         generated_at: new Date().toISOString()
       }
     });
