@@ -41,21 +41,21 @@ export async function middleware(request) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (user) {
-        // Check if user has organization
-    const { data } = await supabase.rpc('get_user_organization', { user_uuid: user.id })
+  // if (user) {
+  //       // Check if user has organization
+  //   const { data } = await supabase.rpc('get_user_organization', { user_uuid: user.id })
     
-    const hasOrganization = data && data.length > 0
-    const isOnboarding = request.nextUrl.pathname === '/onboarding'
+  //   const hasOrganization = data && data.length > 0
+  //   const isOnboarding = request.nextUrl.pathname === '/onboarding'
     
-    if (!hasOrganization && !isOnboarding) {
-    return NextResponse.redirect(new URL('/onboarding', request.url))
-    }
+  //   if (!hasOrganization && !isOnboarding) {
+  //   return NextResponse.redirect(new URL('/onboarding', request.url))
+  //   }
     
-    if (hasOrganization && isOnboarding) {
-    return NextResponse.redirect(new URL('/', request.url))
-    }
-  }
+  //   if (hasOrganization && isOnboarding) {
+  //   return NextResponse.redirect(new URL('/', request.url))
+  //   }
+  // }
 
   return supabaseResponse
 }

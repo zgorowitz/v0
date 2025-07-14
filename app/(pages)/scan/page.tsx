@@ -59,7 +59,7 @@ export default function ScanPage() {
         }
       }
     } catch (err) {
-      setError("Failed to access camera. Please check permissions and try again.")
+      setError("No se pudo acceder a la cámara. Por favor, revisa los permisos e inténtalo de nuevo.")
       console.error("Camera access error:", err)
       setShowCamera(false)
       setScanning(false)
@@ -146,7 +146,7 @@ export default function ScanPage() {
         throw new Error("No items found for this shipment")
       }
     } catch (err) {
-      setError(`Failed to fetch details: ${err.message}`)
+      setError(`No se pudieron obtener los detalles: ${err.message}`)
       console.error("API error:", err)
       // Restart scanning on API error
       setTimeout(() => {
@@ -174,12 +174,12 @@ export default function ScanPage() {
         })
         setFlashlightOn(!flashlightOn)
       } else {
-        setError("Flashlight not available on this device")
+        setError("Linterna no disponible en este dispositivo")
         setTimeout(() => setError(""), 3000)
       }
     } catch (err) {
       console.error("Flashlight error:", err)
-      setError("Failed to toggle flashlight")
+      setError("No se pudo activar la linterna")
       setTimeout(() => setError(""), 3000)
     }
   }
@@ -216,7 +216,7 @@ export default function ScanPage() {
     <div className="flex justify-between items-center py-1">
       <span className="text-gray-600 text-sm">{label}</span>
       <span className="font-medium text-gray-900 text-sm">
-        {value || 'N/A'}
+        {value || 'No Disponible'}
       </span>
     </div>
   );
@@ -265,7 +265,7 @@ export default function ScanPage() {
             {manualMode && !items && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Enter Shipment ID or Barcode</label>
+                  <label className="block text-sm font-medium mb-2">Ingresa el código manualmente</label>
                   <input
                     type="text"
                     value={manualInput}
@@ -277,7 +277,7 @@ export default function ScanPage() {
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleManualSubmit} disabled={!manualInput.trim() || loading} className="flex-1">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Code"}
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Código"}
                   </Button>
                   <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
                     Use Camera
@@ -315,10 +315,10 @@ export default function ScanPage() {
                 <div className="absolute top-4 left-4 right-4 text-center">
                   <p className="text-white text-sm bg-black/50 rounded px-2 py-1">
                     {loading
-                      ? "Processing barcode..."
+                      ? "Procesando código de barras..."
                       : scanning
-                        ? "Scanning for barcode..."
-                        : "Position barcode within the frame"}
+                        ? "Escaneando código de barras..."
+                        : "Coloca el código de barras dentro del marco"}
                   </p>
                 </div>
 
@@ -348,7 +348,7 @@ export default function ScanPage() {
                 {/* Instructions */}
                 <div className="absolute bottom-4 left-4 right-4 text-center">
                   <p className="text-white text-xs bg-black/50 rounded px-2 py-1">
-                    Hold steady and ensure barcode is clearly visible
+                  Mantén firme y asegúrate de que el código de barras sea claramente visible
                   </p>
                 </div>
               </div>
@@ -359,7 +359,7 @@ export default function ScanPage() {
               <div className="text-center p-8">
                 <div className="flex flex-col items-center justify-center">
                   <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                  <p className="mt-2 text-sm text-gray-500">Processing barcode and fetching details...</p>
+                  <p className="mt-2 text-sm text-gray-500">Procesando código de barras y obteniendo detalles...</p>
                 </div>
               </div>
             )}
@@ -478,10 +478,10 @@ export default function ScanPage() {
                     {/* Technical Info */}
                     <div className="pt-3 border-t border-gray-100">
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <TechDetail label="Order ID" value={currentItem.order_id} />
-                        <TechDetail label="Item ID" value={currentItem.item_id} />
-                        <TechDetail label="Variation ID" value={currentItem.variation_id} />
-                        <TechDetail label="Barcode" value={lastScannedCode} />
+                        <TechDetail label="ID de Orden" value={currentItem.order_id} />
+                        <TechDetail label="ID de Artículo" value={currentItem.item_id} />
+                        <TechDetail label="ID de Variación" value={currentItem.variation_id} />
+                        <TechDetail label="Código de Barras" value={lastScannedCode} />
                       </div>
                     </div>
 
@@ -525,7 +525,7 @@ export default function ScanPage() {
             {error && !showCamera && !items && !manualMode && (
               <div className="text-center p-8">
                 <Button onClick={startCamera} className="w-full">
-                  Try Again
+                Intentar de Nuevo
                 </Button>
               </div>
             )}
@@ -533,10 +533,10 @@ export default function ScanPage() {
             <CardFooter className="flex justify-center">
               <p className="text-xs text-gray-400">
                 {manualMode 
-                  ? "Enter shipment ID manually or switch to camera mode" 
+                  ? "Ingresa el ID de envío manualmente o cambia al modo cámara" 
                   : showCamera 
-                    ? "Point camera at barcode to scan automatically" 
-                    : "Camera will open automatically"}
+                    ? "Apunta la cámara al código de barras para escanear automáticamente" 
+                    : "La cámara se abrirá automáticamente"}
               </p>
             </CardFooter>
         </Card>

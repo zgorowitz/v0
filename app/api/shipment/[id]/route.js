@@ -268,7 +268,7 @@ export async function GET(request, { params }) {
     }
     
     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-      return NextResponse.json({ error: 'Authentication failed - token may be expired' }, { status: 401 });
+      return NextResponse.json({ error: 'Autenticación fallida: El token puede estar expirado, el ID de envío puede ser incorrecto o el envío puede pertenecer a una cuenta de Mercado Libre diferente a la actualmente autenticada.' }, { status: 401 });
     }
     
     if (error.message.includes('status: 429')) {

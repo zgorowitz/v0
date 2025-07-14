@@ -99,11 +99,11 @@ export default function Home() {
               {user ? (
                 <>
                   <p className="text-center text-gray-700 mb-4">
-                    Welcome, {user.user_metadata?.name}!
+                    Bienvenido, {user.user_metadata?.name}!
                   </p>
                   <Link href="/scan" className="w-full">
                     <Button className="w-full" size="lg">
-                      Start Scanning
+                    Iniciar escaneo
                     </Button>
                   </Link>
                   <Button 
@@ -111,14 +111,14 @@ export default function Home() {
                     onClick={handleSignOut}
                     className="w-full"
                   >
-                    Sign Out
+                    Cerrar sesión
                   </Button>
                 </>
               ) : (
                 <>
                   <div className="text-center mb-4">
-                    <h2 className="text-lg font-medium text-gray-800 mb-2">Access your account</h2>
-                    <p className="text-sm text-gray-600">Sign in to access the scanner</p>
+                    <h2 className="text-lg font-medium text-gray-800 mb-2">Accede a tu cuenta</h2>
+                    <p className="text-sm text-gray-600">Inicia sesión para acceder al escáner</p>
                   </div>
                   <div id="g_id_signin" className="flex justify-center"></div>
                   {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
