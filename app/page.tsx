@@ -1,28 +1,127 @@
+'use client'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState, useCallback } from 'react'
+import Script from 'next/script'
 
 export default function Home() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false)
+  const supabase = createClient()
+
+  // Check auth status
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      setLoading(false)
+    }
+    getUser()
+  }, [])
+
+  // Handle Google sign-in (use useCallback to prevent recreation)
+  const handleSignInWithGoogle = useCallback(async (response) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.credential,
+      })
+      if (error) throw error
+      setUser(data.user)
+    } catch (error) {
+      console.error('Error signing in:', error)
+    }
+  }, [supabase.auth])
+
+  // Initialize Google button after script loads
+  useEffect(() => {
+    if (!user && !loading && googleScriptLoaded) {
+      const initializeGoogle = () => {
+        if (typeof google !== 'undefined' && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+          try {
+            google.accounts.id.initialize({
+              client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+              callback: handleSignInWithGoogle
+            })
+            google.accounts.id.renderButton(
+              document.getElementById('g_id_signin'),
+              { 
+                theme: 'outline', 
+                size: 'large', 
+                text: 'signin_with',
+                shape: 'pill'
+              }
+            )
+          } catch (error) {
+            console.error('Error initializing Google Sign-In:', error)
+          }
+        } else {
+          console.error('Google script not loaded or client ID missing')
+        }
+      }
+
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(initializeGoogle, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [user, loading, googleScriptLoaded, handleSignInWithGoogle])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  if (loading) return <div>Loading...</div>
+
   return (
-    <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
-        <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
-            <CardDescription className="text-gray-600">
-            Escanea códigos de barras para obtener información del envio.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <Link href="/scan" className="w-full">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
-                Start Scanning
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </main>
-    </LayoutWrapper>
+    <>
+      <Script 
+        src="https://accounts.google.com/gsi/client" 
+        onLoad={() => setGoogleScriptLoaded(true)}
+        onError={() => console.error('Failed to load Google script')}
+      />
+      
+      {user ? (
+        <div>
+          <p>{user.user_metadata?.name}!</p>
+          <button onClick={handleSignOut}>Sign Out</button>
+          <LayoutWrapper>
+            <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
+              <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl border-0">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
+                  <CardDescription className="text-gray-600">
+                  Escanea códigos de barras para obtener información del envio.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <Link href="/scan" className="w-full">
+                    <Button className="w-full" size="lg">
+                      Start Scanning
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </main>
+          </LayoutWrapper>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1>Welcome! Please sign in</h1>
+            <div id="g_id_signin"></div>
+            {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+              <p className="text-red-500 mt-2">
+                Google Client ID not configured. Please check your environment variables.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

@@ -1,18 +1,17 @@
-hola
-
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Loader2, X, Flashlight, FlashlightOff } from "lucide-react"
+import { Loader2, X, Flashlight, FlashlightOff, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { extractShipmentInfo } from "@/lib/api"
-import { BarcodeScanner } from "@/lib/barcode-scanner"
+import { QRBarcodeScanner } from "@/lib/qr-barcode"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function ScanPage() {
   const [showCamera, setShowCamera] = useState(false)
-  const [itemDetails, setItemDetails] = useState(null)
+  const [items, setItems] = useState(null) // Changed to store array of items
+  const [currentItemIndex, setCurrentItemIndex] = useState(0) // Track current item in carousel
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [scanning, setScanning] = useState(false)
@@ -24,7 +23,7 @@ export default function ScanPage() {
   const streamRef = useRef(null)
   const scannerRef = useRef(null)
   const scanningRef = useRef(false)
-
+  
   useEffect(() => {
     // Auto-start camera when page loads only if not in manual mode
     if (!manualMode) {
@@ -91,7 +90,7 @@ export default function ScanPage() {
       scanningRef.current = true
 
       // Initialize the barcode scanner
-      scannerRef.current = new BarcodeScanner()
+      scannerRef.current = new QRBarcodeScanner()
 
       // Start scanning with the video element
       await scannerRef.current.startScanning(videoRef.current, (result) => {
@@ -116,7 +115,7 @@ export default function ScanPage() {
       if (scanningRef.current && showCamera) {
         const isOrderId = Math.random() > 0.5
         const mockBarcode = isOrderId
-          ? `ORD-${Math.floor(10000000 + Math.random() * 90000000)}`
+          ? `45129712335` // Using the example shipment ID from the original script
           : `SKU-${Math.floor(10000 + Math.random() * 90000)}-${Math.floor(10 + Math.random() * 90)}`
 
         processScannedCode(mockBarcode)
@@ -136,10 +135,16 @@ export default function ScanPage() {
     }
 
     try {
-      const details = await extractShipmentInfo(code)
-      setItemDetails(details)
-      // Stop camera after successful scan and data retrieval
-      stopCamera()
+      const itemsData = await extractShipmentInfo(code)
+      
+      if (itemsData && itemsData.length > 0) {
+        setItems(itemsData)
+        setCurrentItemIndex(0) // Reset to first item
+        // Stop camera after successful scan and data retrieval
+        stopCamera()
+      } else {
+        throw new Error("No items found for this shipment")
+      }
     } catch (err) {
       setError(`Failed to fetch details: ${err.message}`)
       console.error("API error:", err)
@@ -181,7 +186,8 @@ export default function ScanPage() {
 
   // Restart scanning
   const restartScanning = () => {
-    setItemDetails(null)
+    setItems(null)
+    setCurrentItemIndex(0)
     setError("")
     setLastScannedCode("")
     setManualMode(false)
@@ -191,19 +197,52 @@ export default function ScanPage() {
   // Handle manual input submission
   const handleManualSubmit = () => {
     if (manualInput.trim()) {
+      setLastScannedCode(manualInput.trim())
       processScannedCode(manualInput.trim())
       setManualInput("")
     }
   }
 
+  // Navigate carousel
+  const goToPreviousItem = () => {
+    setCurrentItemIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1))
+  }
+
+  const goToNextItem = () => {
+    setCurrentItemIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0))
+  }
+
+  const DetailRow = ({ label, value }) => (
+    <div className="flex justify-between items-center py-1">
+      <span className="text-gray-600 text-sm">{label}</span>
+      <span className="font-medium text-gray-900 text-sm">
+        {value || 'N/A'}
+      </span>
+    </div>
+  );
+  
+  const TechDetail = ({ label, value }) => (
+    <div className="space-y-1">
+      <div className="text-gray-500 font-medium">{label}</div>
+      <div className="font-mono text-gray-700 text-xs bg-gray-50 px-2 py-1 rounded">
+        {value || 'N/A'}
+      </div>
+    </div>
+  );
+
+  // Get current item from array
+  const currentItem = items && items[currentItemIndex]
+
   return (
     <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
+      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center pt-0 px-6 pb-6">
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
-            <div className="flex justify-between items-center">
+            {/* <div className="flex justify-between items-center"> */}
+            {!currentItem && (
               <CardTitle className="text-xl">Barcode Scanner</CardTitle>
-              {!itemDetails && !loading && (
+            )}
+              {!items && !loading && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -219,11 +258,11 @@ export default function ScanPage() {
                   {manualMode ? "Use Camera" : "Manual Entry"}
                 </Button>
               )}
-            </div>
+            {/* </div> */}
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {/* Manual Entry Mode */}
-            {manualMode && !itemDetails && (
+            {manualMode && !items && (
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Enter Shipment ID or Barcode</label>
@@ -237,8 +276,8 @@ export default function ScanPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleManualSubmit} disabled={!manualInput.trim()} className="flex-1">
-                    Submit Code
+                  <Button onClick={handleManualSubmit} disabled={!manualInput.trim() || loading} className="flex-1">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Code"}
                   </Button>
                   <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
                     Use Camera
@@ -251,7 +290,8 @@ export default function ScanPage() {
 
             {/* Camera Preview */}
             {showCamera && !manualMode && (
-              <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              // <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+              <div className="relative w-full h-[50vh] min-h-[300px] max-h-[500px] bg-black rounded-lg overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
                 {/* Camera overlay with scanning frame */}
@@ -324,71 +364,163 @@ export default function ScanPage() {
               </div>
             )}
 
-            {itemDetails && (
-              <div className="mt-4 border rounded-lg p-4 bg-white">
-                <h3 className="font-medium text-lg mb-3 text-green-700">✓ Scan Successful</h3>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Scanned Code:</span>
-                    <span className="font-mono text-xs">{lastScannedCode}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Order ID:</span>
-                    <span className="font-mono">{itemDetails.order_id}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Item ID:</span>
-                    <span className="font-mono text-xs">{itemDetails.item_id}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">SKU:</span>
-                    <span className="font-mono text-xs">{itemDetails.sku || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Title:</span>
-                    <span className="text-right max-w-48 truncate">{itemDetails.title}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-500 font-medium">Quantity:</span>
-                    <span className="font-medium">{itemDetails.quantity}</span>
-                  </div>
-                  
-                  {/* Optional: Add image if you want */}
-                  {itemDetails.image && (
-                    <div className="mt-2">
-                      <img src={itemDetails.image} alt={itemDetails.title} className="w-full h-32 object-cover rounded" />
+            {/* Scanned Items Carousel */}
+            
+{/* Scanned Items Carousel - Mobile Optimized */}
+            
+            {currentItem && (
+              <div className="mt-3 max-w-md mx-auto">
+                {/* Navigation Header */}
+                {items.length > 1 && (
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-sm font-medium text-gray-900">
+                      {currentItemIndex + 1} of {items.length}
                     </div>
-                  )}
-                </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={goToPreviousItem}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                        disabled={currentItemIndex === 0}
+                      >
+                        <ChevronLeft className="h-4 w-4 text-gray-600" />
+                      </button>
+                      
+                      <div className="flex gap-1">
+                        {items.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentItemIndex(index)}
+                            className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
+                              index === currentItemIndex 
+                                ? 'bg-gray-900 w-5' 
+                                : 'bg-gray-300 hover:bg-gray-400'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      
+                      <button
+                        onClick={goToNextItem}
+                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+                        disabled={currentItemIndex === items.length - 1}
+                      >
+                        <ChevronRight className="h-4 w-4 text-gray-600" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Action buttons remain the same */}
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1" onClick={restartScanning}>
-                    Scan Another
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(
-                        JSON.stringify(
-                          {
-                            scannedCode: lastScannedCode,
-                            ...itemDetails,
-                          },
-                          null,
-                          2,
-                        ),
-                      )
-                    }}
-                  >
-                    Copy Details
-                  </Button>
+                {/* Main Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  {/* Content */}
+                  <div className="p-4 space-y-4">
+                    {/* Title */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg leading-tight">
+                        {currentItem.title}
+                      </h3>
+                    </div>
+
+                    {/* SKU - Big and prominent */}
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SKU</div>
+                        <div className="font-mono text-xl font-bold text-gray-900">
+                          {currentItem.seller_sku || 'N/A'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Talle and Color - Same line */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Talle</div>
+                        <div className="font-semibold text-gray-900">{currentItem.talle || 'N/A'}</div>
+                      </div>
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Color</div>
+                        <div className="font-semibold text-gray-900">{currentItem.color || 'N/A'}</div>
+                      </div>
+                    </div>
+
+                    {/* Cantidad and Diseño - Same line */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Cantidad</div>
+                        <div className="font-semibold text-gray-900">{currentItem.quantity}</div>
+                      </div>
+                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
+                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Diseño</div>
+                        <div className="font-semibold text-gray-900">{currentItem.fabric_type || 'N/A'}</div>
+                      </div>
+                    </div>
+
+                    {/* Image with Cantidad Disponible on top */}
+                    {currentItem.thumbnail && (
+                      <div className="bg-gray-50 rounded-lg p-2.5">
+                        <div className="text-center mb-2">
+                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Disponible</div>
+                          <div className="font-semibold text-gray-900 text-sm">{currentItem.available_quantity || 'N/A'}</div>
+                        </div>
+                        <div className="aspect-square flex items-center justify-center p-1">
+                          <img 
+                            src={currentItem.thumbnail} 
+                            alt={currentItem.title} 
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Technical Info */}
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <TechDetail label="Order ID" value={currentItem.order_id} />
+                        <TechDetail label="Item ID" value={currentItem.item_id} />
+                        <TechDetail label="Variation ID" value={currentItem.variation_id} />
+                        <TechDetail label="Barcode" value={lastScannedCode} />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={restartScanning}
+                        className="flex-1 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Scan Another
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(
+                            JSON.stringify(
+                              {
+                                shipmentId: lastScannedCode,
+                                totalItems: items.length,
+                                currentItem: {
+                                  ...currentItem,
+                                  itemNumber: currentItemIndex + 1
+                                },
+                                allItems: items
+                              },
+                              null,
+                              2,
+                            ),
+                          )
+                        }}
+                        className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Copy Details
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
+
             {/* Error State - Show restart button */}
-            {error && !showCamera && !itemDetails && !manualMode && (
+            {error && !showCamera && !items && !manualMode && (
               <div className="text-center p-8">
                 <Button onClick={startCamera} className="w-full">
                   Try Again
@@ -396,15 +528,15 @@ export default function ScanPage() {
               </div>
             )}
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <p className="text-xs text-gray-400">
-              {manualMode 
-                ? "Enter shipment ID manually or switch to camera mode" 
-                : showCamera 
-                  ? "Point camera at barcode to scan automatically" 
-                  : "Camera will open automatically"}
-            </p>
-          </CardFooter>
+            <CardFooter className="flex justify-center">
+              <p className="text-xs text-gray-400">
+                {manualMode 
+                  ? "Enter shipment ID manually or switch to camera mode" 
+                  : showCamera 
+                    ? "Point camera at barcode to scan automatically" 
+                    : "Camera will open automatically"}
+              </p>
+            </CardFooter>
         </Card>
       </main>
     </LayoutWrapper>
