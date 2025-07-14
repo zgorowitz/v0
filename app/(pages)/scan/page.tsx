@@ -372,40 +372,40 @@ export default function ScanPage() {
               <div className="mt-3 max-w-md mx-auto">
                 {/* Navigation Header */}
                 {items.length > 1 && (
-                  <div className="relative mb-3 h-10 flex items-center">
-  {/* Left Arrow */}
-  <button
-    onClick={goToPreviousItem}
-    className={`absolute left-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-      currentItemIndex === 0
-        ? 'bg-gray-200'
-        : 'bg-gray-900 text-white hover:bg-gray-700'
-    }`}
-    disabled={currentItemIndex === 0}
-    aria-label="Previous item"
-  >
-    <ChevronLeft className="h-5 w-5" />
-  </button>
+                <div className="relative mb-3 h-10 flex items-center">
+                  {/* Left Arrow */}
+                  <button
+                    onClick={goToPreviousItem}
+                    className={`absolute left-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+                      currentItemIndex === 0
+                        ? 'bg-gray-200'
+                        : 'bg-gray-900 text-white hover:bg-gray-700'
+                    }`}
+                    disabled={currentItemIndex === 0}
+                    aria-label="Previous item"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
 
-  {/* Count in the center */}
-  <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium text-gray-900">
-    {currentItemIndex + 1} of {items.length}
-  </div>
+                  {/* Count in the center */}
+                  <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium text-gray-900">
+                    {currentItemIndex + 1} of {items.length}
+                  </div>
 
-  {/* Right Arrow */}
-  <button
-    onClick={goToNextItem}
-    className={`absolute right-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-      currentItemIndex === items.length - 1
-        ? 'bg-gray-200'
-        : 'bg-gray-900 text-white hover:bg-gray-700'
-    }`}
-    disabled={currentItemIndex === items.length - 1}
-    aria-label="Next item"
-  >
-    <ChevronRight className="h-5 w-5" />
-  </button>
-</div>
+                  {/* Right Arrow */}
+                  <button
+                    onClick={goToNextItem}
+                    className={`absolute right-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+                      currentItemIndex === items.length - 1
+                        ? 'bg-gray-200'
+                        : 'bg-gray-900 text-white hover:bg-gray-700'
+                    }`}
+                    disabled={currentItemIndex === items.length - 1}
+                    aria-label="Next item"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
                 )}
 
                 {/* Main Card */}

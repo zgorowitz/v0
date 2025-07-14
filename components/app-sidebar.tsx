@@ -26,7 +26,7 @@ const navItems = [
     icon: Scan,
   },
   {
-    title: "Today's Orders",
+    title: "Inventory",
     url: "/orders",
     icon: Calendar,
   },
@@ -63,7 +63,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          {/* <SidebarGroupLabel>Navigation</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
