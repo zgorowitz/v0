@@ -14,35 +14,66 @@ export default function OnboardingPage() {
 
   // Automatically check email on component mount
   useEffect(() => {
+    console.log('=== ONBOARDING PAGE LOADED ===')
     handleAutoAssign()
   }, [])
 
   // Try to auto-assign user based on email allowlist
   const handleAutoAssign = async () => {
+    console.log('🔄 Starting auto-assign process...')
+    
     try {
+      console.log('1. Getting user from Supabase...')
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+      
+      console.log('1a. User result:', {
+        id: user?.id,
+        email: user?.email,
+        userExists: !!user
+      })
+      
+      if (!user) {
+        console.log('❌ No user found')
+        throw new Error('User not authenticated')
+      }
 
-      const response = await fetch('/db/user/auto-assign', {
+      console.log('2. Making API call to /db/user/auto-assign...')
+      console.log('2a. Sending payload:', { userId: user.id })
+      
+      const response = await fetch('/db/user/auto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       })
 
+      console.log('2b. Response status:', response.status)
+      console.log('2c. Response ok:', response.ok)
+
       const result = await response.json()
+      console.log('2d. Response data:', result)
 
       if (result.success) {
-        // Successfully auto-assigned, redirect to home
+        console.log('✅ Auto-assign successful! Redirecting to home...')
         router.push('/')
       } else {
-        // Email not in allowlist, show create organization option
+        console.log('ℹ️ Auto-assign failed, showing create form')
+        console.log('ℹ️ Reason:', result.error)
+        console.log('ℹ️ Debug info:', result.debug)
+        
         setShowCreateForm(true)
         setError('Your email is not pre-authorized. Please create a new organization below.')
       }
     } catch (err) {
+      console.error('❌ Auto-assign error:', err)
+      console.error('Error details:', {
+        message: err.message,
+        stack: err.stack
+      })
+      
       setShowCreateForm(true)
       setError('Unable to check email authorization. Please create a new organization below.')
     } finally {
+      console.log('3. Auto-assign process completed')
       setCheckingEmail(false)
     }
   }
@@ -50,14 +81,34 @@ export default function OnboardingPage() {
   // Create new organization (user becomes admin)
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!organizationName.trim()) return
+    console.log('🏢 Starting create organization process...')
+    
+    if (!organizationName.trim()) {
+      console.log('❌ Organization name is empty')
+      return
+    }
 
     setLoading(true)
     setError('')
 
     try {
+      console.log('1. Getting user for organization creation...')
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+      console.log('1a. User for org creation:', {
+        id: user?.id,
+        email: user?.email
+      })
+      
+      if (!user) {
+        console.log('❌ No user for organization creation')
+        throw new Error('User not authenticated')
+      }
+
+      console.log('2. Making API call to create organization...')
+      console.log('2a. Organization payload:', {
+        name: organizationName.trim(),
+        adminUserId: user.id
+      })
 
       const response = await fetch('/db/organization/create', {
         method: 'POST',
@@ -68,21 +119,26 @@ export default function OnboardingPage() {
         })
       })
 
+      console.log('2b. Create org response status:', response.status)
+      
       const result = await response.json()
+      console.log('2c. Create org response data:', result)
 
       if (result.success) {
-        // Organization created, redirect to home
+        console.log('✅ Organization created successfully! Redirecting...')
         router.push('/')
       } else {
+        console.log('❌ Organization creation failed:', result.error)
         setError(result.error || 'Failed to create organization')
       }
     } catch (err) {
+      console.error('❌ Create organization error:', err)
       setError('Failed to create organization')
     } finally {
+      console.log('3. Create organization process completed')
       setLoading(false)
     }
   }
-
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/') // or wherever your login page is
@@ -91,14 +147,12 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
-      <div className="flex justify-end">
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-gray-500 hover:text-red-600 underline"
-          >
-            Sign Out
-          </button>
-        </div>
+      <button
+  onClick={handleSignOut}
+  className="text-sm text-gray-500 hover:text-red-600 underline"
+>
+  Sign Out
+</button>
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">Welcome!</h1>
           <p className="mt-2 text-gray-600">Setting up your organization access</p>
