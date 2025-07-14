@@ -4,12 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { adminUserId, mlUserInfo, name } = body
+    const { adminUserId, name } = body
     
-    // Support both ML-based creation and manual creation
-    const organizationName = mlUserInfo?.nickname || name
-    
-    if (!organizationName || !adminUserId) {
+    if (!name?.trim() || !adminUserId) {
       return NextResponse.json(
         { success: false, error: 'Organization name and admin user ID are required' },
         { status: 400 }
@@ -28,9 +25,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if user already has an organization
+    const { data: existingOrg } = await supabase.rpc('get_user_organization', { 
+      user_uuid: user.id 
+    })
+    
+    if (existingOrg && existingOrg.length > 0) {
+      return NextResponse.json(
+        { success: false, error: 'User already belongs to an organization' },
+        { status: 400 }
+      )
+    }
+
     // Prepare organization data
     const orgData = {
-      org_name: organizationName.trim(),
+      org_name: name.trim(),
       admin_uuid: adminUserId
     }
 
@@ -45,26 +54,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If ML user info is provided, update the organization with ML connection
-    if (mlUserInfo && data.success) {
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({
-          mercadolibre_account_id: mlUserInfo.id?.toString(),
-          ml_connection_status: 'connected'
-        })
-        .eq('id', data.organization_id)
-
-      if (updateError) {
-        console.error('Error updating ML connection:', updateError)
-        // Don't fail the whole request, organization is created
-      }
-    }
-
     return NextResponse.json({
-      ...data,
-      ml_connected: !!mlUserInfo,
-      organization_name: organizationName
+      success: true,
+      organization_id: data.organization_id,
+      organization_name: name.trim(),
+      message: 'Organization created successfully'
     })
 
   } catch (error) {

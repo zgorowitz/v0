@@ -2,6 +2,8 @@
 
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
+
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -9,10 +11,7 @@ const API_BASE_URL = 'https://api.mercadolibre.com';
 async function getValidAccessToken() {
   try {
     const userId = 'default_user';
-    const tokenKey = `oauth_tokens:${userId}`;
-    
-    console.log('Getting tokens from KV...');
-    const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens({ organization_id, meli_user_id });
     
     if (!storedTokens || !storedTokens.access_token) {
       throw new Error('NO_TOKEN_FOUND');
@@ -83,11 +82,16 @@ async function refreshTokensInternal(refreshToken, userId) {
     };
 
     // Store new tokens
-    await kv.hset(`oauth_tokens:${userId}`, {
-      access_token: newTokens.access_token,
-      refresh_token: newTokens.refresh_token,
-      expires_at: newTokens.expires_at.toString(),
-      token_type: 'Bearer'
+    await storeMeliTokens({
+      organization_id, // You must get this from your session or context
+      user_id,         // You must get this from your session or context
+      meli_user_id: tokens.meli_user_id,
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_type: tokens.token_type,
+        expires_at: tokens.expires_at
+      }
     });
 
     console.log('Tokens refreshed successfully');

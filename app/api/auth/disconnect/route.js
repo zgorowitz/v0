@@ -1,11 +1,13 @@
 // app/api/auth/disconnect/route.js
 
 import { kv } from '@vercel/kv';
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
+
 
 export async function POST(request) {
-  // In a real app, get the user ID from session/auth
-  const userId = 'default_user';
-  const key = `oauth_tokens:${userId}`;
-  await kv.del(key); // Delete the tokens from KV
+  await deleteMeliTokens({
+    organization_id, // get from session
+    meli_user_id     // get from session
+  }); // Delete the tokens from db
   return new Response(JSON.stringify({ success: true }), { status: 200 });
 }

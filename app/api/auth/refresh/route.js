@@ -2,15 +2,14 @@
 // app/api/auth/refresh/route.js
 
 import { kv } from '@vercel/kv';
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
+
 
 export async function POST(request) {
   try {
     // For now, using a fixed user ID - you might get this from session/auth later
     const userId = 'default_user';
-    const tokenKey = `oauth_tokens:${userId}`;
-
-    // 1. GET CURRENT TOKENS FROM VERCEL KV
-    const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens({ organization_id, meli_user_id });
     
     if (!storedTokens || !storedTokens.refresh_token) {
       console.log('No refresh token found in storage');
@@ -26,7 +25,17 @@ export async function POST(request) {
     const newTokens = await refreshTokensFromProvider(storedTokens.refresh_token);
 
     // 3. STORE NEW TOKENS IN VERCEL KV
-    await storeTokensInKV(userId, newTokens);
+    await storeMeliTokens({
+      organization_id, // You must get this from your session or context
+      user_id,         // You must get this from your session or context
+      meli_user_id: tokens.meli_user_id,
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_type: tokens.token_type,
+        expires_at: tokens.expires_at
+      }
+    });
 
     console.log('Tokens refreshed and stored successfully');
 
@@ -96,21 +105,22 @@ async function refreshTokensFromProvider(refreshToken) {
     refresh_token: tokenData.refresh_token || refreshToken, // Some providers rotate refresh tokens
     expires_in: tokenData.expires_in || 3600,
     token_type: tokenData.token_type || 'Bearer',
-    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
+    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000),
+    meli_user_id: newTokens.user_id
   };
 }
 
-// HELPER: Store tokens in Vercel KV
-async function storeTokensInKV(userId, tokens) {
-  const key = `oauth_tokens:${userId}`;
+// // HELPER: Store tokens in Vercel KV
+// async function storeTokensInKV(userId, tokens) {
+//   const key = `oauth_tokens:${userId}`;
   
-  // Store all token data
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   // Store all token data
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-  console.log(`Tokens stored`);
-}
+//   console.log(`Tokens stored`);
+// }

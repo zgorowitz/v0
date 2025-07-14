@@ -1,6 +1,8 @@
 // app/api/user/route.js
 
 import { kv } from '@vercel/kv';
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
+
 
 export async function GET(request) {
   try {
@@ -9,7 +11,8 @@ export async function GET(request) {
     const tokenKey = `oauth_tokens:${userId}`;
 
     // 1. GET ACCESS TOKEN FROM STORAGE
-    const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens({ organization_id, meli_user_id });
+
     
     if (!storedTokens || !storedTokens.access_token) {
       console.log('No access token found');

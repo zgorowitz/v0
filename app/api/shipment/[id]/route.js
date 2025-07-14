@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { kv } from '@vercel/kv'
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
+
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -10,7 +12,7 @@ async function getValidAccessToken() {
     const tokenKey = `oauth_tokens:${userId}`;
     
     // 1. GET TOKENS FROM STORAGE
-    const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens({ organization_id, meli_user_id });
     
     if (!storedTokens || !storedTokens.access_token) {
       throw new Error('No access token found in storage - please authenticate first');
@@ -85,23 +87,33 @@ async function refreshTokensInternal(refreshToken, userId) {
   };
 
   // Store new tokens
-  await storeTokensInKV(userId, newTokens);
+  await storeMeliTokens({
+    organization_id, // You must get this from your session or context
+    user_id,         // You must get this from your session or context
+    meli_user_id: tokens.meli_user_id,
+    tokens: {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      token_type: tokens.token_type,
+      expires_at: tokens.expires_at
+    }
+  });
   
   return newTokens;
 }
 
 // HELPER: Store tokens in Vercel KV
-async function storeTokensInKV(userId, tokens) {
-  const key = `oauth_tokens:${userId}`;
+// async function storeTokensInKV(userId, tokens) {
+//   const key = `oauth_tokens:${userId}`;
   
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-}
+// }
 
 // Reusable fetch function with authentication
 async function apiRequest(url, accessToken) {

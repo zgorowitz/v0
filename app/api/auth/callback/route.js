@@ -1,6 +1,7 @@
 // app/api/auth/callback/route.js
 
-import { kv } from '@vercel/kv';
+// import { kv } from '@vercel/kv';
+import { storeMeliTokens, getMeliTokens, deleteMeliTokens } from '@/lib/meliTokens';
 
 export async function GET(request) {
   try {
@@ -31,7 +32,18 @@ export async function GET(request) {
     }
 
     // 5. STORE TOKENS IN KV
-    await storeTokensInKV(tokens);
+    // await storeTokensInKV(tokens);
+    await storeMeliTokens({
+      organization_id, // You must get this from your session or context
+      user_id,         // You must get this from your session or context
+      meli_user_id: tokens.user_id,
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        token_type: tokens.token_type,
+        expires_at: tokens.expires_at
+      }
+    });
 
     console.log('Tokens stored successfully');
 
@@ -81,21 +93,23 @@ async function exchangeCodeForTokens(authorizationCode) {
     refresh_token: tokenData.refresh_token,
     expires_in: tokenData.expires_in || 3600,
     token_type: tokenData.token_type || 'Bearer',
-    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
+    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000),
+    meli_user_id: tokenData.user_id,
   };
 }
 
+
 // HELPER: Store tokens in KV
-async function storeTokensInKV(tokens) {
-  const userId = 'default_user';
-  const key = `oauth_tokens:${userId}`;
+// async function storeTokensInKV(tokens) {
+//   const userId = 'default_user';
+//   const key = `oauth_tokens:${userId}`;
   
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-  console.log(`Tokens stored`);
-}
+//   console.log(`Tokens stored`);
+// }
