@@ -85,43 +85,52 @@ export default function Home() {
         onError={() => console.error('Failed to load Google script')}
       />
       
-      {user ? (
-        <div>
-          <p>{user.user_metadata?.name}!</p>
-          <button onClick={handleSignOut}>Sign Out</button>
-          <LayoutWrapper>
-            <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
-              <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
-                  <CardDescription className="text-gray-600">
-                  Escanea códigos de barras para obtener información del envio.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
+      <LayoutWrapper>
+        <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
+          <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl border-0">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
+              {/* <CardDescription className="text-gray-600">
+                Escanea códigos de barras para obtener información del envio.
+              </CardDescription> */}
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              {user ? (
+                <>
+                  <p className="text-center text-gray-700 mb-4">
+                    Welcome, {user.user_metadata?.name}!
+                  </p>
                   <Link href="/scan" className="w-full">
                     <Button className="w-full" size="lg">
                       Start Scanning
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-            </main>
-          </LayoutWrapper>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <h1>Welcome! Please sign in</h1>
-            <div id="g_id_signin"></div>
-            {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
-              <p className="text-red-500 mt-2">
-                Google Client ID not configured. Please check your environment variables.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+                  <Button 
+                    variant="outline" 
+                    onClick={handleSignOut}
+                    className="w-full"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="text-center mb-4">
+                    <h2 className="text-lg font-medium text-gray-800 mb-2">Access your account</h2>
+                    <p className="text-sm text-gray-600">Sign in to access the scanner</p>
+                  </div>
+                  <div id="g_id_signin" className="flex justify-center"></div>
+                  {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                    <p className="text-red-500 mt-2 text-center text-sm">
+                      Google Client ID not configured. Please check your environment variables.
+                    </p>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+      </LayoutWrapper>
     </>
   )
 }

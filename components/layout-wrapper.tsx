@@ -21,30 +21,6 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
       <SidebarInset>
         <div className="relative min-h-screen">
           {/* Top bar */}
-          {/* <div className="absolute top-4 left-0 right-0 z-20 flex items-center justify-between px-4">
-            <Link
-              href="/"
-              className="flex items-center gap-2 bg-white/90 hover:bg-gray-200 shadow-lg border-gray-200 rounded p-2"
-              aria-label="Go home"
-            >
-              <span className="text-2xl font-bold text-gray-800 drop-shadow-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Laburandik
-              </span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="bg-white/90 hover:bg-white shadow-lg border-gray-200">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle menu</span>
-              </SidebarTrigger>
-              <button
-                onClick={() => router.back()}
-                className="bg-white/90 hover:bg-gray-200 shadow-lg border-gray-200 rounded p-2"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-            </div>
-          </div> */}
           <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4">
             {/* Menu and Back (left) */}
             <div className="flex items-center gap-2">

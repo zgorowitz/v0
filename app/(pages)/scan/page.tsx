@@ -372,55 +372,57 @@ export default function ScanPage() {
               <div className="mt-3 max-w-md mx-auto">
                 {/* Navigation Header */}
                 {items.length > 1 && (
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm font-medium text-gray-900">
-                      {currentItemIndex + 1} of {items.length}
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={goToPreviousItem}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-                        disabled={currentItemIndex === 0}
-                      >
-                        <ChevronLeft className="h-4 w-4 text-gray-600" />
-                      </button>
-                      
-                      <div className="flex gap-1">
-                        {items.map((_, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setCurrentItemIndex(index)}
-                            className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                              index === currentItemIndex 
-                                ? 'bg-gray-900 w-5' 
-                                : 'bg-gray-300 hover:bg-gray-400'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      
-                      <button
-                        onClick={goToNextItem}
-                        className="p-1.5 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
-                        disabled={currentItemIndex === items.length - 1}
-                      >
-                        <ChevronRight className="h-4 w-4 text-gray-600" />
-                      </button>
-                    </div>
-                  </div>
+                  <div className="relative mb-3 h-10 flex items-center">
+  {/* Left Arrow */}
+  <button
+    onClick={goToPreviousItem}
+    className={`absolute left-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+      currentItemIndex === 0
+        ? 'bg-gray-200'
+        : 'bg-gray-900 text-white hover:bg-gray-700'
+    }`}
+    disabled={currentItemIndex === 0}
+    aria-label="Previous item"
+  >
+    <ChevronLeft className="h-5 w-5" />
+  </button>
+
+  {/* Count in the center */}
+  <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium text-gray-900">
+    {currentItemIndex + 1} of {items.length}
+  </div>
+
+  {/* Right Arrow */}
+  <button
+    onClick={goToNextItem}
+    className={`absolute right-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
+      currentItemIndex === items.length - 1
+        ? 'bg-gray-200'
+        : 'bg-gray-900 text-white hover:bg-gray-700'
+    }`}
+    disabled={currentItemIndex === items.length - 1}
+    aria-label="Next item"
+  >
+    <ChevronRight className="h-5 w-5" />
+  </button>
+</div>
                 )}
 
                 {/* Main Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                   {/* Content */}
                   <div className="p-4 space-y-4">
-                    {/* Title */}
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-lg leading-tight">
-                        {currentItem.title}
-                      </h3>
-                    </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2">
+                      {currentItem.title}
+                    </h3>
+                    <button
+                      onClick={restartScanning}
+                      className="py-3.5 px-5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm shrink-0"
+                    >
+                      Done
+                    </button>
+                  </div>
 
                     {/* SKU - Big and prominent */}
                     <div className="bg-gray-50 rounded-xl p-3">
@@ -485,13 +487,7 @@ export default function ScanPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-2">
-                      <button
-                        onClick={restartScanning}
-                        className="flex-1 py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium rounded-xl transition-colors text-sm"
-                      >
-                        Scan Another
-                      </button>
-                      <button
+                      {/* <button
                         onClick={() => {
                           navigator.clipboard?.writeText(
                             JSON.stringify(
@@ -512,6 +508,12 @@ export default function ScanPage() {
                         className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
                       >
                         Copy Details
+                      </button> */}
+                      <button
+                        onClick={restartScanning}
+                        className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Done
                       </button>
                     </div>
                   </div>
