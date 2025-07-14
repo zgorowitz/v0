@@ -41,11 +41,21 @@ export async function middleware(request) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Check if user is trying to access auth routes while already logged in
-//   if (authRoutes.some(route => pathname.startsWith(route)) && user) {
-//     const redirectUrl = new URL('/', request.url)
-//     return NextResponse.redirect(redirectUrl)
-//   }
+  // if (user) {
+  //       // Check if user has organization
+  //   const { data } = await supabase.rpc('get_user_organization', { user_uuid: user.id })
+    
+  //   const hasOrganization = data && data.length > 0
+  //   const isOnboarding = request.nextUrl.pathname === '/onboarding'
+    
+  //   if (!hasOrganization && !isOnboarding) {
+  //   return NextResponse.redirect(new URL('/onboarding', request.url))
+  //   }
+    
+  //   if (hasOrganization && isOnboarding) {
+  //   return NextResponse.redirect(new URL('/', request.url))
+  //   }
+  // }
 
   return supabaseResponse
 }
