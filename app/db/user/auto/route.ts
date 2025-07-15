@@ -2,127 +2,94 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
-  console.log('=== AUTO-ASSIGN API CALLED ===')
-  
   try {
     const body = await request.json()
-    console.log('1. Request body:', body)
+    const { name } = body
     
-    const { userId } = body
-    
-    if (!userId) {
-      console.log('❌ No userId provided')
+    if (!name || name.trim().length === 0) {
       return NextResponse.json(
-        { success: false, error: 'User ID is required' },
+        { success: false, error: 'Organization name is required' },
         { status: 400 }
       )
     }
 
-    console.log('2. Creating Supabase client...')
     const supabase = await createClient()
 
-    // DEBUG: Get current authenticated user
-    console.log('3. Getting authenticated user...')
+    // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('3a. Auth user result:', { 
-      email: user?.email, 
-      id: user?.id, 
-      error: authError 
-    })
-
-    if (!user) {
-      console.log('❌ No authenticated user found')
+    
+    if (authError || !user) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated' },
+        { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // DEBUG: Check allowed emails table
-    console.log('4. Checking allowed_emails table...')
-    const { data: allowedEmails, error: allowedError } = await supabase
-      .from('allowed_emails')
-      .select('*')
-
-    console.log('4a. Allowed emails query result:', {
-      data: allowedEmails,
-      error: allowedError,
-      count: allowedEmails?.length
-    })
-
-    // DEBUG: Check for exact email match
-    const emailMatch = allowedEmails?.find(ae => {
-      console.log(`4b. Comparing: "${ae.email}" === "${user.email}"`, ae.email === user.email)
-      return ae.email === user.email
-    })
-    console.log('4c. Email match result:', emailMatch)
-
-    // DEBUG: Check if user is already in organization_users
-    console.log('5. Checking existing organization membership...')
-    const { data: existingMembership, error: membershipError } = await supabase
+    // Check if user is already in an organization
+    const { data: existingOrgUser } = await supabase
       .from('organization_users')
-      .select('*')
-      .eq('user_id', userId)
+      .select('id')
+      .eq('user_email', user.email)
+      .single()
 
-    console.log('5a. Existing membership:', {
-      data: existingMembership,
-      error: membershipError,
-      count: existingMembership?.length
-    })
-
-    // Call the auto_assign_user_to_organization function
-    console.log('6. Calling auto_assign_user_to_organization function...')
-    console.log('6a. Function parameters:', { user_uuid: userId })
-    
-    const { data, error } = await supabase.rpc('auto_assign_user_to_organization', {
-      user_uuid: userId
-    })
-
-    console.log('6b. Function result:', { data, error })
-
-    // Prepare response
-    const response = {
-      success: data?.success || false,
-      error: data?.error || error?.message || 'Unknown error',
-      debug: {
-        step: 'function_called',
-        userEmail: user?.email,
-        userId: user?.id,
-        passedUserId: userId,
-        allowedEmailsCount: allowedEmails?.length || 0,
-        allowedEmails: allowedEmails,
-        emailMatch: emailMatch || null,
-        existingMembership: existingMembership,
-        functionData: data,
-        functionError: error,
-        emailsInTable: allowedEmails?.map(ae => ae.email) || []
-      }
+    if (existingOrgUser) {
+      return NextResponse.json(
+        { success: false, error: 'User already belongs to an organization' },
+        { status: 400 }
+      )
     }
 
-    console.log('7. Final response:', response)
-    console.log('=== AUTO-ASSIGN API END ===')
+    // Create organization
+    const { data: organization, error: orgError } = await supabase
+      .from('organizations')
+      .insert({
+        admin_user_id: user.id
+      })
+      .select('id')
+      .single()
 
-    return NextResponse.json(response)
+    if (orgError) {
+      console.error('Create organization error:', orgError)
+      return NextResponse.json(
+        { success: false, error: 'Failed to create organization' },
+        { status: 500 }
+      )
+    }
+
+    // Create organization_user record with admin role
+    const { error: orgUserError } = await supabase
+      .from('organization_users')
+      .insert({
+        organization_id: organization.id,
+        user_email: user.email,
+        role: 'admin'
+      })
+
+    if (orgUserError) {
+      console.error('Create organization_user error:', orgUserError)
+      
+      // Rollback: delete the organization if organization_user creation fails
+      await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', organization.id)
+      
+      return NextResponse.json(
+        { success: false, error: 'Failed to create organization user' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      organization_id: organization.id,
+      message: 'Organization created successfully'
+    })
 
   } catch (error) {
-    console.error('❌ AUTO-ASSIGN API ERROR:', error)
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    })
-    
+    console.error('Create organization API error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Internal server error', 
-        details: error.message,
-        debug: {
-          step: 'caught_exception',
-          errorType: error.name,
-          errorMessage: error.message
-        }
-      },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }

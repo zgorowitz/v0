@@ -3,68 +3,75 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { adminUserId, mlUserInfo, name } = body
-    
-    // Support both ML-based creation and manual creation
-    const organizationName = mlUserInfo?.nickname || name
-    
-    if (!organizationName || !adminUserId) {
-      return NextResponse.json(
-        { success: false, error: 'Organization name and admin user ID are required' },
-        { status: 400 }
-      )
-    }
-
     const supabase = await createClient()
 
-    // Verify the user making the request
+    // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !user || user.id !== adminUserId) {
+    if (authError || !user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Prepare organization data
-    const orgData = {
-      org_name: organizationName.trim(),
-      admin_uuid: adminUserId
+    // Check if user is already in an organization
+    const { data: existingOrgUser } = await supabase
+      .from('organization_users')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (existingOrgUser) {
+      return NextResponse.json(
+        { success: false, error: 'User already belongs to an organization' },
+        { status: 400 }
+      )
     }
 
     // Call the create_organization function
-    const { data, error } = await supabase.rpc('create_organization', orgData)
+    const { data: orgResult, error: orgError } = await supabase.rpc('create_organization', {
+      admin_uuid: user.id
+    })
 
-    if (error) {
-      console.error('Create organization error:', error)
+    if (orgError || !orgResult.success) {
+      console.error('Create organization error:', orgError || orgResult.error)
       return NextResponse.json(
-        { success: false, error: 'Failed to create organization' },
+        { success: false, error: orgResult?.error || 'Failed to create organization' },
         { status: 500 }
       )
     }
 
-    // If ML user info is provided, update the organization with ML connection
-    if (mlUserInfo && data.success) {
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({
-          mercadolibre_account_id: mlUserInfo.id?.toString(),
-          ml_connection_status: 'connected'
-        })
-        .eq('id', data.organization_id)
+    const organizationId = orgResult.organization_id
 
-      if (updateError) {
-        console.error('Error updating ML connection:', updateError)
-        // Don't fail the whole request, organization is created
-      }
+    // Create organization_user record with admin role
+    const { error: orgUserError } = await supabase
+      .from('organization_users')
+      .insert({
+        organization_id: organizationId,
+        user_id: user.id,
+        role: 'admin'
+      })
+
+    if (orgUserError) {
+      console.error('Create organization_user error:', orgUserError)
+      
+      // Rollback: delete the organization if organization_user creation fails
+      await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', organizationId)
+      
+      return NextResponse.json(
+        { success: false, error: 'Failed to create organization user' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
-      ...data,
-      ml_connected: !!mlUserInfo,
-      organization_name: organizationName
+      success: true,
+      organization_id: organizationId,
+      message: 'Organization created successfully'
     })
 
   } catch (error) {
