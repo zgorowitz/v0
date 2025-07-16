@@ -10,7 +10,6 @@ export async function GET(request) {
     let storedTokens;
     try {
       storedTokens = await getMeliTokens();
-      console.log(storedTokens)
     } catch (tokenErr) {
       console.error('Error fetching tokens:', tokenErr);
       return Response.json({
@@ -76,7 +75,7 @@ export async function GET(request) {
     // 5. ATTEMPT TOKEN REFRESH
     try {
       // userId is not defined in your code, you may need to get it from somewhere
-      const refreshResult = await refreshTokensInternal(storedTokens.refresh_token, /* userId */ undefined);
+      const refreshResult = await refreshTokensInternal(storedTokens.refresh_token);
       
       console.log('Token refresh successful');
       return Response.json({
@@ -108,7 +107,7 @@ export async function GET(request) {
 }
 
 // INTERNAL HELPER: Refresh tokens (same logic as refresh route)
-async function refreshTokensInternal(refreshToken, userId) {
+async function refreshTokensInternal(refreshToken) {
   const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token';
   
   const refreshRequest = {
@@ -156,9 +155,17 @@ async function refreshTokensInternal(refreshToken, userId) {
     expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
   };
 
+  const Tokens = {
+    user_id: tokenData.user_id,
+    access_token: tokenData.access_token,
+    refresh_token: tokenData.refresh_token || refreshToken,
+    token_type: tokenData.token_type || 'Bearer',
+    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
+  };
+
   // Store new tokens
   try {
-    await storeMeliTokens();
+    await storeMeliTokens({tokens: Tokens });
   } catch (storeErr) {
     throw new Error('Failed to store refreshed tokens');
   }

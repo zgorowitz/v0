@@ -2,7 +2,7 @@
 
 // import { kv } from '@vercel/kv';
 import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
-
+const baseUrl = 'https://laburandik.vercel.app/api/auth/callback'
 export async function GET(request) {
   try {
     // 1. EXTRACT CODE FROM URL
@@ -13,13 +13,13 @@ export async function GET(request) {
     // 2. HANDLE AUTHORIZATION DENIAL
     if (error) {
       console.log('OAuth authorization denied:', error);
-      return Response.redirect('https://laburandik.vercel.app/?error=access_denied');
+      return Response.redirect(`${baseUrl}/?error=access_denied`);
     }
 
     // 3. VALIDATE CODE
     if (!code) {
       console.log('No authorization code received');
-      return Response.redirect('https://laburandik.vercel.app/?error=no_code');
+      return Response.redirect(`${baseUrl}/?error=no_code`);
     }
 
     console.log('Received authorization code:', code);
@@ -37,11 +37,11 @@ export async function GET(request) {
     console.log('Tokens stored successfully');
 
     // 6. REDIRECT TO SUCCESS PAGE
-    return Response.redirect('https://laburandik.vercel.app/settings?auth=success');
+    return Response.redirect(`${baseUrl}/settings?auth=success`);
 
   } catch (error) {
     console.error('Callback error:', error);
-    return Response.redirect('https://laburandik.vercel.app/settings?error=oauth_failed');
+    return Response.redirect(`${baseUrl}/settings?error=oauth_failed`);
   }
 }
 
@@ -60,7 +60,7 @@ async function exchangeCodeForTokens(authorizationCode) {
       client_id: process.env.MERCADO_LIBRE_APP_ID,
       client_secret: process.env.MERCADO_LIBRE_CLIENT_SECRET,
       code: authorizationCode,
-      redirect_uri: 'https://laburandik.vercel.app/api/auth/callback'
+      redirect_uri: `${baseUrl}/api/auth/callback`
     })
   };
 

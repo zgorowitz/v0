@@ -4,14 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name } = body
-    
-    if (!name || name.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Organization name is required' },
-        { status: 400 }
-      )
-    }
 
     const supabase = await createClient()
 
@@ -35,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (existingOrgUser) {
       return NextResponse.json(
         { success: false, error: 'User already belongs to an organization' },
-        { status: 400 }
+        { status: 100 }
       )
     }
 

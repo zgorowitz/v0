@@ -84,7 +84,7 @@ async function refreshTokensInternal(refreshToken, userId) {
     };
 
     // Store new tokens
-    await storeMeliTokens(newTokens);
+    await storeMeliTokens({ tokens: newTokens });
 
     console.log('Tokens refreshed successfully');
     return newTokens;

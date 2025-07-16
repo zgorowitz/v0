@@ -25,12 +25,14 @@ export async function POST(request) {
     const newTokens = await refreshTokensFromProvider(storedTokens.refresh_token);
     const tokenData = newTokens;
     const tokens = {
-      user_id: tokenData.user_id,
+      user_id: tokenData.user_id || storedTokens.meli_user_id, // Fallback to stored user_id
       access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token || refreshToken,
+      refresh_token: tokenData.refresh_token || storedTokens.refresh_token,
       token_type: tokenData.token_type || 'Bearer',
       expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
     };
+
+    console.log(tokens.expires_at)
     // 3. STORE NEW TOKENS IN VERCEL KV
     // await storeTokensInKV(userId, newTokens);
     await storeMeliTokens({ tokens });
@@ -65,8 +67,7 @@ export async function POST(request) {
 
 // HELPER: Refresh tokens with MercadoLibre
 async function refreshTokensFromProvider(refreshToken) {
-  // TODO: Replace with actual MercadoLibre token endpoint
-  const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token'; // NEED ACTUAL URL
+  const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token';
   
   const refreshRequest = {
     method: 'POST',
@@ -93,15 +94,15 @@ async function refreshTokensFromProvider(refreshToken) {
   }
 
   const tokenData = await response.json();
+  // console.log('refresh route line 96:',tokenData)
   
   if (!tokenData.access_token) {
     throw new Error('No access token in refresh response');
   }
-  console.log(tokenData)
   return {
     user_id: tokenData.user_id,
     access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token || refreshToken, // Some providers rotate refresh tokens
+    refresh_token: tokenData.refresh_token || refreshToken, 
     expires_in: tokenData.expires_in || 3600,
     token_type: tokenData.token_type || 'Bearer',
     expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
