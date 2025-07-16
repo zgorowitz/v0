@@ -6,9 +6,6 @@ import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
 export async function GET(request) {
   try {
     // For now, using a fixed user ID - you might get this from session/auth later
-    const userId = 'default_user';
-    const tokenKey = `oauth_tokens:${userId}`;
-
     // 1. GET ACCESS TOKEN FROM STORAGE
     const storedTokens = await getMeliTokens();
     

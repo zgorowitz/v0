@@ -52,9 +52,16 @@ export default function SettingsPage() {
       if (response.ok) {
         const userData = await response.json()
         setUserInfo(userData)
+        await fetch('/api/meli/account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userInfo)
+        });
       } else {
         console.error('Failed to fetch user info:', response.status)
         setUserInfo(null)
+
+
       }
     } catch (error) {
       console.error('Error fetching user info:', error)
@@ -102,6 +109,8 @@ export default function SettingsPage() {
       alert('Error disconnecting: ' + error.message);
     }
   };
+
+  
 
   return (
     <LayoutWrapper>
