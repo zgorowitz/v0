@@ -1,7 +1,8 @@
 // app/api/inventory/route.js
 
 import { NextResponse } from 'next/server';
-import { kv } from '@vercel/kv';
+// import { kv } from '@vercel/kv';
+import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -12,7 +13,7 @@ async function getValidAccessToken() {
     const tokenKey = `oauth_tokens:${userId}`;
     
     console.log('Getting tokens from KV...');
-    const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens();
     
     if (!storedTokens || !storedTokens.access_token) {
       throw new Error('NO_TOKEN_FOUND');
@@ -83,12 +84,7 @@ async function refreshTokensInternal(refreshToken, userId) {
     };
 
     // Store new tokens
-    await kv.hset(`oauth_tokens:${userId}`, {
-      access_token: newTokens.access_token,
-      refresh_token: newTokens.refresh_token,
-      expires_at: newTokens.expires_at.toString(),
-      token_type: 'Bearer'
-    });
+    await storeMeliTokens(newTokens);
 
     console.log('Tokens refreshed successfully');
     return newTokens;

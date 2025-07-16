@@ -1,16 +1,15 @@
 
 // app/api/auth/refresh/route.js
 
-import { kv } from '@vercel/kv';
+// import { kv } from '@vercel/kv';
+import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
 
 export async function POST(request) {
   try {
-    // For now, using a fixed user ID - you might get this from session/auth later
-    const userId = 'default_user';
-    const tokenKey = `oauth_tokens:${userId}`;
 
     // 1. GET CURRENT TOKENS FROM VERCEL KV
-    const storedTokens = await kv.hgetall(tokenKey);
+    // const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens()
     
     if (!storedTokens || !storedTokens.refresh_token) {
       console.log('No refresh token found in storage');
@@ -24,9 +23,17 @@ export async function POST(request) {
 
     // 2. REFRESH TOKENS WITH MERCADOLIBRE
     const newTokens = await refreshTokensFromProvider(storedTokens.refresh_token);
-
+    const tokenData = newTokens;
+    const tokens = {
+      user_id: tokenData.user_id,
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || refreshToken,
+      token_type: tokenData.token_type || 'Bearer',
+      expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
+    };
     // 3. STORE NEW TOKENS IN VERCEL KV
-    await storeTokensInKV(userId, newTokens);
+    // await storeTokensInKV(userId, newTokens);
+    await storeMeliTokens({ tokens });
 
     console.log('Tokens refreshed and stored successfully');
 
@@ -90,8 +97,9 @@ async function refreshTokensFromProvider(refreshToken) {
   if (!tokenData.access_token) {
     throw new Error('No access token in refresh response');
   }
-
+  console.log(tokenData)
   return {
+    user_id: tokenData.user_id,
     access_token: tokenData.access_token,
     refresh_token: tokenData.refresh_token || refreshToken, // Some providers rotate refresh tokens
     expires_in: tokenData.expires_in || 3600,
@@ -101,16 +109,16 @@ async function refreshTokensFromProvider(refreshToken) {
 }
 
 // HELPER: Store tokens in Vercel KV
-async function storeTokensInKV(userId, tokens) {
-  const key = `oauth_tokens:${userId}`;
+// async function storeTokensInKV(userId, tokens) {
+//   const key = `oauth_tokens:${userId}`;
   
-  // Store all token data
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   // Store all token data
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-  console.log(`Tokens stored`);
-}
+//   console.log(`Tokens stored`);
+// }

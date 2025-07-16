@@ -1,16 +1,19 @@
+//app/api/shipment
 import { NextResponse } from 'next/server'
-import { kv } from '@vercel/kv'
+// import { kv } from '@vercel/kv'
+import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
 // Get access token from Vercel KV with validation and auto-refresh
 async function getValidAccessToken() {
   try {
-    const userId = 'default_user';
-    const tokenKey = `oauth_tokens:${userId}`;
+    // const userId = 'default_user';
+    // const tokenKey = `oauth_tokens:${userId}`;
+    // // 1. GET TOKENS FROM STORAGE
+    // const storedTokens = await kv.hgetall(tokenKey);
+    const storedTokens = await getMeliTokens();
     
-    // 1. GET TOKENS FROM STORAGE
-    const storedTokens = await kv.hgetall(tokenKey);
     
     if (!storedTokens || !storedTokens.access_token) {
       throw new Error('No access token found in storage - please authenticate first');
@@ -85,23 +88,24 @@ async function refreshTokensInternal(refreshToken, userId) {
   };
 
   // Store new tokens
-  await storeTokensInKV(userId, newTokens);
+  // await storeTokensInKV(userId, newTokens);
+  await storeMeliTokens(newTokens);
   
   return newTokens;
 }
 
 // HELPER: Store tokens in Vercel KV
-async function storeTokensInKV(userId, tokens) {
-  const key = `oauth_tokens:${userId}`;
+// async function storeTokensInKV(userId, tokens) {
+//   const key = `oauth_tokens:${userId}`;
   
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-}
+// }
 
 // Reusable fetch function with authentication
 async function apiRequest(url, accessToken) {
@@ -193,7 +197,7 @@ async function getShipmentWithItems(shipmentId, accessToken) {
 // Extract and format shipment information
 async function extractShipmentInfo(shipmentId) {
   try {
-    // Get VALID access token from KV storage (with auto-refresh)
+    // Get VALID access token from SUPABASE storage (with auto-refresh)
     const accessToken = await getValidAccessToken();
     
     const shipmentItemsData = await getShipmentWithItems(shipmentId, accessToken);

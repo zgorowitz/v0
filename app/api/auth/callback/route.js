@@ -1,6 +1,7 @@
 // app/api/auth/callback/route.js
 
-import { kv } from '@vercel/kv';
+// import { kv } from '@vercel/kv';
+import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
 
 export async function GET(request) {
   try {
@@ -31,7 +32,7 @@ export async function GET(request) {
     }
 
     // 5. STORE TOKENS IN KV
-    await storeTokensInKV(tokens);
+    await storeMeliTokens({tokens});
 
     console.log('Tokens stored successfully');
 
@@ -86,16 +87,16 @@ async function exchangeCodeForTokens(authorizationCode) {
 }
 
 // HELPER: Store tokens in KV
-async function storeTokensInKV(tokens) {
-  const userId = 'default_user';
-  const key = `oauth_tokens:${userId}`;
+// async function storeTokensInKV(tokens) {
+//   const userId = 'default_user';
+//   const key = `oauth_tokens:${userId}`;
   
-  await kv.hset(key, {
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token,
-    expires_at: tokens.expires_at.toString(),
-    token_type: tokens.token_type
-  });
+//   await kv.hset(key, {
+//     access_token: tokens.access_token,
+//     refresh_token: tokens.refresh_token,
+//     expires_at: tokens.expires_at.toString(),
+//     token_type: tokens.token_type
+//   });
   
-  console.log(`Tokens stored`);
-}
+//   console.log(`Tokens stored`);
+// }

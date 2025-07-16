@@ -43,8 +43,8 @@ export async function middleware(request) {
 
 
   if (user) {
-    console.log('User ID:', user.id)
-    console.log('User Email:', user.email)
+    // console.log('User ID:', user.id)
+    // console.log('User Email:', user.email)
     
     const result = await supabase.rpc('get_user_organization', { user_uuid: user.id })
     
