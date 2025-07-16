@@ -8,24 +8,12 @@ export async function GET(request) {
     // For now, using a fixed user ID - you might get this from session/auth later
     // 1. GET ACCESS TOKEN FROM STORAGE
     const storedTokens = await getMeliTokens();
-    
+    // console.log(storedTokens)
+    console.log(storedTokens.access_token)
     if (!storedTokens || !storedTokens.access_token) {
       console.log('No access token found');
       return Response.json(
         { error: 'No access token available', needs_auth: true }, 
-        { status: 401 }
-      );
-    }
-
-    // 2. CHECK TOKEN EXPIRATION
-    const expiresAt = parseInt(storedTokens.expires_at);
-    const now = Date.now();
-    const isExpired = now >= expiresAt;
-
-    if (isExpired) {
-      console.log('Access token expired');
-      return Response.json(
-        { error: 'Access token expired', needs_auth: true }, 
         { status: 401 }
       );
     }

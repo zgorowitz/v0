@@ -37,7 +37,7 @@ async function getValidAccessToken() {
     }
 
     // 5. REFRESH TOKEN
-    const newTokens = await refreshTokensInternal(storedTokens.refresh_token, userId);
+    const newTokens = await refreshTokensInternal(storedTokens.refresh_token);
     console.log('Token refresh successful');
     
     return newTokens.access_token;

@@ -1,7 +1,7 @@
 // app/api/auth/status/route.js
 
 // import { kv } from '@vercel/kv';
-import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
+import { getMeliTokens, refreshMeliTokens } from '@/lib/meliTokens';
 
 
 export async function GET(request) {
@@ -55,7 +55,6 @@ export async function GET(request) {
       return Response.json({
         authenticated: true,
         needs_auth: false,
-        expires_in_minutes: expiresInMinutes,
         reason: 'valid_token'
       });
     }
@@ -74,14 +73,13 @@ export async function GET(request) {
 
     // 5. ATTEMPT TOKEN REFRESH
     try {
-      // userId is not defined in your code, you may need to get it from somewhere
-      const refreshResult = await refreshTokensInternal(storedTokens.refresh_token);
+      const refreshedTokens = await refreshMeliTokens(storedTokens.refresh_token);
       
       console.log('Token refresh successful');
       return Response.json({
         authenticated: true,
         needs_auth: false,
-        expires_in_minutes: Math.floor(refreshResult.expires_in / 60),
+        expires_in_minutes: Math.floor(3600 / 60),
         reason: 'refreshed_token'
       });
 
@@ -105,83 +103,3 @@ export async function GET(request) {
     }, { status: 500 });
   }
 }
-
-// INTERNAL HELPER: Refresh tokens (same logic as refresh route)
-async function refreshTokensInternal(refreshToken) {
-  const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token';
-  
-  const refreshRequest = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json'
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      client_id: process.env.MERCADO_LIBRE_APP_ID,
-      client_secret: process.env.MERCADO_LIBRE_CLIENT_SECRET,
-      refresh_token: refreshToken
-    })
-  };
-
-  let response;
-  try {
-    response = await fetch(tokenEndpoint, refreshRequest);
-  } catch (networkErr) {
-    throw new Error(`Network error during token refresh: ${networkErr.message}`);
-  }
-  
-  if (!response.ok) {
-    const errorData = await response.text();
-    throw new Error(`Token refresh failed: ${response.status} ${errorData}`);
-  }
-
-  let tokenData;
-  try {
-    tokenData = await response.json();
-  } catch (jsonErr) {
-    throw new Error('Failed to parse token refresh response as JSON');
-  }
-  
-  if (!tokenData.access_token) {
-    throw new Error('No access token in refresh response');
-  }
-
-  const newTokens = {
-    access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token || refreshToken,
-    expires_in: tokenData.expires_in || 3600,
-    token_type: tokenData.token_type || 'Bearer',
-    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
-  };
-
-  const Tokens = {
-    user_id: tokenData.user_id,
-    access_token: tokenData.access_token,
-    refresh_token: tokenData.refresh_token || refreshToken,
-    token_type: tokenData.token_type || 'Bearer',
-    expires_at: Date.now() + ((tokenData.expires_in || 3600) * 1000)
-  };
-
-  // Store new tokens
-  try {
-    await storeMeliTokens({tokens: Tokens });
-  } catch (storeErr) {
-    throw new Error('Failed to store refreshed tokens');
-  }
-  
-  return newTokens;
-}
-// ... existing code ...
-
-// HELPER: Store tokens in Vercel KV
-// async function storeTokensInKV(userId, tokens) {
-//   const key = `oauth_tokens:${userId}`;
-  
-//   await kv.hset(key, {
-//     access_token: tokens.access_token,
-//     refresh_token: tokens.refresh_token,
-//     expires_at: tokens.expires_at.toString(),
-//     token_type: tokens.token_type
-//   });
-// }
