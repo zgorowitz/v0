@@ -52,11 +52,11 @@ export default function SettingsPage() {
       if (response.ok) {
         const userData = await response.json()
         setUserInfo(userData)
-        await fetch('/api/meli/account', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(userInfo)
-        });
+        // await fetch('/api/meli/account', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(userInfo)
+        // });
       } else {
         console.error('Failed to fetch user info:', response.status)
         setUserInfo(null)

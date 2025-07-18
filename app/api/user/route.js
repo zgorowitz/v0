@@ -1,7 +1,7 @@
 // app/api/user/route.js
 
 // import { kv } from '@vercel/kv';
-import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
+import { getMeliTokens } from '@/lib/meliTokens';
 
 export async function GET(request) {
   try {
