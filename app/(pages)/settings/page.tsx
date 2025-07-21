@@ -1,5 +1,3 @@
-// app/(pages)/settings/page.tsx - Remove the meli account call
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -15,8 +13,26 @@ export default function SettingsPage() {
   })
   const [userInfo, setUserInfo] = useState(null)
   const [loadingUser, setLoadingUser] = useState(false)
+  const [urlError, setUrlError] = useState(null)
 
   useEffect(() => {
+    // Check for URL parameters indicating auth errors or success
+    const urlParams = new URLSearchParams(window.location.search)
+    const error = urlParams.get('error')
+    const details = urlParams.get('details')
+    const auth = urlParams.get('auth')
+
+    if (error) {
+      setUrlError({ type: error, details: details ? decodeURIComponent(details) : null })
+    } else if (auth === 'success') {
+      // Clear any existing errors on success
+      setUrlError(null)
+    }
+
+    // Clean up URL
+    const newUrl = window.location.pathname
+    window.history.replaceState({}, '', newUrl)
+
     // Check authentication status
     checkAuthStatus()
   }, [])
@@ -54,8 +70,6 @@ export default function SettingsPage() {
       if (response.ok) {
         const userData = await response.json()
         setUserInfo(userData)
-        // ✅ REMOVED: No longer need to manually call /api/meli/account
-        // The /api/user route now handles storing account info automatically
       } else {
         console.error('Failed to fetch user info:', response.status)
         setUserInfo(null)
@@ -71,8 +85,7 @@ export default function SettingsPage() {
   const refreshUserInfo = async () => {
     setLoadingUser(true)
     try {
-      // Step 1: Refresh the token
-      const response = await fetch('/api/auth/refresh',{
+      const response = await fetch('/api/auth/refresh', {
         method: 'POST'
       })
       if (!response.ok) {
@@ -80,7 +93,6 @@ export default function SettingsPage() {
         setUserInfo(null)
         return
       }
-      // Step 2: Fetch the user info again (this will also update the database)
       await fetchUserInfo()
     } catch (error) {
       console.error('Error refreshing token:', error)
@@ -94,10 +106,9 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/auth/disconnect', { method: 'POST' });
       if (res.ok) {
-        // Optionally clear any local state or storage here
         setAuthStatus({ authenticated: false, loading: false, error: null });
         setUserInfo(null);
-        // Optionally reload the page or redirect
+        setUrlError(null);
         window.location.reload();
       } else {
         alert('Failed to disconnect. Please try again.');
@@ -107,10 +118,77 @@ export default function SettingsPage() {
     }
   };
 
+  const getErrorMessage = (errorType, details) => {
+    const errorMessages = {
+      access_denied: 'Authorization was denied. You may have clicked "Cancel" on the MercadoLibre authorization page.',
+      no_code: 'No authorization code was received from MercadoLibre.',
+      missing_app_id: 'Missing App ID configuration. Please check environment variables.',
+      missing_client_secret: 'Missing Client Secret configuration. Please check environment variables.',
+      token_exchange_failed: 'Failed to exchange authorization code for access token.',
+      no_access_token: 'No access token received from MercadoLibre.',
+      token_storage_failed: 'Failed to store tokens in database.',
+      unexpected_error: 'An unexpected error occurred during authentication.',
+      oauth_failed: 'OAuth authentication failed (generic error).'
+    }
+
+    const message = errorMessages[errorType] || `Unknown error: ${errorType}`
+    return details ? `${message}\n\nDetails: ${details}` : message
+  }
+
+  const initiateAuth = () => {
+    // Clear any existing errors before starting new auth
+    setUrlError(null)
+    window.location.href = '/api/auth/initiate'
+  }
+
   return (
     <LayoutWrapper>
       <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4 gap-6">
         
+        {/* Error Display */}
+        {urlError && (
+          <Card className="w-full max-w-md mx-auto border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="text-xl text-red-800">
+                Authentication Failed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <p className="text-sm text-red-700 whitespace-pre-line">
+                    {getErrorMessage(urlError.type, urlError.details)}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button 
+                    onClick={initiateAuth}
+                    className="w-full bg-red-600 hover:bg-red-700"
+                  >
+                    Try Again
+                  </Button>
+                  
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-red-600 hover:text-red-800">
+                      Technical Details
+                    </summary>
+                    <div className="mt-2 p-2 bg-gray-100 rounded text-gray-700">
+                      <div><strong>Error Type:</strong> {urlError.type}</div>
+                      {urlError.details && (
+                        <div className="mt-1">
+                          <strong>Details:</strong> 
+                          <pre className="mt-1 text-xs whitespace-pre-wrap">{urlError.details}</pre>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* MercadoLibre Connection Card */}
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
@@ -131,7 +209,7 @@ export default function SettingsPage() {
             ) : !authStatus.authenticated ? (
               <div className="text-center py-4">
                 <Button 
-                  onClick={() => window.location.href = '/api/auth/initiate'}
+                  onClick={initiateAuth}
                   className="w-full"
                 >
                   Connect to MercadoLibre
@@ -198,7 +276,7 @@ export default function SettingsPage() {
                     )}
                     <div className="flex flex-col gap-2 mt-3">
                       <Button 
-                        onClick={() => window.location.href = '/api/auth/initiate'}
+                        onClick={initiateAuth}
                         className="w-full mt-3"
                       >
                         Connect a different account
