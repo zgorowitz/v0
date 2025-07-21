@@ -240,7 +240,7 @@ export default function ScanPage() {
           <CardHeader>
             {/* <div className="flex justify-between items-center"> */}
             {!currentItem && (
-              <CardTitle className="text-xl">Escáner de códigos de barras</CardTitle>
+              <CardTitle className="text-xl">Escáner</CardTitle>
             )}
               {!items && !loading && (
                 <Button
