@@ -9,7 +9,6 @@ export async function GET(request) {
     // 1. GET ACCESS TOKEN FROM STORAGE
     const storedTokens = await getMeliTokens();
     // console.log(storedTokens)
-    console.log(storedTokens.access_token)
     if (!storedTokens || !storedTokens.access_token) {
       console.log('No access token found');
       return Response.json(
