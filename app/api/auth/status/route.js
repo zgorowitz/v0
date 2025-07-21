@@ -1,41 +1,28 @@
 // app/api/auth/status/route.js
 
 import { getMeliTokens, refreshMeliTokens } from '@/lib/meliTokens'
-import { validateSession, getUserSafely } from '@/lib/supabase/server'
+import { getUserSafely } from '@/lib/supabase/server'
 
 export async function GET(request) {
   try {
     console.log('=== Auth Status Check Started ===')
     
-    // 1. VALIDATE SUPABASE SESSION FIRST (non-throwing version)
-    const sessionStatus = await validateSession()
+    // 1. CHECK SUPABASE SESSION
+    const { user, error: sessionError } = await getUserSafely()
     
-    console.log('Session validation result:', {
-      valid: sessionStatus.valid,
-      code: sessionStatus.code,
-      hasUser: !!sessionStatus.user_id
-    })
-    
-    if (!sessionStatus.valid) {
-      // Handle specific session errors
-      if (sessionStatus.code === 'SESSION_MISSING') {
-        return Response.json({
-          authenticated: false,
-          needs_auth: true,
-          reason: 'no_session',
-          message: 'No authentication session found - please login'
-        }, { status: 401 })
-      }
-      
+    if (!user) {
+      console.log('No authenticated user found:', sessionError)
       return Response.json({
         authenticated: false,
         needs_auth: true,
-        reason: 'session_invalid',
-        message: sessionStatus.error || 'Session validation failed'
+        reason: 'no_session',
+        message: 'No authentication session found - please login'
       }, { status: 401 })
     }
 
-    // 2. CHECK IF MELI TOKENS EXIST IN STORAGE
+    console.log('User authenticated:', user.id)
+
+    // 2. CHECK MELI TOKENS
     let storedTokens
     try {
       storedTokens = await getMeliTokens()
@@ -47,8 +34,6 @@ export async function GET(request) {
       })
     } catch (tokenErr) {
       console.error('Error fetching MeLi tokens:', tokenErr)
-      
-      // If user has valid Supabase session but no MeLi tokens, they need to connect MeLi
       return Response.json({
         authenticated: false,
         needs_auth: true,
@@ -58,7 +43,7 @@ export async function GET(request) {
     }
 
     if (!storedTokens || !storedTokens.access_token) {
-      console.log('No MeLi tokens found in storage')
+      console.log('No MeLi tokens found')
       return Response.json({
         authenticated: false,
         needs_auth: true,
@@ -68,17 +53,14 @@ export async function GET(request) {
     }
 
     // 3. CHECK TOKEN EXPIRATION
-    let expiresAt
-    try {
-      expiresAt = parseInt(storedTokens.expires_at)
-      if (isNaN(expiresAt)) throw new Error('expires_at is not a number')
-    } catch (parseErr) {
-      console.error('Invalid expires_at value:', parseErr)
+    const expiresAt = parseInt(storedTokens.expires_at)
+    if (isNaN(expiresAt)) {
+      console.error('Invalid expires_at value')
       return Response.json({
         authenticated: false,
         needs_auth: true,
         reason: 'invalid_token_expiry',
-        error: 'Token expiry is invalid'
+        message: 'Token expiry is invalid'
       }, { status: 500 })
     }
 
@@ -98,7 +80,7 @@ export async function GET(request) {
       })
     }
 
-    // 5. TOKEN IS EXPIRED - TRY TO REFRESH
+    // 5. TOKEN EXPIRED - TRY TO REFRESH
     console.log('Access token expired, attempting refresh...')
     
     if (!storedTokens.refresh_token) {
@@ -113,9 +95,9 @@ export async function GET(request) {
 
     // 6. ATTEMPT TOKEN REFRESH
     try {
-      const refreshedTokens = await refreshMeliTokens(storedTokens.refresh_token)
-      
+      await refreshMeliTokens(storedTokens.refresh_token)
       console.log('Token refresh successful')
+      
       return Response.json({
         authenticated: true,
         needs_auth: false,
@@ -129,8 +111,7 @@ export async function GET(request) {
         authenticated: false,
         needs_auth: true,
         reason: 'refresh_failed',
-        message: 'Failed to refresh MercadoLibre token - please reconnect',
-        error: refreshError.message || 'Unknown error during token refresh'
+        message: 'Failed to refresh MercadoLibre token - please reconnect'
       }, { status: 401 })
     }
 
@@ -142,8 +123,7 @@ export async function GET(request) {
       authenticated: false,
       needs_auth: true,
       reason: 'status_check_failed',
-      message: 'Failed to check authentication status',
-      error: error.message || 'Unknown error'
+      message: 'Failed to check authentication status'
     }, { status: 500 })
   }
 }
