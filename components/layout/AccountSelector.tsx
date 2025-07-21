@@ -29,6 +29,9 @@ export function AccountSelector() {
         const supabase = createClient();
         console.log('[AccountSelector] Checking auth session...');
         
+        // Add small delay to ensure cookies are loaded
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Wait for Supabase to determine auth state
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -38,6 +41,7 @@ export function AccountSelector() {
           return;
         }
 
+        console.log('[AccountSelector] Session data:', session);
         setUser(session?.user ?? null);
         console.log('[AccountSelector] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
 

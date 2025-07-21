@@ -4,7 +4,7 @@ import type React from "react"
 import { BarChart3, Home, QrCode, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { AccountSelector } from "@/components/AccountSelector"
+import { AccountSelector } from "@/components/layout/AccountSelector"
 
 interface DesktopLayoutProps {
   children: React.ReactNode
