@@ -513,11 +513,6 @@ export async function GET(request) {
   }
 }
 
-// app/api/inventory/route.js - KEY CHANGES ONLY
-
-import { NextResponse } from 'next/server'
-import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
-import { handleAuthError } from '@/lib/supabase/server' // ADD THIS IMPORT
 
 // CHANGE 1: Update the main function error handling
 
