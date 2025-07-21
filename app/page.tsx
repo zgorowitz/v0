@@ -31,8 +31,10 @@ export default function Home() {
         token: response.credential,
       })
       if (error) throw error
+      
       setUser(data.user)
-      window.location.reload(); // or router.replace(router.asPath)
+      window.location.reload()
+      
     } catch (error) {
       console.error('Error signing in:', error)
     }
