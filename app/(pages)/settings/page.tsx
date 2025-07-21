@@ -150,7 +150,7 @@ export default function SettingsPage() {
           <Card className="w-full max-w-md mx-auto border-red-200 bg-red-50">
             <CardHeader>
               <CardTitle className="text-xl text-red-800">
-                Authentication Failed
+                Autenticación fallida
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -166,18 +166,18 @@ export default function SettingsPage() {
                     onClick={initiateAuth}
                     className="w-full bg-red-600 hover:bg-red-700"
                   >
-                    Try Again
+                    Intentar de nuevo
                   </Button>
                   
                   <details className="text-xs">
                     <summary className="cursor-pointer text-red-600 hover:text-red-800">
-                      Technical Details
+                      Detalles técnicos
                     </summary>
                     <div className="mt-2 p-2 bg-gray-100 rounded text-gray-700">
-                      <div><strong>Error Type:</strong> {urlError.type}</div>
+                      <div><strong>Tipo de error:</strong> {urlError.type}</div>
                       {urlError.details && (
                         <div className="mt-1">
-                          <strong>Details:</strong> 
+                          <strong>Detalles:</strong> 
                           <pre className="mt-1 text-xs whitespace-pre-wrap">{urlError.details}</pre>
                         </div>
                       )}
@@ -193,14 +193,14 @@ export default function SettingsPage() {
         <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
           <CardHeader>
             <CardTitle className="text-xl">
-              MercadoLibre Connection
+              Conexión con MercadoLibre
             </CardTitle>
           </CardHeader>
           <CardContent>
             {authStatus.loading ? (
               <div className="text-center py-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">Checking connection...</p>
+                <p className="mt-2 text-sm text-gray-600">Verificando conexión...</p>
               </div>
             ) : authStatus.error ? (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -212,20 +212,20 @@ export default function SettingsPage() {
                   onClick={initiateAuth}
                   className="w-full"
                 >
-                  Connect to MercadoLibre
+                  Conectar con MercadoLibre
                 </Button>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-green-600">✓ Connected</span>
+                  <span className="text-sm font-medium text-green-600">✓ Conectado</span>
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={refreshUserInfo}
                     disabled={loadingUser}
                   >
-                    {loadingUser ? 'Loading...' : 'Refresh'}
+                    {loadingUser ? 'Cargando...' : 'Actualizar'}
                   </Button>
                 </div>
                 
@@ -254,13 +254,13 @@ export default function SettingsPage() {
                     {userInfo.seller_reputation && (
                       <div className="mt-2 text-xs text-gray-700">
                         <div>
-                          <span className="font-semibold">Seller Reputation:</span>
+                          <span className="font-semibold">Reputación del vendedor:</span>
                         </div>
                         <div>
-                          Level: <span className="font-mono">{userInfo.seller_reputation.level_id || 'N/A'}</span>
+                          Nivel: <span className="font-mono">{userInfo.seller_reputation.level_id || 'N/A'}</span>
                         </div>
                         <div>
-                          Power Seller Status: <span className="font-mono">{userInfo.seller_reputation.power_seller_status || 'N/A'}</span>
+                          Estado de Power Seller: <span className="font-mono">{userInfo.seller_reputation.power_seller_status || 'N/A'}</span>
                         </div>
                       </div>
                     )}
@@ -271,7 +271,7 @@ export default function SettingsPage() {
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
                       >
-                        View Profile →
+                        Ver perfil →
                       </a>
                     )}
                     <div className="flex flex-col gap-2 mt-3">
@@ -279,19 +279,19 @@ export default function SettingsPage() {
                         onClick={initiateAuth}
                         className="w-full mt-3"
                       >
-                        Connect a different account
+                        Conectar una cuenta diferente
                       </Button>
                       <Button
                         onClick={handleDisconnect}
                         className="w-full"
                       >
-                        Disconnect
+                        Desconectar
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-2">
-                    <p className="text-sm text-gray-600">Unable to load user info</p>
+                    <p className="text-sm text-gray-600">No se pudo cargar la información del usuario</p>
                   </div>
                 )}
               </div>

@@ -81,8 +81,8 @@ export default function InventoryPage() {
           errorType === 'api' ? 'text-red-800' : 
           'text-gray-800'
         }`}>
-          {errorType === 'auth' ? '🔐 Authentication Required' :
-           errorType === 'api' ? '❌ API Error' :
+          {errorType === 'auth' ? '🔐 Autenticación requerida' :
+           errorType === 'api' ? '❌ Error de API' :
            '⚠️ Error'}
         </h3>
         
@@ -100,21 +100,21 @@ export default function InventoryPage() {
               onClick={() => window.location.href = '/settings'}
               className="bg-amber-600 hover:bg-amber-700 text-white px-6"
             >
-              Go to Settings to Connect
+              Ir a Configuración para Conectar
             </Button>
           ) : (
             <Button 
               onClick={fetchInventory}
               className="bg-gray-900 hover:bg-gray-800 text-white px-6"
             >
-              Try Again
+              Intentar de nuevo
             </Button>
           )}
         </div>
         
         {/* Debug info */}
         <details className="mt-6 text-left">
-          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">Debug Information</summary>
+          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">Información de depuración</summary>
           <pre className="mt-3 text-xs bg-white border rounded-md p-3 overflow-x-auto text-gray-600">
             {JSON.stringify({ error, timestamp: new Date().toISOString() }, null, 2)}
           </pre>
@@ -145,28 +145,28 @@ export default function InventoryPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Item ID / SKU
+                  ID de artículo / SKU
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Title
+                  Título
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Qty 7d
+                  Cantidad 7d
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Avg/Day 7d
+                  Prom/Día 7d
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Qty 30d
+                  Cantidad 30d
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Avg/Day 30d
+                  Prom/Día 30d
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Available
+                  Disponible
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Days in Stock
+                  Días en stock
                 </th>
               </tr>
             </thead>
@@ -264,7 +264,7 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-4 py-2">
                           <div className="text-sm text-gray-600">
-                            Variation {child.variationId || 'Unknown'}
+                            Variación {child.variationId || 'Desconocido'}
                           </div>
                         </td>
                         <td className="px-4 py-2 text-center">
@@ -313,10 +313,10 @@ export default function InventoryPage() {
             <tfoot className="bg-gray-100 border-t-2 border-gray-300">
               <tr>
                 <td className="px-4 py-3 font-semibold text-gray-900">
-                  SUMMARY
+                  RESUMEN
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-600">
-                  {totals.totalItems} items
+                  {totals.totalItems} artículos
                 </td>
                 <td className="px-4 py-3 text-center font-semibold text-gray-900">
                   {totals.totalQty7d.toLocaleString()}
@@ -351,8 +351,8 @@ export default function InventoryPage() {
           <CardHeader className="bg-white border-b border-gray-200">
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl font-bold text-gray-900">Inventory Management</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Monitor stock levels and sales performance</p>
+                <CardTitle className="text-2xl font-bold text-gray-900">Gestión de inventario</CardTitle>
+                <p className="text-sm text-gray-600 mt-1">Monitorea los niveles de stock y el rendimiento de ventas</p>
               </div>
               <div className="flex gap-2">
                 <Button 
@@ -362,7 +362,7 @@ export default function InventoryPage() {
                   disabled={loading}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  Collapse All
+                  Colapsar todo
                 </Button>
                 <Button 
                   onClick={() => setExpandedItems(new Set(data.map(item => item.itemId)))}
@@ -371,14 +371,14 @@ export default function InventoryPage() {
                   disabled={loading}
                   className="border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  Expand All
+                  Expandir todo
                 </Button>
                 <Button 
                   onClick={fetchInventory}
                   disabled={loading}
                   className="bg-gray-900 text-white hover:bg-gray-800 px-6"
                 >
-                  {loading ? 'Loading...' : 'Refresh'}
+                  {loading ? 'Cargando...' : 'Actualizar'}
                 </Button>
               </div>
             </div>
@@ -389,19 +389,19 @@ export default function InventoryPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div className="flex flex-col">
                     <span className="font-semibold text-gray-900">{(meta.total_items || 0).toLocaleString()}</span>
-                    <span className="text-gray-600">Total Items</span>
+                    <span className="text-gray-600">Total de artículos</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="font-semibold text-gray-900">{(meta.total_orders || 0).toLocaleString()}</span>
-                    <span className="text-gray-600">Total Orders</span>
+                    <span className="text-gray-600">Total de pedidos</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="font-semibold text-gray-900">{meta.days_analyzed || 30}</span>
-                    <span className="text-gray-600">Days Analyzed</span>
+                    <span className="text-gray-600">Días analizados</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="font-semibold text-gray-900">{formatDate(meta.generated_at)}</span>
-                    <span className="text-gray-600">Last Updated</span>
+                    <span className="text-gray-600">Última actualización</span>
                   </div>
                 </div>
               </div>
@@ -413,8 +413,8 @@ export default function InventoryPage() {
             {loading && (
               <div className="text-center py-16 bg-white">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-4 text-gray-700 font-medium">Loading inventory data...</p>
-                <p className="text-sm text-gray-500">This may take a few moments</p>
+                <p className="mt-4 text-gray-700 font-medium">Cargando datos de inventario...</p>
+                <p className="text-sm text-gray-500">Esto puede tardar unos momentos</p>
               </div>
             )}
 
@@ -435,17 +435,17 @@ export default function InventoryPage() {
                         <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <p className="text-lg font-medium text-gray-900">No inventory data found</p>
-                    <p className="text-sm text-gray-500 mt-2">Try checking your MercadoLibre account or refreshing the data</p>
+                    <p className="text-lg font-medium text-gray-900">No se encontraron datos de inventario</p>
+                    <p className="text-sm text-gray-500 mt-2">Intenta revisar tu cuenta de MercadoLibre o actualiza los datos</p>
                   </div>
                 ) : (
                   <div className="p-6 bg-white">
                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-sm text-blue-800">
-                        💡 <strong>Tip:</strong> Click on items with variations (indicated by arrow) to expand details. 
-                        Colors indicate stock status: <span className="text-red-600 font-medium">red (low)</span>, 
-                        <span className="text-amber-600 font-medium"> amber (medium)</span>, 
-                        <span className="text-emerald-600 font-medium">green (good)</span>.
+                        💡 <strong>Consejo:</strong> Haz clic en los artículos con variaciones (indicados por la flecha) para expandir detalles. 
+                        Los colores indican el estado del stock: <span className="text-red-600 font-medium">rojo (bajo)</span>, 
+                        <span className="text-amber-600 font-medium"> ámbar (medio)</span>, 
+                        <span className="text-emerald-600 font-medium">verde (bueno)</span>.
                       </p>
                     </div>
                     {renderInventoryTable()}

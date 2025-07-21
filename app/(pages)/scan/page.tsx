@@ -101,7 +101,7 @@ export default function ScanPage() {
       })
     } catch (err) {
       console.error("Barcode detection error:", err)
-      setError("Failed to initialize barcode scanner. Using fallback detection.")
+      setError("No se pudo inicializar el escáner de códigos. Usando detección alternativa.")
       // Fallback to simulated detection
       startFallbackDetection()
     }
@@ -143,7 +143,7 @@ export default function ScanPage() {
         // Stop camera after successful scan and data retrieval
         stopCamera()
       } else {
-        throw new Error("No items found for this shipment")
+        throw new Error("No se encontraron artículos para este envío")
       }
     } catch (err) {
       setError(`No se pudieron obtener los detalles: ${err.message}`)
@@ -240,7 +240,7 @@ export default function ScanPage() {
           <CardHeader>
             {/* <div className="flex justify-between items-center"> */}
             {!currentItem && (
-              <CardTitle className="text-xl">Barcode Scanner</CardTitle>
+              <CardTitle className="text-xl">Escáner de códigos de barras</CardTitle>
             )}
               {!items && !loading && (
                 <Button
@@ -255,7 +255,7 @@ export default function ScanPage() {
                     }
                   }}
                 >
-                  {manualMode ? "Use Camera" : "Manual Entry"}
+                  {manualMode ? "Usar cámara" : "Entrada manual"}
                 </Button>
               )}
             {/* </div> */}
@@ -270,17 +270,17 @@ export default function ScanPage() {
                     type="text"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="Enter code manually..."
+                    placeholder="Ingresa el código manualmente..."
                     className="w-full p-2 border rounded-md"
                     onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                   />
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={handleManualSubmit} disabled={!manualInput.trim() || loading} className="flex-1">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Código"}
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar código"}
                   </Button>
                   <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
-                    Use Camera
+                    Usar cámara
                   </Button>
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function ScanPage() {
 
                   {/* Count in the center */}
                   <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium text-gray-900">
-                    {currentItemIndex + 1} of {items.length}
+                    {currentItemIndex + 1} de {items.length}
                   </div>
 
                   {/* Right Arrow */}
@@ -420,7 +420,7 @@ export default function ScanPage() {
                       onClick={restartScanning}
                       className="py-3.5 px-5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm shrink-0"
                     >
-                      Done
+                      Listo
                     </button>
                   </div>
 
@@ -507,13 +507,13 @@ export default function ScanPage() {
                         }}
                         className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
                       >
-                        Copy Details
+                        Copiar detalles
                       </button> */}
                       <button
                         onClick={restartScanning}
                         className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
                       >
-                        Done
+                        Listo
                       </button>
                     </div>
                   </div>

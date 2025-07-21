@@ -59,16 +59,16 @@ export default function SKUsPage() {
   }
 
   const getStockStatus = (stock) => {
-    if (stock === 0) return "Out of Stock"
-    if (stock < 10) return "Low Stock"
-    return "In Stock"
+    if (stock === 0) return "Sin stock"
+    if (stock < 10) return "Poco stock"
+    return "En stock"
   }
 
   return (
     <LayoutWrapper>
       <main className="flex min-h-[calc(100vh-5rem)] flex-col p-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">All SKUs</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Todos los SKUs</h1>
           <Button
             variant="outline"
             size="sm"
@@ -77,7 +77,7 @@ export default function SKUsPage() {
             className="bg-white/90 hover:bg-white"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            Actualizar
           </Button>
         </div>
 
@@ -85,15 +85,15 @@ export default function SKUsPage() {
           <CardHeader>
             <CardTitle className="text-xl flex items-center">
               <Package2 className="mr-2 h-5 w-5" />
-              All SKUs
+              Todos los SKUs
               {filteredSKUs.length > 0 && (
                 <Badge variant="secondary" className="ml-2">
                   {filteredSKUs.length}
-                  {searchTerm && ` of ${skus.length}`}
+                  {searchTerm && ` de ${skus.length}`}
                 </Badge>
               )}
             </CardTitle>
-            {lastUpdated && <p className="text-sm text-gray-500">Last updated: {lastUpdated.toLocaleTimeString()}</p>}
+            {lastUpdated && <p className="text-sm text-gray-500">Última actualización: {lastUpdated.toLocaleTimeString()}</p>}
           </CardHeader>
           <CardContent>
             {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm mb-4">{error}</div>}
@@ -104,7 +104,7 @@ export default function SKUsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="text"
-                  placeholder="Search SKUs or product titles..."
+                  placeholder="Buscar SKUs o títulos de productos..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -115,21 +115,21 @@ export default function SKUsPage() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                <p className="mt-2 text-sm text-gray-500">Loading SKUs...</p>
+                <p className="mt-2 text-sm text-gray-500">Cargando SKUs...</p>
               </div>
             ) : filteredSKUs.length === 0 ? (
               <div className="text-center py-8">
                 <Package2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">
-                  {searchTerm ? `No SKUs found matching "${searchTerm}"` : "No SKUs found"}
+                  {searchTerm ? `No se encontraron SKUs que coincidan con "${searchTerm}"` : "No se encontraron SKUs"}
                 </p>
                 {searchTerm ? (
                   <Button variant="outline" className="mt-4" onClick={() => setSearchTerm("")}>
-                    Clear Search
+                    Limpiar búsqueda
                   </Button>
                 ) : (
                   <Button variant="outline" className="mt-4" onClick={loadSKUs}>
-                    Try Again
+                    Intentar de nuevo
                   </Button>
                 )}
               </div>
@@ -149,7 +149,7 @@ export default function SKUsPage() {
                           </Badge>
                         </div>
                         <h3 className="font-medium text-gray-900 mb-1">{sku.title}</h3>
-                        {sku.category && <p className="text-sm text-gray-600">Category: {sku.category}</p>}
+                        {sku.category && <p className="text-sm text-gray-600">Categoría: {sku.category}</p>}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium">Stock: {sku.stock}</p>
@@ -160,17 +160,17 @@ export default function SKUsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-600 mt-3 pt-3 border-t">
                       {sku.location && (
                         <div>
-                          <span className="font-medium">Location:</span> {sku.location}
+                          <span className="font-medium">Ubicación:</span> {sku.location}
                         </div>
                       )}
                       {sku.supplier && (
                         <div>
-                          <span className="font-medium">Supplier:</span> {sku.supplier}
+                          <span className="font-medium">Proveedor:</span> {sku.supplier}
                         </div>
                       )}
                       {sku.lastUpdated && (
                         <div>
-                          <span className="font-medium">Updated:</span> {sku.lastUpdated}
+                          <span className="font-medium">Actualizado:</span> {sku.lastUpdated}
                         </div>
                       )}
                     </div>

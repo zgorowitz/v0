@@ -262,7 +262,7 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-black">Checking authorization...</p>
+          <p className="text-black">Verificando autorización...</p>
         </div>
       </div>
     )
@@ -273,7 +273,7 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-black">Creating organization...</p>
+          <p className="text-black">Creando organización...</p>
         </div>
       </div>
     )
@@ -283,10 +283,10 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-black mb-4">Welcome to the platform</h1>
-          <p className="text-gray-600">Choose how you'd like to get started</p>
+          <h1 className="text-3xl font-bold text-black mb-4">Bienvenido a la plataforma</h1>
+          <p className="text-gray-600">Elige cómo te gustaría comenzar</p>
           {user && (
-            <p className="text-sm text-gray-500 mt-2">Signed in as {user.email}</p>
+            <p className="text-sm text-gray-500 mt-2">Conectado como {user.email}</p>
           )}
         </div>
 
@@ -305,15 +305,15 @@ export default function OnboardingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-black mb-3">Create New Organization</h2>
-              <p className="text-gray-600 mb-6">Start fresh with a new organization and become the admin</p>
+              <h2 className="text-xl font-bold text-black mb-3">Crear nueva organización</h2>
+              <p className="text-gray-600 mb-6">Comienza desde cero con una nueva cuenta de vendedor y conviértete en el administrador de la organización</p>
               
               <div className="space-y-4">
                 <button
                   onClick={handleCreateOrganization}
                   className="w-full bg-black text-white py-3 px-6 border-2 border-black hover:bg-white hover:text-black transition-colors"
                 >
-                  Create Organization
+                  Crear organización
                 </button>
               </div>
             </div>
@@ -327,24 +327,24 @@ export default function OnboardingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.196-2.121M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.196-2.121M7 20v-2c0-.656.126-1.283.356-1.857M11 4a3 3 0 116 0 3 3 0 01-6 0zM21 8a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-gray-700 mb-3">Join Existing Organization</h2>
-              <p className="text-gray-600 mb-6">Ask your organization admin to invite you using your email address</p>
+              <h2 className="text-xl font-bold text-gray-700 mb-3">Unirse a una organización existente</h2>
+              <p className="text-gray-600 mb-6">Pide a tu administrador que te invite usando tu dirección de correo electrónico</p>
               
               <div className="space-y-4">
                 <div className="p-3 bg-white border border-gray-300 rounded">
-                  <p className="text-sm text-gray-600">Your email:</p>
+                  <p className="text-sm text-gray-600">Tu correo electrónico:</p>
                   <p className="font-medium text-gray-800">{user?.email}</p>
                 </div>
                 <div className="text-sm text-gray-600 space-y-2">
-                  <p>✓ Share this email with your admin</p>
-                  <p>✓ Wait for them to add you to the organization</p>
-                  <p>✓ Refresh this page once invited</p>
+                  <p>✓ Comparte este correo con tu administrador</p>
+                  <p>✓ Espera a que te agreguen a la organización</p>
+                  <p>✓ Actualiza esta página una vez invitado</p>
                 </div>
                 <button
                   onClick={() => window.location.reload()}
                   className="w-full bg-gray-600 text-white py-3 px-6 border-2 border-gray-600 hover:bg-white hover:text-gray-600 transition-colors"
                 >
-                  Refresh Page
+                  Actualizar página
                 </button>
               </div>
             </div>
