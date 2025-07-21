@@ -1,8 +1,7 @@
 // app/api/inventory/route.js
-
 import { NextResponse } from 'next/server';
-// import { kv } from '@vercel/kv';
 import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
+import { handleAuthError } from '@/lib/supabase/server'
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -455,27 +454,24 @@ async function runOrderAnalytics(accessToken, daysBack = 30) {
 // Main API route handler
 export async function GET(request) {
   try {
-    console.log('Orders API called');
+    console.log('Inventory API called') // CHANGE: Updated log message
 
     // Check environment variables
     if (!process.env.MERCADO_LIBRE_APP_ID || !process.env.MERCADO_LIBRE_CLIENT_SECRET) {
-      console.error('Missing OAuth credentials');
+      console.error('Missing OAuth credentials')
       return NextResponse.json({ 
         error: 'MISSING_CREDENTIALS',
         message: 'OAuth credentials not configured'
-      }, { status: 500 });
+      }, { status: 500 })
     }
 
-    // Get valid access token
-    const accessToken = await getValidAccessToken();
-    
-    // Get orders
-    // const orders = await getOrders(accessToken)
+    // Get valid access token (this function now uses the new auth system internally)
+    const accessToken = await getValidAccessToken()
     
     // Process into analytics
-    const analytics = await runOrderAnalytics(accessToken);
+    const analytics = await runOrderAnalytics(accessToken)
     
-    console.log(`Successfully processed ${analytics.length} items`);
+    console.log(`Successfully processed ${analytics.length} items`)
 
     return NextResponse.json({
       success: true,
@@ -485,64 +481,49 @@ export async function GET(request) {
         days_analyzed: 30,
         generated_at: new Date().toISOString()
       }
-    });
+    })
     
   } catch (error) {
-    console.error('Orders API Error:', error.message);
+    console.error('Inventory API Error:', error.message)
     
-    // Detailed error responses
-    if (error.message === 'NO_TOKEN_FOUND') {
-      return NextResponse.json({ 
-        error: 'NO_AUTHENTICATION',
-        message: 'No access token found - please connect to MercadoLibre first',
-        needs_auth: true 
-      }, { status: 401 });
+    // CHANGE 2: Use the new error handler for authentication-related errors
+    if (error.message === 'NO_TOKEN_FOUND' || 
+        error.message === 'TOKEN_EXPIRED_NO_REFRESH' || 
+        error.message.startsWith('REFRESH_FAILED_') ||
+        error.message.startsWith('API_ERROR_401') ||
+        error.message.startsWith('API_ERROR_403')) {
+      const { status, body } = handleAuthError(error) // USING NEW ERROR HANDLER
+      return NextResponse.json(body, { status })
     }
     
-    if (error.message === 'TOKEN_EXPIRED_NO_REFRESH') {
-      return NextResponse.json({ 
-        error: 'SESSION_EXPIRED',
-        message: 'Session expired and cannot refresh - please reconnect to MercadoLibre',
-        needs_auth: true 
-      }, { status: 401 });
-    }
-    
-    if (error.message.startsWith('REFRESH_FAILED_')) {
-      return NextResponse.json({ 
-        error: 'REFRESH_FAILED',
-        message: 'Could not refresh access token - please reconnect to MercadoLibre',
-        needs_auth: true 
-      }, { status: 401 });
-    }
-    
-    if (error.message.startsWith('API_ERROR_401')) {
-      return NextResponse.json({ 
-        error: 'INVALID_TOKEN',
-        message: 'Access token is invalid - please reconnect to MercadoLibre',
-        needs_auth: true 
-      }, { status: 401 });
-    }
-    
-    if (error.message.startsWith('API_ERROR_403')) {
-      return NextResponse.json({ 
-        error: 'INSUFFICIENT_PERMISSIONS',
-        message: 'Access token does not have required permissions for orders',
-        needs_auth: true 
-      }, { status: 403 });
-    }
-    
+    // Handle other specific errors as before
     if (error.message.startsWith('API_ERROR_')) {
       return NextResponse.json({ 
         error: 'MERCADOLIBRE_API_ERROR',
         message: `MercadoLibre API error: ${error.message}`,
         details: error.message
-      }, { status: 502 });
+      }, { status: 502 })
     }
     
     return NextResponse.json({ 
       error: 'INTERNAL_ERROR',
-      message: 'Internal server error while processing orders',
+      message: 'Internal server error while processing inventory',
       details: error.message
-    }, { status: 500 });
+    }, { status: 500 })
   }
 }
+
+// app/api/inventory/route.js - KEY CHANGES ONLY
+
+import { NextResponse } from 'next/server'
+import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
+import { handleAuthError } from '@/lib/supabase/server' // ADD THIS IMPORT
+
+// CHANGE 1: Update the main function error handling
+
+
+// The rest of the file stays the same - all the helper functions like:
+// - getValidAccessToken()
+// - refreshTokensInternal() 
+// - runOrderAnalytics()
+// etc. remain unchanged

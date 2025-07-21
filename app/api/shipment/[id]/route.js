@@ -1,7 +1,7 @@
 //app/api/shipment
 import { NextResponse } from 'next/server'
-// import { kv } from '@vercel/kv'
 import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
+import { handleAuthError } from '@/lib/supabase/server';
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -249,43 +249,44 @@ async function extractShipmentInfo(shipmentId) {
 // API Route Handler
 export async function GET(request, { params }) {
   try {
-    const { id } = params;
+    const { id } = params
     
     // Validate shipment ID
     if (!id) {
-      return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Shipment ID is required' }, { status: 400 })
     }
     
     // Extract shipment information (access token validation and refresh handled inside)
-    const shipmentInfo = await extractShipmentInfo(id);
+    const shipmentInfo = await extractShipmentInfo(id)
     
-    return NextResponse.json(shipmentInfo);
+    return NextResponse.json(shipmentInfo)
     
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('API Error:', error)
     
     // Handle specific error types
     if (error.message.includes('status: 404')) {
-      return NextResponse.json({ error: 'Shipment not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Shipment not found' }, { status: 404 })
     }
     
     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-      return NextResponse.json({ error: 'Autenticación fallida: El token puede estar expirado, el ID de envío puede ser incorrecto o el envío puede pertenecer a una cuenta de Mercado Libre diferente a la actualmente autenticada.' }, { status: 401 });
+      return NextResponse.json({ error: 'Autenticación fallida: El token puede estar expirado, el ID de envío puede ser incorrecto o el envío puede pertenecer a una cuenta de Mercado Libre diferente a la actualmente autenticada.' }, { status: 401 })
     }
     
     if (error.message.includes('status: 429')) {
-      return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 });
+      return NextResponse.json({ error: 'Rate limit exceeded - please try again later' }, { status: 429 })
     }
     
-    // Handle authentication errors
-    if (error.message.includes('No access token found') || error.message.includes('please authenticate first')) {
-      return NextResponse.json({ error: 'Not authenticated - please connect to MercadoLibre first', needs_auth: true }, { status: 401 });
+    // CHANGE 2: Handle authentication errors with new error handler
+    if (error.message.includes('No access token found') || 
+        error.message.includes('please authenticate first') ||
+        error.message.includes('Token refresh failed') || 
+        error.message.includes('please re-authenticate')) {
+      const { status, body } = handleAuthError(error) // USING NEW ERROR HANDLER
+      return NextResponse.json(body, { status })
     }
     
-    if (error.message.includes('Token refresh failed') || error.message.includes('please re-authenticate')) {
-      return NextResponse.json({ error: 'Session expired - please reconnect to MercadoLibre', needs_auth: true }, { status: 401 });
-    }
-    
-    return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch shipment data' }, { status: 500 })
   }
 }
+

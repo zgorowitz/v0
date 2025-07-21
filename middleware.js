@@ -9,7 +9,9 @@ export async function middleware(request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        getAll() { return request.cookies.getAll() },
+        getAll() { 
+          return request.cookies.getAll() 
+        },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
@@ -21,50 +23,59 @@ export async function middleware(request) {
     }
   )
 
-  // await supabase.auth.getUser()
+  // IMPORTANT: Only refresh the session, don't use the user data in middleware
+  // This ensures cookies are properly set without interfering with API routes
+  await supabase.auth.getUser()
   
-  // // Get the user sesion
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  // // Get the current path
   const { pathname } = request.nextUrl
 
-  // // Define protected routes (require authentication)
-  // const protectedRoutes = ['/orders', '/scan', '/settings', '/skus']
-  
-  // // Define auth routes (login/signup pages)
-  // const authRoutes = ['/']
+  // Skip organization checks for API routes, static files, and auth callback
+  if (
+    pathname.startsWith('/api') || 
+    pathname.startsWith('/db') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.includes('.')
+  ) {
+    return supabaseResponse
+  }
 
-  // Check if user is trying to access protected routes without being logged in
-  // if (protectedRoutes.some(route => pathname.startsWith(route)) && !user) {
-  //   const redirectUrl = new URL('/error', request.url)
-  //   return NextResponse.redirect(redirectUrl)
-  // }
-
-
-  if (user) {
-    // console.log('User ID:', user.id)
-    // console.log('User Email:', user.email)
+  // Only do organization checks for page routes, not API routes
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
     
-    const result = await supabase.rpc('get_user_organization', { user_uuid: user.id })
-    
-    
-    const hasOrganization = result.data && result.data.length > 0
-    
-    const isOnboarding = request.nextUrl.pathname === '/onboarding'
-    
-    if (!hasOrganization && !isOnboarding) {
-      return NextResponse.redirect(new URL('/onboarding', request.url))
+    if (user) {
+      // Only check organization for authenticated users on page routes
+      const result = await supabase.rpc('get_user_organization', { user_uuid: user.id })
+      const hasOrganization = result.data && result.data.length > 0
+      const isOnboarding = pathname === '/onboarding'
+      
+      if (!hasOrganization && !isOnboarding) {
+        return NextResponse.redirect(new URL('/onboarding', request.url))
+      }
+      
+      if (hasOrganization && isOnboarding) {
+        return NextResponse.redirect(new URL('/', request.url))
+      }
     }
-    
-    if (hasOrganization && isOnboarding) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
+  } catch (error) {
+    // If there's an error getting user/org data, let the page handle it
+    console.warn('Middleware auth check failed:', error.message)
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: '/((?!api|db|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - api routes (handled separately)
+     * - db routes (handled separately) 
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, other static assets
+     */
+    '/((?!api|db|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
