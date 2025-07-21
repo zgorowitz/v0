@@ -21,19 +21,19 @@ export async function middleware(request) {
     }
   )
 
-  await supabase.auth.getUser()
+  // await supabase.auth.getUser()
   
-  // Get the user sesion
+  // // Get the user sesion
   const { data: { user } } = await supabase.auth.getUser()
   
-  // Get the current path
+  // // Get the current path
   const { pathname } = request.nextUrl
 
-  // Define protected routes (require authentication)
-  const protectedRoutes = ['/orders', '/scan', '/settings', '/skus']
+  // // Define protected routes (require authentication)
+  // const protectedRoutes = ['/orders', '/scan', '/settings', '/skus']
   
-  // Define auth routes (login/signup pages)
-  const authRoutes = ['/']
+  // // Define auth routes (login/signup pages)
+  // const authRoutes = ['/']
 
   // Check if user is trying to access protected routes without being logged in
   // if (protectedRoutes.some(route => pathname.startsWith(route)) && !user) {
