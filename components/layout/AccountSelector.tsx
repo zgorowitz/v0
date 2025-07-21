@@ -26,7 +26,7 @@ export function AccountSelector() {
   useEffect(() => {
     async function initializeAuth() {
       try {
-        console.log('[AccountSelector] Checking auth session...');
+        // console.log('[AccountSelector] Checking auth session...');
         
         // Add small delay to ensure cookies are loaded
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -40,7 +40,7 @@ export function AccountSelector() {
           return;
         }
 
-        console.log('[AccountSelector] Session data:', session);
+        // console.log('[AccountSelector] Session data:', session);
         setUser(session?.user ?? null);
         console.log('[AccountSelector] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
 
@@ -48,7 +48,7 @@ export function AccountSelector() {
         if (session?.user) {
           setDataLoading(true);
           try {
-            console.log('[AccountSelector] Loading accounts and user info...');
+            // console.log('[AccountSelector] Loading accounts and user info...');
             
             // Validate session is still valid by testing a simple call first
             const userData = await getCurrentUser();
@@ -68,14 +68,14 @@ export function AccountSelector() {
             }
             
             setError(null);
-            console.log('[AccountSelector] Loaded accounts:', accountData);
-            console.log('[AccountSelector] Loaded user info:', userData);
+            // console.log('[AccountSelector] Loaded accounts:', accountData);
+            // console.log('[AccountSelector] Loaded user info:', userData);
           } catch (error) {
             console.error('[AccountSelector] Failed to load data:', error);
             
             // If it's an auth error, clear the user state
             if (error.message?.includes('Auth session missing') || error.message?.includes('Session is invalid')) {
-              console.log('[AccountSelector] Auth session invalid, clearing user state');
+              // console.log('[AccountSelector] Auth session invalid, clearing user state');
               setUser(null);
             }
             
@@ -97,11 +97,11 @@ export function AccountSelector() {
 
   const handleAccountSelect = async (account) => {
     try {
-      console.log('[AccountSelector] Selecting account:', account);
+      // console.log('[AccountSelector] Selecting account:', account);
       await updateMeliCurrent(account.meli_user_id);
       setCurrentAccount(account);
       setError(null);
-      console.log('[AccountSelector] Account updated successfully');
+      // console.log('[AccountSelector] Account updated successfully');
     } catch (error) {
       setError(error);
       console.error('[AccountSelector] Failed to update account:', error);
