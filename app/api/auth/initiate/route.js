@@ -6,7 +6,7 @@ export async function GET(request) {
   try {
     // Get client ID from environment variables
     const clientId = process.env.MERCADO_LIBRE_APP_ID;
-    const baseUrl = 'https://laburandik.vercel.app/api/auth/callback';
+    const baseUrl = 'https://laburandik.vercel.app';
     
     if (!clientId) {
       console.error('MERCADO_LIBRE_APP_ID environment variable is not set');

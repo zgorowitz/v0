@@ -2,7 +2,7 @@
 
 // import { kv } from '@vercel/kv';
 import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
-const baseUrl = 'https://laburandik.vercel.app/api/auth/callback'
+const baseUrl = 'https://laburandik.vercel.app'
 export async function GET(request) {
   try {
     // 1. EXTRACT CODE FROM URL

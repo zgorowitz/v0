@@ -26,7 +26,7 @@ const navItems = [
     icon: Scan,
   },
   {
-    title: "Inventory",
+    title: "Analytics",
     url: "/orders",
     icon: Calendar,
   },
@@ -36,7 +36,7 @@ const navItems = [
   //   icon: Package,
   // },
   {
-    title: "Settings",
+    title: "Ajustes",
     url: "/settings",
     icon: Settings,
   },

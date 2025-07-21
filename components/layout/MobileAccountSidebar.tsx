@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { User, X } from "lucide-react"
 import Link from "next/link"
 import { getMeliAccounts, updateMeliCurrent, getCurrentUser } from '@/lib/meli_tokens_client';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client'; // Use shared client
 
 interface MobileAccountSidebarProps {
   isOpen: boolean;
@@ -24,8 +24,10 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
   useEffect(() => {
     async function initializeAuth() {
       try {
-        const supabase = createClient();
         console.log('[MobileAccountSidebar] Checking auth session...');
+        
+        // Add small delay to ensure cookies are loaded
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Wait for Supabase to determine auth state
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -36,6 +38,7 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
           return;
         }
 
+        console.log('[MobileAccountSidebar] Session data:', session);
         setUser(session?.user ?? null);
         console.log('[MobileAccountSidebar] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
 

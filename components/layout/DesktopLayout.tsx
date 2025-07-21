@@ -13,8 +13,8 @@ interface DesktopLayoutProps {
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Scan', href: '/scan', icon: QrCode },
-  { name: 'Analytics', href: '/', icon: TrendingUp },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Analytics', href: '/orders', icon: TrendingUp },
+  { name: 'Ajustes', href: '/settings', icon: Settings },
 ];
 
 export function DesktopLayout({ children }: DesktopLayoutProps) {

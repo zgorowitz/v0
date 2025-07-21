@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { getMeliAccounts, updateMeliCurrent, getCurrentUser } from '@/lib/meli_tokens_client';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/client'; // Use shared client
 
 export function AccountSelector() {
   const [user, setUser] = useState(null);
@@ -26,7 +26,6 @@ export function AccountSelector() {
   useEffect(() => {
     async function initializeAuth() {
       try {
-        const supabase = createClient();
         console.log('[AccountSelector] Checking auth session...');
         
         // Add small delay to ensure cookies are loaded

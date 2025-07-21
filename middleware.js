@@ -37,7 +37,7 @@ export async function middleware(request) {
 
   // Check if user is trying to access protected routes without being logged in
   if (protectedRoutes.some(route => pathname.startsWith(route)) && !user) {
-    const redirectUrl = new URL('/', request.url)
+    const redirectUrl = new URL('/error', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
