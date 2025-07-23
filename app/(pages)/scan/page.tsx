@@ -203,14 +203,7 @@ export default function ScanPage() {
     }
   }
 
-  // Navigate carousel
-  const goToPreviousItem = () => {
-    setCurrentItemIndex((prev) => (prev > 0 ? prev - 1 : items.length - 1))
-  }
-
-  const goToNextItem = () => {
-    setCurrentItemIndex((prev) => (prev < items.length - 1 ? prev + 1 : 0))
-  }
+  // Remove carousel state/logic: currentItemIndex, goToNextItem, goToPreviousItem, etc.
 
   const DetailRow = ({ label, value }) => (
     <div className="flex justify-between items-center py-1">
@@ -233,314 +226,301 @@ export default function ScanPage() {
   // Get current item from array
   const currentItem = items && items[currentItemIndex]
 
-  return (
-    <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center pt-0 px-6 pb-6">
-        <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-          <CardHeader>
-            {/* <div className="flex justify-between items-center"> */}
-            {!currentItem && (
-              <CardTitle className="text-xl">Escáner</CardTitle>
+return (
+  <LayoutWrapper>
+    <main className="flex min-h-screen flex-col items-center justify-start pt-safe px-4 pb-safe bg-gray-50 overflow-x-hidden scroll-smooth">
+      <div className="w-full max-w-md mx-auto mt-8">
+        <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-sm border border-gray-100/50 overflow-hidden">
+          
+          {/* Header */}
+          <div className="px-6 pt-6 pb-2">
+            {!items && (
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-light text-gray-900">Scanner</h1>
+                {!loading && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full border-gray-200 hover:bg-gray-50 transition-all active:scale-95"
+                    onClick={() => {
+                      navigator.vibrate?.(50);
+                      setManualMode(!manualMode);
+                      if (!manualMode) stopCamera();
+                      else startCamera();
+                    }}
+                  >
+                    {manualMode ? "Cámara" : "Manual"}
+                  </Button>
+                )}
+              </div>
             )}
-              {!items && !loading && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setManualMode(!manualMode)
-                    if (!manualMode) {
-                      stopCamera()
-                    } else {
-                      startCamera()
-                    }
-                  }}
-                >
-                  {manualMode ? "Usar cámara" : "Entrada manual"}
-                </Button>
-              )}
-            {/* </div> */}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          </div>
+
+          <div className="px-6 pb-6 flex flex-col gap-6">
+            
             {/* Manual Entry Mode */}
             {manualMode && !items && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Ingresa el código manualmente</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Código de envío
+                  </label>
                   <input
                     type="text"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
-                    placeholder="Ingresa el código manualmente..."
-                    className="w-full p-2 border rounded-md"
+                    placeholder="Ingresa el código..."
+                    className="w-full h-12 px-4 bg-gray-50 border border-gray-200 rounded-xl text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                   />
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleManualSubmit} disabled={!manualInput.trim() || loading} className="flex-1">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar código"}
+                <div className="flex gap-3">
+                  <Button 
+                    onClick={() => {
+                      navigator.vibrate?.(50);
+                      handleManualSubmit();
+                    }} 
+                    disabled={!manualInput.trim() || loading} 
+                    className="flex-1 h-12 text-base font-medium rounded-xl bg-gray-900 hover:bg-gray-800 active:scale-98 transition-all"
+                  >
+                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Buscar"}
                   </Button>
-                  <Button variant="outline" onClick={() => setManualMode(false)} className="flex-1">
-                    Usar cámara
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      navigator.vibrate?.(50);
+                      setManualMode(false);
+                    }} 
+                    className="flex-1 h-12 rounded-xl border-gray-200 hover:bg-gray-50 active:scale-98 transition-all"
+                  >
+                    Cámara
                   </Button>
                 </div>
               </div>
             )}
 
-            {error && <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm">{error}</div>}
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-xl text-sm">
+                {error}
+              </div>
+            )}
 
             {/* Camera Preview */}
             {showCamera && !manualMode && (
-              // <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-              <div className="relative w-full h-[50vh] min-h-[300px] max-h-[500px] bg-black rounded-lg overflow-hidden">
+              <div className="relative w-full h-[60vh] min-h-[280px] max-h-[400px] bg-black rounded-2xl overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
 
-                {/* Camera overlay with scanning frame */}
+                {/* Minimal scanning frame */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative w-64 h-32 border-2 border-white rounded-lg">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
+                  <div className="relative w-72 h-40">
+                    {/* Corner indicators only */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-3 border-l-3 border-blue-400 rounded-tl-lg"></div>
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-3 border-r-3 border-blue-400 rounded-tr-lg"></div>
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-3 border-l-3 border-blue-400 rounded-bl-lg"></div>
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-3 border-r-3 border-blue-400 rounded-br-lg"></div>
 
                     {/* Scanning line animation */}
                     {scanning && (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-full h-0.5 bg-green-400 animate-pulse"></div>
+                        <div className="w-full h-0.5 bg-blue-400 animate-pulse rounded-full"></div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Scanning status */}
-                <div className="absolute top-4 left-4 right-4 text-center">
-                  <p className="text-white text-sm bg-black/50 rounded px-2 py-1">
-                    {loading
-                      ? "Procesando código de barras..."
-                      : scanning
-                        ? "Escaneando código de barras..."
-                        : "Coloca el código de barras dentro del marco"}
-                  </p>
+                {/* Status indicator */}
+                <div className="absolute top-6 left-6 right-6 flex justify-center">
+                  <div className="bg-black/70 backdrop-blur-sm rounded-full px-4 py-2">
+                    <p className="text-white text-sm font-medium">
+                      {loading
+                        ? "Procesando..."
+                        : scanning
+                          ? "Escaneando..."
+                          : "Posiciona el código en el marco"}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Camera controls */}
-                <div className="absolute top-2 right-2 flex gap-2">
-                  {/* Flashlight toggle */}
+                <div className="absolute top-6 right-6 flex gap-3">
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="bg-black/50 hover:bg-black/70 text-white"
-                    onClick={toggleFlashlight}
+                    className="bg-black/70 hover:bg-black/80 text-white border-0 rounded-full w-10 h-10 p-0 active:scale-95 transition-all"
+                    onClick={() => {
+                      navigator.vibrate?.(50);
+                      toggleFlashlight();
+                    }}
                   >
                     {flashlightOn ? <FlashlightOff className="h-4 w-4" /> : <Flashlight className="h-4 w-4" />}
                   </Button>
 
-                  {/* Close camera button */}
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="bg-black/50 hover:bg-black/70 text-white"
-                    onClick={stopCamera}
+                    className="bg-black/70 hover:bg-black/80 text-white border-0 rounded-full w-10 h-10 p-0 active:scale-95 transition-all"
+                    onClick={() => {
+                      navigator.vibrate?.(50);
+                      stopCamera();
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
 
-                {/* Instructions */}
-                <div className="absolute bottom-4 left-4 right-4 text-center">
-                  <p className="text-white text-xs bg-black/50 rounded px-2 py-1">
-                  Mantén firme y asegúrate de que el código de barras sea claramente visible
-                  </p>
+                {/* Bottom tip */}
+                <div className="absolute bottom-6 left-6 right-6 flex justify-center">
+                  <div className="bg-black/70 backdrop-blur-sm rounded-full px-4 py-2">
+                    <p className="text-white text-xs">
+                      Mantén firme hasta que se detecte
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Loading State */}
             {loading && (
-              <div className="text-center p-8">
-                <div className="flex flex-col items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-                  <p className="mt-2 text-sm text-gray-500">Procesando código de barras y obteniendo detalles...</p>
+              <div className="text-center py-12">
+                <div className="flex flex-col items-center justify-center gap-4">
+                  <div className="relative">
+                    <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                  </div>
+                  <p className="text-sm text-gray-600 font-medium">
+                    Obteniendo información del producto...
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* Scanned Items Carousel */}
-            
-{/* Scanned Items Carousel - Mobile Optimized */}
-            
-            {currentItem && (
-              <div className="mt-3 max-w-md mx-auto">
-                {/* Navigation Header */}
-                {items.length > 1 && (
-                <div className="relative mb-3 h-10 flex items-center">
-                  {/* Left Arrow */}
-                  <button
-                    onClick={goToPreviousItem}
-                    className={`absolute left-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-                      currentItemIndex === 0
-                        ? 'bg-gray-200'
-                        : 'bg-gray-900 text-white hover:bg-gray-700'
-                    }`}
-                    disabled={currentItemIndex === 0}
-                    aria-label="Previous item"
+            {/* Scanned Items */}
+            {items && Array.isArray(items) && (
+              <div className="space-y-4">
+                {items.map((item, idx) => (
+                  <div
+                    key={`${item.item_id || "item"}-${idx}`}
+                    className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 border border-gray-100/50 shadow-sm"
                   >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-
-                  {/* Count in the center */}
-                  <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium text-gray-900">
-                    {currentItemIndex + 1} de {items.length}
-                  </div>
-
-                  {/* Right Arrow */}
-                  <button
-                    onClick={goToNextItem}
-                    className={`absolute right-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors disabled:opacity-50 ${
-                      currentItemIndex === items.length - 1
-                        ? 'bg-gray-200'
-                        : 'bg-gray-900 text-white hover:bg-gray-700'
-                    }`}
-                    disabled={currentItemIndex === items.length - 1}
-                    aria-label="Next item"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                </div>
-                )}
-
-                {/* Main Card */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                  {/* Content */}
-                  <div className="p-4 space-y-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-gray-900 text-lg leading-tight line-clamp-2">
-                      {currentItem.title}
-                    </h3>
-                    <button
-                      onClick={restartScanning}
-                      className="py-3.5 px-5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm shrink-0"
-                    >
-                      Listo
-                    </button>
-                  </div>
-
-                    {/* SKU - Big and prominent */}
-                    <div className="bg-gray-50 rounded-xl p-3">
-                      <div className="text-center">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">SKU</div>
-                        <div className="font-mono text-xl font-bold text-gray-900">
-                          {currentItem.seller_sku || 'N/A'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Talle and Color - Same line */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Talle</div>
-                        <div className="font-semibold text-gray-900">{currentItem.talle || 'N/A'}</div>
-                      </div>
-                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Color</div>
-                        <div className="font-semibold text-gray-900">{currentItem.color || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Cantidad and Diseño - Same line */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Cantidad</div>
-                        <div className="font-semibold text-gray-900">{currentItem.quantity}</div>
-                      </div>
-                      <div className="text-center p-2.5 bg-gray-50 rounded-lg">
-                        <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Diseño</div>
-                        <div className="font-semibold text-gray-900">{currentItem.fabric_type || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Image with Cantidad Disponible on top */}
-                    {currentItem.thumbnail && (
-                      <div className="bg-gray-50 rounded-lg p-2.5">
-                        <div className="text-center mb-2">
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">Disponible</div>
-                          <div className="font-semibold text-gray-900 text-sm">{currentItem.available_quantity || 'N/A'}</div>
-                        </div>
-                        <div className="aspect-square flex items-center justify-center p-1">
-                          <img 
-                            src={currentItem.thumbnail} 
-                            alt={currentItem.title} 
-                            className="w-full h-full object-contain"
+                    <div className="flex gap-4">
+                      {/* Product Image */}
+                      <div className="w-20 h-20 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                        {item.thumbnail ? (
+                          <img
+                            src={item.thumbnail}
+                            alt={item.title}
+                            className="w-full h-full object-contain rounded-xl"
                           />
+                        ) : (
+                          <div className="text-gray-400 text-xs text-center">
+                            Sin imagen
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 text-base leading-tight line-clamp-2 mb-2">
+                          {item.title}
+                        </h3>
+                        
+                        <div className="space-y-2">
+                          <div className="font-mono text-sm text-gray-700 bg-gray-50 rounded-lg px-2 py-1 inline-block">
+                            {item.seller_sku || "N/A"}
+                          </div>
+                          
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="bg-gray-100 text-gray-700 rounded-lg px-2 py-1">
+                              Talle: {item.talle || "N/A"}
+                            </span>
+                            <span className="bg-gray-100 text-gray-700 rounded-lg px-2 py-1">
+                              Color: {item.color || "N/A"}
+                            </span>
+                            <span className="bg-gray-100 text-gray-700 rounded-lg px-2 py-1">
+                              Cantidad: {item.quantity}
+                            </span>
+                          </div>
+                          
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Disponible:</span> {item.available_quantity ?? "N/A"}
+                          </div>
                         </div>
                       </div>
-                    )}
-
-                    {/* Technical Info */}
-                    <div className="pt-3 border-t border-gray-100">
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <TechDetail label="ID de Orden" value={currentItem.order_id} />
-                        <TechDetail label="ID de Artículo" value={currentItem.item_id} />
-                        <TechDetail label="ID de Variación" value={currentItem.variation_id} />
-                        <TechDetail label="Código de Barras" value={lastScannedCode} />
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
-                      {/* <button
-                        onClick={() => {
-                          navigator.clipboard?.writeText(
-                            JSON.stringify(
-                              {
-                                shipmentId: lastScannedCode,
-                                totalItems: items.length,
-                                currentItem: {
-                                  ...currentItem,
-                                  itemNumber: currentItemIndex + 1
-                                },
-                                allItems: items
-                              },
-                              null,
-                              2,
-                            ),
-                          )
-                        }}
-                        className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
-                      >
-                        Copiar detalles
-                      </button> */}
-                      <button
-                        onClick={restartScanning}
-                        className="flex-1 py-2.5 px-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors text-sm"
-                      >
-                        Listo
-                      </button>
                     </div>
                   </div>
-                </div>
+                ))}
+
+                {/* Action Button */}
+                <Button
+                  onClick={() => {
+                    navigator.vibrate?.(100);
+                    restartScanning();
+                  }}
+                  className="w-full h-12 mt-6 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-all active:scale-98"
+                >
+                  Escanear otro código
+                </Button>
+
+                {/* Technical Details - Collapsible */}
+                <details className="group">
+                  <summary className="cursor-pointer p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
+                    <span className="text-sm font-medium text-gray-700">
+                      Ver detalles técnicos
+                    </span>
+                    <span className="float-right text-gray-400 group-open:rotate-180 transition-transform">
+                    </span>
+                  </summary>
+                  
+                  <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="space-y-3 text-xs">
+                      {items.map((item, idx) => (
+                        <div key={`${item.item_id || "item"}-${idx}`} className="border-b border-gray-200 last:border-b-0 pb-3 last:pb-0">
+                          <div className="font-mono text-gray-900 mb-2 font-medium">
+                            {item.seller_sku || item.title || `Ítem ${idx + 1}`}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-gray-600">
+                            <div>Orden: <span className="text-gray-900">{item.order_id || "N/A"}</span></div>
+                            <div>Artículo: <span className="text-gray-900">{item.item_id || "N/A"}</span></div>
+                            <div>Variación: <span className="text-gray-900">{item.variation_id || "N/A"}</span></div>
+                            <div>Código: <span className="text-gray-900">{lastScannedCode}</span></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </details>
               </div>
             )}
 
-            {/* Error State - Show restart button */}
+            {/* Error State - Retry */}
             {error && !showCamera && !items && !manualMode && (
-              <div className="text-center p-8">
-                <Button onClick={startCamera} className="w-full">
-                Intentar de Nuevo
+              <div className="text-center py-8">
+                <Button 
+                  onClick={() => {
+                    navigator.vibrate?.(50);
+                    startCamera();
+                  }} 
+                  className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-all active:scale-98"
+                >
+                   Intentar de nuevo
                 </Button>
               </div>
             )}
-          </CardContent>
-            <CardFooter className="flex justify-center">
-              <p className="text-xs text-gray-400">
-                {manualMode 
-                  ? "Ingresa el ID de envío manualmente o cambia al modo cámara" 
-                  : showCamera 
-                    ? "Apunta la cámara al código de barras para escanear automáticamente" 
-                    : "La cámara se abrirá automáticamente"}
-              </p>
-            </CardFooter>
-        </Card>
-      </main>
-    </LayoutWrapper>
-  )
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 pb-6 pt-2">
+            <p className="text-xs text-gray-500 text-center">
+              {manualMode 
+                ? " Ingresa el código manualmente o usa la cámara" 
+                : showCamera 
+                  ? " Mantén el dispositivo estable para mejor precisión" 
+                  : " Listo para escanear códigos de barras"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </LayoutWrapper>
+)
 }

@@ -1,7 +1,6 @@
 //app/api/shipment
 import { NextResponse } from 'next/server'
 import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens';
-import { handleAuthError } from '@/lib/supabase/server';
 
 const API_BASE_URL = 'https://api.mercadolibre.com';
 
@@ -221,9 +220,13 @@ async function extractShipmentInfo(shipmentId) {
       const fabricType = variation?.attribute_combinations?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name || null;
       
       // Get thumbnail from item details only
-    //   const thumbnail = itemDetails?.thumbnail || null;
-      const firstPictureId = variation.picture_ids[0];
-      const thumbnail = itemDetails.pictures.find(pic => pic.id === firstPictureId)?.url;
+      let thumbnail = null;
+      if (variation && Array.isArray(variation.picture_ids) && variation.picture_ids.length > 0 && itemDetails && Array.isArray(itemDetails.pictures)) {
+        const firstPictureId = variation.picture_ids[0];
+        thumbnail = itemDetails.pictures.find(pic => pic.id === firstPictureId)?.url || null;
+      } else if (itemDetails?.thumbnail) {
+        thumbnail = itemDetails.thumbnail;
+      }
   
       
       return {
@@ -282,7 +285,6 @@ export async function GET(request, { params }) {
         error.message.includes('please authenticate first') ||
         error.message.includes('Token refresh failed') || 
         error.message.includes('please re-authenticate')) {
-      const { status, body } = handleAuthError(error) // USING NEW ERROR HANDLER
       return NextResponse.json(body, { status })
     }
     

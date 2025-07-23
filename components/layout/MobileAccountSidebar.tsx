@@ -24,7 +24,7 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
   useEffect(() => {
     async function initializeAuth() {
       try {
-        console.log('[MobileAccountSidebar] Checking auth session...');
+        // console.log('[MobileAccountSidebar] Checking auth session...');
         
         // Add small delay to ensure cookies are loaded
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -38,15 +38,15 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
           return;
         }
 
-        console.log('[MobileAccountSidebar] Session data:', session);
+        // console.log('[MobileAccountSidebar] Session data:', session);
         setUser(session?.user ?? null);
-        console.log('[MobileAccountSidebar] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
+        // console.log('[MobileAccountSidebar] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
 
         // If user is authenticated, fetch account data
         if (session?.user) {
           setDataLoading(true);
           try {
-            console.log('[MobileAccountSidebar] Loading accounts and user info...');
+            // console.log('[MobileAccountSidebar] Loading accounts and user info...');
             
             // Validate session is still valid by testing a simple call first
             const userData = await getCurrentUser();
@@ -66,14 +66,14 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
             }
             
             setError(null);
-            console.log('[MobileAccountSidebar] Loaded accounts:', accountData);
-            console.log('[MobileAccountSidebar] Loaded user info:', userData);
+            // console.log('[MobileAccountSidebar] Loaded accounts:', accountData);
+            // console.log('[MobileAccountSidebar] Loaded user info:', userData);
           } catch (error) {
             console.error('[MobileAccountSidebar] Failed to load data:', error);
             
             // If it's an auth error, clear the user state
             if (error.message?.includes('Auth session missing') || error.message?.includes('Session is invalid')) {
-              console.log('[MobileAccountSidebar] Auth session invalid, clearing user state');
+              // console.log('[MobileAccountSidebar] Auth session invalid, clearing user state');
               setUser(null);
             }
             
@@ -95,12 +95,12 @@ export function MobileAccountSidebar({ isOpen, onClose }: MobileAccountSidebarPr
 
   const handleAccountSelect = async (account) => {
     try {
-      console.log('[MobileAccountSidebar] Selecting account:', account);
+      // console.log('[MobileAccountSidebar] Selecting account:', account);
       await updateMeliCurrent(account.meli_user_id);
       setCurrentAccount(account);
       setError(null);
       onClose(); // Close sidebar after selection
-      console.log('[MobileAccountSidebar] Account updated successfully');
+      // console.log('[MobileAccountSidebar] Account updated successfully');
     } catch (error) {
       setError(error);
       console.error('[MobileAccountSidebar] Failed to update account:', error);

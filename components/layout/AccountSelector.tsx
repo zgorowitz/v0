@@ -42,7 +42,7 @@ export function AccountSelector() {
 
         // console.log('[AccountSelector] Session data:', session);
         setUser(session?.user ?? null);
-        console.log('[AccountSelector] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
+        // console.log('[AccountSelector] Auth session:', session?.user ? 'authenticated' : 'not authenticated');
 
         // If user is authenticated, fetch account data
         if (session?.user) {
