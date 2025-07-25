@@ -208,16 +208,31 @@ async function extractShipmentInfo(shipmentId) {
       console.log('---------  processing item', shipmentItem.item_id);
       
       // Extract seller_sku from attributes array
-      const sellerSku = variation?.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name || null;
-      
-      // Extract color from attribute_combinations array
-      const color = variation?.attribute_combinations?.find(attr => attr.id === 'COLOR')?.value_name || null;
-      
-      // Extract talle (size) from attribute_combinations array
-      const talle = variation?.attribute_combinations?.find(attr => attr.id === 'SIZE')?.value_name || null;
-      
-      // Extract fabric_type from attribute_combinations array (FABRIC_DESIGN)
-      const fabricType = variation?.attribute_combinations?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name || null;
+      const sellerSku = 
+        variation?.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name ||
+        itemDetails?.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name ||
+        null;
+
+      // Extract color from attribute_combinations or attributes
+      const color = 
+        variation?.attribute_combinations?.find(attr => attr.id === 'COLOR')?.value_name ||
+        variation?.attributes?.find(attr => attr.id === 'COLOR')?.value_name ||
+        itemDetails?.attributes?.find(attr => attr.id === 'COLOR')?.value_name ||
+        null;
+
+      // Extract talle (size) from attribute_combinations or attributes
+      const talle = 
+        variation?.attribute_combinations?.find(attr => attr.id === 'SIZE')?.value_name ||
+        variation?.attributes?.find(attr => attr.id === 'SIZE')?.value_name ||
+        itemDetails?.attributes?.find(attr => attr.id === 'SIZE')?.value_name ||
+        null;
+
+      // Extract fabric_type from attribute_combinations or attributes (FABRIC_DESIGN)
+      const fabricType = 
+        variation?.attribute_combinations?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name ||
+        variation?.attributes?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name ||
+        itemDetails?.attributes?.find(attr => attr.id === 'FABRIC_DESIGN')?.value_name ||
+        null;
       
       // Get thumbnail from item details only
       let thumbnail = null;
@@ -232,11 +247,11 @@ async function extractShipmentInfo(shipmentId) {
       return {
         order_id: shipmentItem.order_id,
         item_id: shipmentItem.item_id,
-        variation_id: shipmentItem.variation_id,
+        variation_id: variation ? shipmentItem.variation_id : itemDetails?.user_product_id ?? null,
         seller_sku: sellerSku,
         color: color,
         talle: talle,
-        available_quantity: variation?.available_quantity || 0,
+        available_quantity: variation?.available_quantity ?? itemDetails?.available_quantity ?? 0,
         fabric_type: fabricType,
         thumbnail: thumbnail,
         title: itemDetails?.title || shipmentItem.description || null,
