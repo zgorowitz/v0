@@ -481,7 +481,12 @@ return (
                           <div className="grid grid-cols-2 gap-2 text-gray-600">
                             <div>Orden: <span className="text-gray-900">{item.order_id || "N/A"}</span></div>
                             <div>Artículo: <span className="text-gray-900">{item.item_id || "N/A"}</span></div>
-                            <div>Variación: <span className="text-gray-900">{item.variation_id || "N/A"}</span></div>
+                            <div>
+                              {item.variation_id !== undefined
+                                ? <>Variación: <span className="text-gray-900">{item.variation_id || "N/A"}</span></>
+                                : <>Producto: <span className="text-gray-900">{item.user_product_id || "N/A"}</span></>
+                              }
+                            </div>
                             <div>Código: <span className="text-gray-900">{lastScannedCode}</span></div>
                           </div>
                         </div>

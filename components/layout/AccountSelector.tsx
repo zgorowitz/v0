@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { getMeliAccounts, updateMeliCurrent, getCurrentUser } from '@/lib/meli_tokens_client';
+import { getMeliAccounts, updateMeliCurrent, getCurrentUser, getCurrentMeliUserId } from '@/lib/meli_tokens_client';
 import { supabase } from '@/lib/supabase/client'; // Use shared client
 
 export function AccountSelector() {
@@ -59,12 +59,38 @@ export function AccountSelector() {
             
             // If user data is valid, proceed with accounts
             const accountData = await getMeliAccounts();
-            
             setAccounts(accountData || []);
             setUserInfo(userData);
 
-            if (accountData && accountData.length > 0 && !currentAccount) {
-              setCurrentAccount(accountData[0]);
+            // Get the preferred current account from database
+            if (accountData && accountData.length > 0) {
+              try {
+                const preferredAccountId = await getCurrentMeliUserId();
+                
+                if (preferredAccountId) {
+                  // Find the preferred account in the loaded accounts
+                  const preferredAccount = accountData.find(
+                    account => account.meli_user_id === preferredAccountId
+                  );
+                  
+                  if (preferredAccount) {
+                    setCurrentAccount(preferredAccount);
+                    // console.log('[AccountSelector] Set preferred account:', preferredAccount);
+                  } else {
+                    // Preferred account not found, use first account
+                    setCurrentAccount(accountData[0]);
+                    // console.log('[AccountSelector] Preferred account not found, using first account');
+                  }
+                } else {
+                  // No preference set, use first account
+                  setCurrentAccount(accountData[0]);
+                  // console.log('[AccountSelector] No preference set, using first account');
+                }
+              } catch (prefError) {
+                console.error('[AccountSelector] Error getting preferred account:', prefError);
+                // Fallback to first account
+                setCurrentAccount(accountData[0]);
+              }
             }
             
             setError(null);
@@ -201,7 +227,7 @@ export function AccountSelector() {
                 onClick={() => handleAccountSelect(account)}
                 className={`
                   p-3 rounded-lg cursor-pointer transition-all hover:bg-gray-50
-                  ${currentAccount?.id === account.id 
+                  ${currentAccount?.meli_user_id === account.meli_user_id 
                     ? 'border-2 border-blue-500 bg-blue-50' 
                     : 'border border-gray-200'
                   }
