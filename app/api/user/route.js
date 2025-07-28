@@ -1,13 +1,11 @@
 // app/api/user/route.js
 
 import { getMeliTokens, storeMeliAccounts } from '@/lib/meliTokens'
-import { createClient, getUserOrganization, handleAuthError } from '@/lib/supabase/server'
 
 export async function GET(request) {
   try {
     // 1. GET ACCESS TOKEN FROM STORAGE
     const storedTokens = await getMeliTokens()
-    
     if (!storedTokens || !storedTokens.access_token) {
       console.log('No access token found')
       return Response.json(
@@ -15,10 +13,8 @@ export async function GET(request) {
         { status: 401 }
       )
     }
-
     // 2. FETCH FROM MERCADOLIBRE API
     console.log('Fetching user data from MercadoLibre API...')
-    
     const response = await fetch('https://api.mercadolibre.com/users/me', {
       method: 'GET',
       headers: {
@@ -86,8 +82,6 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('User endpoint error:', error)
-    
-    const { status, body } = handleAuthError(error)
-    return Response.json(body, { status })
+      return error
   }
 }

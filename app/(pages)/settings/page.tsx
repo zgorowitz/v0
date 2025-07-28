@@ -15,6 +15,9 @@ export default function SettingsPage() {
   const [userInfo, setUserInfo] = useState(null)
   const [loadingUser, setLoadingUser] = useState(false)
   const [urlError, setUrlError] = useState(null)
+  // Add new state for disconnect operation
+  const [disconnectLoading, setDisconnectLoading] = useState(false)
+  const [disconnectError, setDisconnectError] = useState(null)
 
   useEffect(() => {
     // Check for URL parameters indicating auth errors or success
@@ -141,20 +144,45 @@ export default function SettingsPage() {
   }
 
   const handleDisconnect = async () => {
+    // Reset error state
+    setDisconnectError(null)
+    setDisconnectLoading(true)
+    
     try {
-      const res = await fetch('/api/auth/disconnect', { method: 'POST' });
-      if (res.ok) {
-        setAuthStatus({ authenticated: false, loading: false, error: null });
-        setUserInfo(null);
-        setUrlError(null);
-        window.location.reload();
+      const res = await fetch('/api/auth/disconnect', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.success) {
+        // Success - update UI state
+        setAuthStatus({ authenticated: false, loading: false, error: null })
+        setUserInfo(null)
+        setUrlError(null)
+        
+        // Show success message briefly before reload
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
       } else {
-        alert('Failed to disconnect. Please try again.');
+        // Handle API error response
+        const errorMessage = data.error || 'Failed to disconnect account'
+        setDisconnectError(errorMessage)
+        console.error('Disconnect failed:', data)
       }
     } catch (error) {
-      alert('Error disconnecting: ' + error.message);
+      // Handle network/connection errors
+      const errorMessage = error.message || 'Network error occurred'
+      setDisconnectError(errorMessage)
+      console.error('Disconnect error:', error)
+    } finally {
+      setDisconnectLoading(false)
     }
-  };
+  }
 
   const getErrorMessage = (errorType, details) => {
     const errorMessages = {
@@ -224,6 +252,44 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </details>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Disconnect Error Display */}
+        {disconnectError && (
+          <Card className="w-full max-w-md mx-auto border-red-200 bg-red-50">
+            <CardHeader>
+              <CardTitle className="text-xl text-red-800">
+                Error al desconectar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="bg-white border border-red-200 rounded p-3">
+                  <p className="text-sm text-red-700">
+                    {disconnectError}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Button 
+                    onClick={handleDisconnect}
+                    disabled={disconnectLoading}
+                    className="w-full bg-red-600 hover:bg-red-700"
+                  >
+                    {disconnectLoading ? 'Desconectando...' : 'Intentar de nuevo'}
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => setDisconnectError(null)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Cerrar
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -324,9 +390,18 @@ export default function SettingsPage() {
                       </Button>
                       <Button
                         onClick={handleDisconnect}
+                        disabled={disconnectLoading}
                         className="w-full"
+                        variant={disconnectLoading ? "outline" : "default"}
                       >
-                        Desconectar
+                        {disconnectLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                            Desconectando...
+                          </>
+                        ) : (
+                          'Desconectar'
+                        )}
                       </Button>
                     </div>
                   </div>
