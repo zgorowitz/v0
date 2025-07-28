@@ -7,20 +7,15 @@ export async function GET(request) {
   try {
     // Get client ID from environment variables
     const clientId = process.env.MERCADO_LIBRE_APP_ID;
-    const baseUrl = 'https://laburandik.vercel.app';
+    const baseUrl = 'https://laburandik.vercel.app'; // Keep this consistent
     
     if (!clientId) {
       console.error('MERCADO_LIBRE_APP_ID environment variable is not set');
       return NextResponse.redirect(`${baseUrl}/settings?error=missing_config`);
     }
 
-    if (!baseUrl) {
-      console.error('NEXT_PUBLIC_BASE_URL environment variable is not set');
-      return NextResponse.json({ error: 'Base URL not configured' }, { status: 500 });
-    }
-
     // Get current session and return URL
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { session } } = await supabase.auth.getSession();
     const returnUrl = request.nextUrl?.searchParams.get('returnUrl') || `${baseUrl}/settings`;
     
@@ -53,7 +48,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error initiating OAuth flow:', error);
     
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || baseUrl;
+    const baseUrl = 'https://laburandik.vercel.app';
     return NextResponse.redirect(`${baseUrl}/settings?error=oauth_init_failed`);
   }
 }
