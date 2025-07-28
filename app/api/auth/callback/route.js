@@ -1,13 +1,18 @@
-// app/api/auth/callback/route.js - Improved version with session restoration
+// app/api/auth/callback/route.js - Fixed version
 
-import { getMeliTokens, storeMeliTokens } from '@/lib/meliTokens'
+import { storeMeliTokens } from '@/lib/meliTokens'
 import { createClient } from '@/lib/supabase/server'
-
-const baseUrl = 'https://laburandik.vercel.app'
 
 export async function GET(request) {
   try {
     console.log('=== OAuth Callback Started ===')
+    
+    // Determine the correct base URL
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = host?.includes('localhost') 
+      ? `http://${host}` 
+      : `${protocol}://${host}`;
     
     // 1. EXTRACT PARAMETERS FROM URL
     const { searchParams } = new URL(request.url);
@@ -18,7 +23,8 @@ export async function GET(request) {
     console.log('URL params:', { 
       code: code ? 'present' : 'missing', 
       error,
-      state: state ? 'present' : 'missing'
+      state: state ? 'present' : 'missing',
+      baseUrl
     })
 
     // 2. HANDLE AUTHORIZATION DENIAL
@@ -33,15 +39,14 @@ export async function GET(request) {
       return Response.redirect(`${baseUrl}/settings?error=no_code`);
     }
 
-    // 4. RESTORE SESSION FROM STATE PARAMETER
-    let sessionRestored = false;
+    // 4. PARSE STATE AND VALIDATE USER
     let returnUrl = `${baseUrl}/settings`;
     
     if (state) {
       try {
         const stateData = JSON.parse(atob(state));
         console.log('State data extracted:', { 
-          hasSession: !!stateData.supabaseSession,
+          hasUserId: !!stateData.userId,
           returnUrl: stateData.returnUrl,
           timestamp: stateData.timestamp
         });
@@ -49,46 +54,34 @@ export async function GET(request) {
         // Check if state is not too old (5 minutes)
         const stateAge = Date.now() - stateData.timestamp;
         if (stateAge < 5 * 60 * 1000) {
-          const supabase = createClient();
+          // Validate that the user is still authenticated
+          const supabase = await createClient();
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
           
-          // Step 1: Try to restore session from state
-          if (stateData.supabaseSession) {
-            try {
-              await supabase.auth.setSession(stateData.supabaseSession);
-              console.log('Session restored from state parameter');
-              sessionRestored = true;
-            } catch (sessionError) {
-              console.log('Failed to restore session from state:', sessionError.message);
-            }
+          if (!user || user.id !== stateData.userId) {
+            console.log('User session invalid or user ID mismatch');
+            return Response.redirect(`${baseUrl}/settings?error=session_invalid`);
           }
           
-          // Step 2: If session restoration failed, try to refresh session
-          if (!sessionRestored) {
-            try {
-              const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
-              if (session && !refreshError) {
-                console.log('Session refreshed successfully');
-                sessionRestored = true;
-              } else {
-                console.log('Session refresh failed:', refreshError?.message);
-              }
-            } catch (refreshError) {
-              console.log('Session refresh error:', refreshError.message);
-            }
-          }
-          
+          console.log('User session validated successfully');
           returnUrl = stateData.returnUrl || returnUrl;
         } else {
           console.log('State parameter too old, ignoring');
+          return Response.redirect(`${baseUrl}/settings?error=state_expired`);
         }
       } catch (stateError) {
         console.log('Failed to parse state parameter:', stateError.message);
+        return Response.redirect(`${baseUrl}/settings?error=invalid_state`);
       }
-    }
-
-    if (!sessionRestored) {
-      console.log('No valid session found, redirecting to login');
-      return Response.redirect(`${baseUrl}/settings?error=session_lost`);
+    } else {
+      // No state - just verify current user is authenticated
+      const supabase = await createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.log('No authenticated user found');
+        return Response.redirect(`${baseUrl}/settings?error=no_user`);
+      }
     }
 
     // 5. VALIDATE ENVIRONMENT VARIABLES
@@ -103,12 +96,11 @@ export async function GET(request) {
     }
 
     console.log('Environment variables validated');
-    console.log('App ID:', process.env.MERCADO_LIBRE_APP_ID ? 'present' : 'missing');
 
     // 6. EXCHANGE CODE FOR TOKENS
     let tokens;
     try {
-      tokens = await exchangeCodeForTokens(code);
+      tokens = await exchangeCodeForTokens(code, baseUrl);
       console.log('Token exchange successful');
     } catch (tokenError) {
       console.error('Token exchange failed:', tokenError.message);
@@ -136,14 +128,20 @@ export async function GET(request) {
   } catch (error) {
     console.error('=== OAuth Callback Failed ===');
     console.error('Unexpected error:', error);
-    console.error('Stack trace:', error.stack);
+    
+    // Try to determine baseUrl for error redirect
+    const host = request.headers.get('host');
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = host?.includes('localhost') 
+      ? `http://${host}` 
+      : `${protocol}://${host}`;
     
     return Response.redirect(`${baseUrl}/settings?error=unexpected_error&details=${encodeURIComponent(error.message)}`);
   }
 }
 
 // HELPER: Exchange code for tokens with better error handling
-async function exchangeCodeForTokens(authorizationCode) {
+async function exchangeCodeForTokens(authorizationCode, baseUrl) {
   const tokenEndpoint = 'https://api.mercadolibre.com/oauth/token';
   
   const requestBody = {
