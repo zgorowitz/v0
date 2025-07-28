@@ -1,6 +1,7 @@
 // app/api/auth/initiate/route.js
 
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request) {
   try {
@@ -18,13 +19,28 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Base URL not configured' }, { status: 500 });
     }
 
+    // Get current session and return URL
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const returnUrl = request.nextUrl?.searchParams.get('returnUrl') || `${baseUrl}/settings`;
+    
+    // Create state parameter with session data
+    const stateData = {
+      supabaseSession: session,
+      returnUrl: returnUrl,
+      timestamp: Date.now()
+    };
+    
+    const state = btoa(JSON.stringify(stateData));
+
     // Build MercadoLibre OAuth authorization URL
     const redirectUri = `${baseUrl}/api/auth/callback`;
     
     const authParams = new URLSearchParams({
       response_type: 'code',
       client_id: clientId,
-      redirect_uri: redirectUri
+      redirect_uri: redirectUri,
+      state: state
     });
 
     const authUrl = `https://auth.mercadolibre.com.ar/authorization?${authParams.toString()}`;
