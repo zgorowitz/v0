@@ -53,7 +53,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error initiating OAuth flow:', error);
     
-    const baseUrl = 'https://laburandik.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || baseUrl;
     return NextResponse.redirect(`${baseUrl}/settings?error=oauth_init_failed`);
   }
 }
