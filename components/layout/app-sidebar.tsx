@@ -3,7 +3,7 @@
 import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Package, Calendar, Scan, Settings } from "lucide-react"
+import { Package, Calendar, Scan, Settings, Folder, BarChart3 } from "lucide-react"
 
 import {
   Sidebar,
@@ -28,7 +28,7 @@ const navItems = [
   {
     title: "Analytics",
     url: "/orders",
-    icon: Calendar,
+    icon: BarChart3,
   },
   // {
   //   title: "All SKUs",
@@ -39,6 +39,11 @@ const navItems = [
     title: "Ajustes",
     url: "/settings",
     icon: Settings,
+  },
+  {
+    title: "Categorias",
+    url: "/categories",
+    icon: Folder,
   },
 ]
 

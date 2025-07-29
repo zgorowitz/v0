@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { BarChart3, Home, QrCode, Settings, TrendingUp } from "lucide-react"
+import { BarChart3, Home, QrCode, Settings, TrendingUp, Folder } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AccountSelector } from "@/components/layout/AccountSelector"
@@ -14,6 +14,7 @@ const navigationItems = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Scan', href: '/scan', icon: QrCode },
   { name: 'Analytics', href: '/orders', icon: TrendingUp },
+  { name: 'Categorias', href: '/categories', icon: Folder },
   { name: 'Ajustes', href: '/settings', icon: Settings },
 ];
 
