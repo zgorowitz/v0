@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { BarChart3, Home, QrCode, Settings, TrendingUp, Folder } from "lucide-react"
+import { BarChart3, Home, QrCode, Settings, TrendingUp, Folder, Package } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AccountSelector } from "@/components/layout/AccountSelector"
@@ -11,9 +11,10 @@ interface DesktopLayoutProps {
 }
 
 const navigationItems = [
-  { name: 'Dashboard', href: '/', icon: Home },
+  // { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Scan', href: '/scan', icon: QrCode },
   { name: 'Analytics', href: '/orders', icon: TrendingUp },
+  { name: 'Productos', href: '/products', icon: Package },
   { name: 'Categorias', href: '/categories', icon: Folder },
   { name: 'Ajustes', href: '/settings', icon: Settings },
 ];
@@ -31,10 +32,16 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
             <div className="flex items-center space-x-8">
               {/* Logo/Brand */}
               <Link href="/" className="flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">ML</span>
+                <div
+                  className="w-10 h-10 bg-cover bg-center bg-no-repeat rounded-lg shadow-md border border-gray-200"
+                  style={{
+                    backgroundImage: "url('/images/background.png')",
+                  }}
+                />
+                <div className="ml-3 grid text-left text-sm leading-tight">
+                  <span className="font-semibold">Laburandik</span>
+                  <span className="text-xs text-muted-foreground">Scanner App</span>
                 </div>
-                <span className="ml-3 text-xl font-semibold text-gray-900"></span>
               </Link>
 
               {/* Navigation Items */}
@@ -50,7 +57,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                       className={`
                         flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
                         ${isActive 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                          ? 'bg-black text-white border border-gray-300' 
                           : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                         }
                       `}
