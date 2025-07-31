@@ -25,11 +25,11 @@ const navItems = [
     url: "/scan",
     icon: Scan,
   },
-  {
-    title: "Analytics",
-    url: "/orders",
-    icon: BarChart3,
-  },
+  // {
+  //   title: "Analytics",
+  //   url: "/orders",
+  //   icon: BarChart3,
+  // },
   // {
   //   title: "All SKUs",
   //   url: "/skus",
@@ -40,11 +40,11 @@ const navItems = [
     url: "/settings",
     icon: Settings,
   },
-  {
-    title: "Categorias",
-    url: "/categories",
-    icon: Folder,
-  },
+  // {
+  //   title: "Categorias",
+  //   url: "/categories",
+  //   icon: Folder,
+  // },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
