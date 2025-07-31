@@ -25,6 +25,7 @@ async function apiRequest(url, accessToken) {
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status} ${response.statusText}`)
   }
+  console.log("api")
   return response.json()
 }
 
@@ -54,7 +55,7 @@ function parseItem(item, meliUserId) {
 // Parse variation data
 function parseVariation(itemId, variation, index = 0) {
   // Handle both old format (variations array) and new format (user_product_id)
-  const variationId = variation.user_product_id || `${itemId}_var_${index}`
+  const variationId = variation.id || variation.user_product_id //|| `${itemId}_var_${index}`
   
   // Convert attribute_combinations to simpler attributes object
   let attributes = {}
@@ -79,6 +80,10 @@ function parseVariation(itemId, variation, index = 0) {
     pictureUrl = `https://http2.mlstatic.com/D_${pictureId}.jpg`
   }
   
+  const sellerSku = 
+    variation.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name ||
+    null
+  console.log(sellerSku)
   return {
     item_id: itemId,
     variation_id: variationId,
@@ -86,7 +91,8 @@ function parseVariation(itemId, variation, index = 0) {
     available_quantity: variation.available_quantity || 0,
     sold_quantity: variation.sold_quantity || 0,
     picture_url: pictureUrl,
-    attributes: attributes
+    attributes: attributes,
+    seller_sku: sellerSku
   }
 }
 
@@ -132,9 +138,9 @@ export async function fetchAllItems() {
       }
       
       for (const itemId of itemIds) {
-        // Get detailed item (without variations first)
+        // Get complete item data including all attributes for variations
         const itemDetail = await apiRequest(
-          `https://api.mercadolibre.com/items/${itemId}`,
+          `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
           user.access_token
         )
         
@@ -154,28 +160,20 @@ export async function fetchAllItems() {
         
         totalItems++
         
-        // Now get variations separately
-        try {
-          const variationsResponse = await apiRequest(
-            `https://api.mercadolibre.com/items/${itemId}?attributes=variations`,
-            user.access_token
+        // Process variations from the same response (now includes all attributes)
+        if (itemDetail.variations && itemDetail.variations.length > 0) {
+          const variations = itemDetail.variations.map((variation, index) => 
+            parseVariation(itemId, variation, index)
           )
           
-          if (variationsResponse.variations && variationsResponse.variations.length > 0) {
-            const variations = variationsResponse.variations.map((variation, index) => 
-              parseVariation(itemId, variation, index)
-            )
-            
-            const { error: variationError } = await supabase.from('meli_variations').upsert(variations, { 
-              onConflict: ['item_id', 'variation_id'] 
-            })
-            
-            if (variationError) {
-            } else {
-              totalVariations += variations.length
-            }
+          const { error: variationError } = await supabase.from('meli_variations').upsert(variations, { 
+            onConflict: ['item_id', 'variation_id'] 
+          })
+          
+          if (variationError) {
+          } else {
+            totalVariations += variations.length
           }
-        } catch (variationError) {
         }
         
         // Rate limiting
@@ -205,32 +203,24 @@ export async function fetchUserItems(meliUserId) {
   const itemIds = await fetchAllItemIdsForUser(meliUserId, userToken.access_token)
   
   for (const itemId of itemIds) {
-    // Get main item first
+    // Get complete item data including all attributes for variations
     const itemDetail = await apiRequest(
-      `https://api.mercadolibre.com/items/${itemId}`,
+      `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
       userToken.access_token
     )
     
     const itemData = parseItem(itemDetail, meliUserId)
     await supabase.from('meli_items').upsert(itemData, { onConflict: ['id'] })
     
-    // Get variations separately
-    try {
-      const variationsResponse = await apiRequest(
-        `https://api.mercadolibre.com/items/${itemId}?attributes=variations`,
-        userToken.access_token
+    // Process variations from the same response (now includes all attributes)
+    if (itemDetail.variations?.length > 0) {
+      const variations = itemDetail.variations.map((variation, index) => 
+        parseVariation(itemId, variation, index)
       )
       
-      if (variationsResponse.variations?.length > 0) {
-        const variations = variationsResponse.variations.map((variation, index) => 
-          parseVariation(itemId, variation, index)
-        )
-        
-        await supabase.from('meli_variations').upsert(variations, { 
-          onConflict: ['item_id', 'variation_id'] 
-        })
-      }
-    } catch (variationError) {
+      await supabase.from('meli_variations').upsert(variations, { 
+        onConflict: ['item_id', 'variation_id'] 
+      })
     }
     
     await new Promise(resolve => setTimeout(resolve, 100))
