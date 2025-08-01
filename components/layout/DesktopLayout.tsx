@@ -13,8 +13,9 @@ interface DesktopLayoutProps {
 const navigationItems = [
   // { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Scan', href: '/scan', icon: QrCode },
-  { name: 'Analytics', href: '/orders', icon: TrendingUp },
-  { name: 'Productos', href: '/products', icon: Package },
+  // { name: 'Analytics', href: '/orders', icon: TrendingUp },
+  // { name: 'Productos', href: '/products', icon: Package },
+  { name: 'Envios', href: '/shipments', icon: Package },
   { name: 'Categorias', href: '/categories', icon: Folder },
   { name: 'Ajustes', href: '/settings', icon: Settings },
 ];

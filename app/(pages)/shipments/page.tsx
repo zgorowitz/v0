@@ -6,6 +6,7 @@ import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import { supabase } from '@/lib/supabase/client';
+import { LayoutWrapper } from "@/components/layout-wrapper"
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -17,6 +18,18 @@ const ShipmentsPage = () => {
   const [error, setError] = useState(null);
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [showItems, setShowItems] = useState(false);
+  const [filterColumn, setFilterColumn] = useState('sku_list');
+  const [filterValue, setFilterValue] = useState('');
+  const [gridApi, setGridApi] = useState(null);
+
+  // Modified filter options
+  const filterOptions = [
+    { value: 'sku_list', label: 'SKU' }, // Make SKU default
+    { value: 'account', label: 'Account' },
+    { value: 'category', label: 'Category' },
+    { value: 'shipment_id', label: 'Shipment ID' },
+    { value: 'total_items', label: 'Total Items' },
+  ];
 
   // Fetch shipments data
   useEffect(() => {
@@ -63,15 +76,15 @@ const ShipmentsPage = () => {
           account: item.nickname,
           total_orders: item.total_orders,
           total_items: item.total_items,
-          categoty: item.name,
+          category: item.name,
           shipment_created: item.shipment_created,
-          max_seller_sku: item.seller_sku // Initialize with first value
+          sku_list: [item.seller_sku] // Initialize as array
         });
       } else {
         const existing = shipmentMap.get(shipmentId);
-        // Update max_seller_sku if needed
-        if (item.seller_sku > existing.max_seller_sku) {
-          existing.max_seller_sku = item.seller_sku;
+        // Add seller_sku if not already present
+        if (!existing.sku_list.includes(item.seller_sku)) {
+          existing.sku_list.push(item.seller_sku);
         }
       }
       
@@ -84,12 +97,11 @@ const ShipmentsPage = () => {
         variation_id: item.variation_id,
         quantity: item.quantity,
         available_quantity: item.available_quantity,
-
         unit_price: item.unit_price,
         currency_id: item.currency_id,
         item_title: item.item_title,
         item_full_title: item.item_full_title,
-        item_thumbnail: item.picture_url || item.item_thumbnail,
+        item_thumbnail: item.item_thumbnail,
         variation_attributes: item.variation_attributes
       });
     });
@@ -122,19 +134,21 @@ const ShipmentsPage = () => {
 
   // Shipment column definitions
   const shipmentColumnDefs = useMemo(() => [
-    {
-      headerName: 'Actions',
-      width: 150,
-      cellRenderer: (params) => (
-        <button
-          onClick={() => handleShipmentSelect(params.data.shipment_id)}
-          className="px-3 py-1 bg-gray-800 text-stone-50 text-sm rounded-md hover:bg-gray-700 custom-button border border-gray-600"
-        >
-          View Items
-        </button>
-      ),
-      pinned: 'left'
-    },
+  {
+    headerName: 'Items',
+    width: 50,
+    cellClass: 'no-padding-cell', // Add this class
+    cellStyle: { padding: 5 }, // Remove default cell padding
+    cellRenderer: (params) => (
+      <button
+        onClick={() => handleShipmentSelect(params.data.shipment_id)}
+        className="px-3 py-1 bg-gray-800 text-stone-50 text-sm rounded-md hover:bg-gray-700 custom-button border border-gray-600"
+      >
+        +
+      </button>
+    ),
+    pinned: 'left'
+  },
     // {
     //   headerName: 'Total Orders',
     //   field: 'total_orders',
@@ -144,32 +158,34 @@ const ShipmentsPage = () => {
     {
       headerName: 'Total Items',
       field: 'total_items',
-      width: 120,
+      width: 100,
       type: 'numericColumn',
-      filter: true
+      // filter: true
     },
     {
-      headerName: 'Producto Principal',
-      field: 'max_seller_sku',
+      headerName: 'SKUs',
+      field: 'sku_list',
       width: 120,
-      type: 'numericColumn'
+      valueFormatter: (params) => Array.isArray(params.value) ? params.value.join(', ') : params.value,
+      // filter: true
+
     },
     {
       headerName: 'Category',
-      field: 'name',
+      field: 'category',
       width: 120,
     },
     {
       headerName: 'Account',
       field: 'account',
       width: 150,
-      filter: true
+      // filter: true
     },
     {
       headerName: 'Shipment ID',
       field: 'shipment_id',
       width: 150,
-      filter: true
+      // filter: true
     },
     {
       headerName: 'Created',
@@ -182,103 +198,129 @@ const ShipmentsPage = () => {
     }
   ], []);
 
-  // Items column definitions
-  const itemsColumnDefs = useMemo(() => [
-    {
-      headerName: 'Item',
-      field: 'item_title',
-      width: 300,
-      cellRenderer: (params) => {
-        const { item_thumbnail, item_title } = params.data;
-        return (
-          <div className="flex items-center gap-2 py-1">
-            {item_thumbnail && (
-              <img 
-                src={item_thumbnail} 
-                alt={item_title}
-                className="w-8 h-8 object-cover rounded"
-              />
-            )}
-            <span className="text-sm">{item_title}</span>
-          </div>
-        );
-      }
-    },
-    {
-      headerName: 'Variation',
-      field: 'variation_attributes',
-      width: 250,
-      valueFormatter: (params) => formatVariationAttributes(params.value),
-      filter: true
-    },
-    {
-      headerName: 'Qty',
-      field: 'quantity',
-      width: 80,
-      type: 'numericColumn'
-    },
-    {
-      headerName: 'Price',
-      field: 'unit_price',
-      width: 100,
-      type: 'numericColumn',
-      valueFormatter: (params) => {
-        if (!params.value) return '';
-        return `${params.value}`;
-      }
-    },
-    {
-      headerName: 'Item ID',
-      field: 'item_id',
-      width: 150,
-      filter: true
-    },
-    {
-      headerName: 'SKU',
-      field: 'seller_sku',
-      width: 150,
-      filter: true
-    },    
-    {
-      headerName: 'Order ID',
-      field: 'order_id',
-      width: 120,
-      filter: true
-      }
-  ], []);
-
   // Get items for selected shipment
   const selectedShipmentItems = useMemo(() => {
     if (!selectedShipment) return [];
     return itemsData.filter(item => item.shipment_id === selectedShipment);
   }, [selectedShipment, itemsData]);
 
+  // External filter logic
+  const isExternalFilterPresent = () => {
+    return filterColumn && filterValue;
+  };
+
+  const doesExternalFilterPass = (node) => {
+    const data = node.data;
+    if (!filterColumn || !filterValue) return true;
+    
+    if (filterColumn === 'sku_list') {
+      return data[filterColumn]?.some(sku => 
+        sku.toLowerCase().includes(filterValue.toLowerCase())
+      );
+    }
+    
+    if (filterColumn === 'total_items') {
+      const numValue = parseInt(filterValue);
+      if (isNaN(numValue)) return true;
+      return data[filterColumn] === numValue;
+    }
+    
+    return data[filterColumn]?.toString().toLowerCase().includes(filterValue.toLowerCase());
+  };
+
+  // Handle filter changes
+  const onFilterChange = (e) => {
+    setFilterValue(e.target.value);
+    if (gridApi) {
+      gridApi.onFilterChanged();
+    }
+  };
+
+  const onColumnChange = (e) => {
+    setFilterColumn(e.target.value);
+    if (gridApi) {
+      gridApi.onFilterChanged();
+    }
+  };
+
+  // Update shipmentGridOptions
   const shipmentGridOptions = {
     theme: "legacy", // Use legacy theming to avoid v33+ theming conflicts
     columnDefs: shipmentColumnDefs,
     rowData: shipmentData,
     defaultColDef: {
       resizable: true,
-      sortable: true
+      sortable: true,
+      // Remove column filters since we're using the global filter
+      filter: false
     },
     animateRows: true,
     pagination: true,
     paginationPageSize: 50,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    // Update the filter logic
+    isExternalFilterPresent,
+    doesExternalFilterPass,
+    onGridReady: (params) => {
+      setGridApi(params.api);
+    }
   };
 
-  const itemsGridOptions = {
-    theme: "legacy", // Use legacy theming to avoid v33+ theming conflicts
-    columnDefs: itemsColumnDefs,
-    rowData: selectedShipmentItems,
-    defaultColDef: {
-      resizable: true,
-      sortable: true,
-      filter: true
-    },
-    animateRows: true,
-    domLayout: 'autoHeight'
-  };
+  // Item Card Component
+  const ItemCard = ({ item }) => (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+      <div className="flex gap-3">
+        {/* Thumbnail */}
+        {item.item_thumbnail && (
+          <div className="flex-shrink-0">
+            <img 
+              src={item.item_thumbnail} 
+              alt= {item.sku}
+              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+            />
+          </div>
+        )}
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-semibold text-gray-900 truncate">{item.sku}</h3>
+            <span className="font-semibold text-gray-900 font-medium px-2 py-1 rounded-full flex-shrink-0 ml-2">
+              Cantidad: {item.quantity}
+            </span>
+          </div>
+          
+          {/* Title */}
+          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{item.item_title}</p>
+          
+          {/* Variation */}
+          {item.variation_attributes && formatVariationAttributes(item.variation_attributes) && (
+            <p className="text-xs text-gray-500 mb-2">
+              <span className="font-medium">Variation:</span> {formatVariationAttributes(item.variation_attributes)}
+            </p>
+          )}
+          
+          {/* Price */}
+          {item.unit_price && (
+            <p className="text-sm font-medium text-gray-900 mb-2">
+              ${item.unit_price} {item.currency_id}
+            </p>
+          )}
+          
+          {/* IDs */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            <div>
+              <span className="font-medium">Item ID:</span> {item.item_id}
+            </div>
+            <div>
+              <span className="font-medium">Order ID:</span> {item.order_id}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -302,10 +344,13 @@ const ShipmentsPage = () => {
   }
 
   return (
+    <LayoutWrapper>
     <div className="p-6 space-y-4 bg-stone-50 min-h-screen">
       <style dangerouslySetInnerHTML={{
         __html: `
           .ag-theme-alpine {
+            --ag-header-padding: 0; /* Add this line to remove header padding */
+
             --ag-background-color: #fefefe;
             --ag-header-background-color: #f8f8f8;
             --ag-odd-row-background-color: #fdfdfd;
@@ -332,17 +377,16 @@ const ShipmentsPage = () => {
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           }
+          .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
         `
       }} />
       
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Shipments to Pack</h1>
-        <p className="text-gray-600 mt-1">
-          {shipmentData.length} shipments ready for packing
-        </p>
-      </div>
-
-      {/* Summary Stats - Made shorter */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-stone-50 p-4 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-700 mb-1">Total Shipments</h3>
@@ -362,53 +406,104 @@ const ShipmentsPage = () => {
         </div>
       </div>
 
-      {/* Shipments Grid - Made shorter title */}
-      <div className="bg-stone-50 rounded-lg shadow-sm border border-gray-200">
-        <div className="p-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800">Packing Queue</h2>
-            <button
-              onClick={fetchShipments}
-              className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md hover:bg-gray-700 custom-button border border-gray-600"
-            >
-              Refresh
-            </button>
+      {/* Main Content Grid */}
+      <div className={`grid gap-4 ${showItems ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Shipments Grid */}
+        <div>
+          <div className="p-3">
+            <div className="flex justify-between items-center gap-4">
+              <h2 className="text-lg font-semibold text-gray-800">Que te Parece Eli?</h2>
+              
+              <div className="flex items-center gap-3 flex-1 max-w-md">
+                <select 
+                  className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md
+                             hover:bg-gray-700 transition-colors duration-200
+                             focus:outline-none cursor-pointer"
+                  value={filterColumn}
+                  onChange={onColumnChange}
+                >
+                  {filterOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    className="w-full px-3 py-1.5 bg-gray-50 text-sm rounded-md
+                               focus:outline-none focus:bg-white transition-colors
+                               placeholder-gray-400"
+                    value={filterValue}
+                    onChange={onFilterChange}
+                  />
+                  {(filterColumn || filterValue) && (
+                    <button
+                      onClick={() => {
+                        setFilterColumn('sku_list');
+                        setFilterValue('');
+                        if (gridApi) {
+                          gridApi.onFilterChanged();
+                        }
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 
+                                 hover:text-gray-600"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={fetchShipments}
+                className="px-4 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
+                           hover:bg-gray-700 transition-colors duration-200"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
+            <AgGridReact {...shipmentGridOptions} />
           </div>
         </div>
 
-        <div className="ag-theme-alpine" style={{ height: '600px', width: '100%' }}>
-          <AgGridReact {...shipmentGridOptions} />
-        </div>
-      </div>
-
-      {/* Items Grid - Show when shipment is selected */}
-      {showItems && selectedShipment && (
-        <div className="bg-stone-50 rounded-lg shadow-sm border border-gray-200">
-          <div className="p-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-            <div className="flex justify-between items-center">
+        {/* Items Cards - Show when shipment is selected */}
+        {showItems && selectedShipment && (
+          <div>
+            <div className="p-3 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-gray-800">
                 Items for Shipment #{selectedShipment}
               </h2>
               <div className="flex gap-3 items-center">
-                <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                <span className="text-sm text-gray-600 px-3 py-1">
                   {selectedShipmentItems.length} items
                 </span>
                 <button
                   onClick={() => setShowItems(false)}
-                  className="px-3 py-1.5 bg-gray-600 text-stone-50 text-sm rounded-md hover:bg-gray-500 custom-button border border-gray-500"
+                  className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
+                           hover:bg-gray-700 transition-colors duration-200 custom-button"
                 >
                   Close
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="ag-theme-alpine" style={{ width: '100%' }}>
-            <AgGridReact {...itemsGridOptions} />
+            <div className="max-h-[600px] overflow-y-auto">
+              <div className="grid gap-3">
+                {selectedShipmentItems.map((item, index) => (
+                  <ItemCard key={`${item.item_id}-${item.variation_id}-${index}`} item={item} />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
+    </LayoutWrapper>
   );
 };
 

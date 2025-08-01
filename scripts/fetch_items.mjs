@@ -1,5 +1,6 @@
 // scripts/fetch_items.mjs
 // Fetch all items and variations for all meli users
+// Updated to handle User Products model (user_product_id and family_name)
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
@@ -29,7 +30,7 @@ async function apiRequest(url, accessToken) {
   return response.json()
 }
 
-// Parse item data
+// Parse item data - Updated to include family_name and user_product_id
 function parseItem(item, meliUserId) {
   // Defensive parsing - ensure required fields exist
   if (!item.id) {
@@ -48,14 +49,38 @@ function parseItem(item, meliUserId) {
     thumbnail: item.thumbnail || null,
     permalink: item.permalink || null,
     listing_type: item.listing_type_id || null,
-    status: item.status || 'unknown'
+    status: item.status || 'unknown',
+    family_name: item.family_name || null,
+    user_product_id: item.user_product_id || null
   }
 }
 
-// Parse variation data
-function parseVariation(itemId, variation, index = 0) {
-  // Handle both old format (variations array) and new format (user_product_id)
-  const variationId = variation.id || variation.user_product_id //|| `${itemId}_var_${index}`
+// Extract seller SKU from attributes array
+function extractSellerSku(attributes) {
+  if (!attributes || !Array.isArray(attributes)) return null
+  
+  const skuAttribute = attributes.find(attr => attr.id === 'SELLER_SKU')
+  return skuAttribute?.value_name || null
+}
+
+// Parse variation data - Updated to handle all 4 scenarios
+function parseVariation(itemId, variation, index = 0, item = null) {
+  let userProductId = null
+  let sellerSku = null
+  
+  // SCENARIO 1: New Model with Explicit Variations
+  if (variation.user_product_id) {
+    userProductId = variation.user_product_id
+    // SKU from variation attributes
+    sellerSku = extractSellerSku(variation.attributes)
+  }
+  // SCENARIO 3: Old Model with Variations
+  else if (variation.id) {
+    variationId = variation.id
+    userProductId = null
+    // SKU from variation attributes
+    sellerSku = extractSellerSku(variation.attributes)
+  }
   
   // Convert attribute_combinations to simpler attributes object
   let attributes = {}
@@ -69,8 +94,15 @@ function parseVariation(itemId, variation, index = 0) {
       }
     })
   } else if (variation.attributes) {
-    // Handle old format
-    attributes = variation.attributes
+    // Handle old format - convert attributes array to object
+    variation.attributes.forEach(attr => {
+      attributes[attr.id] = {
+        name: attr.name,
+        value_id: attr.value_id,
+        value_name: attr.value_name,
+        value_type: attr.value_type
+      }
+    })
   }
   
   // Get first picture URL if available
@@ -79,19 +111,39 @@ function parseVariation(itemId, variation, index = 0) {
     const pictureId = variation.picture_ids[0]
     pictureUrl = `https://http2.mlstatic.com/D_${pictureId}.jpg`
   }
-  
-  const sellerSku = 
-    variation.attributes?.find(attr => attr.id === 'SELLER_SKU')?.value_name ||
-    null
-  console.log(sellerSku)
+    
   return {
     item_id: itemId,
-    variation_id: variationId,
+    variation_id: variation.id || null,
+    user_product_id: userProductId,
     price: variation.price || 0,
     available_quantity: variation.available_quantity || 0,
     sold_quantity: variation.sold_quantity || 0,
     picture_url: pictureUrl,
     attributes: attributes,
+    seller_sku: sellerSku
+  }
+}
+
+// SCENARIO 2: Create a variation from item data when item has family_name but empty variations
+function createVariationFromItem(item) {
+  const userProductId = item.user_product_id
+  if (!userProductId) {
+    return null
+  }
+  
+  // SKU from item attributes (not variation attributes)
+  const sellerSku = extractSellerSku(item.attributes)
+    
+  return {
+    item_id: item.id,
+    variation_id: userProductId,
+    user_product_id: userProductId,
+    price: item.price || 0,
+    available_quantity: item.available_quantity || 0,
+    sold_quantity: item.sold_quantity || 0,
+    picture_url: item.thumbnail || null,
+    attributes: item.attributes, // Items don't have variation-specific attributes
     seller_sku: sellerSku
   }
 }
@@ -126,12 +178,15 @@ export async function fetchAllItems() {
   
   let totalItems = 0
   let totalVariations = 0
+  let scenarioCounts = { scenario1: 0, scenario2: 0, scenario3: 0, scenario4: 0 }
   
   for (const user of meliUsers) {
     
     try {
       // Use paginated fetch
       const itemIds = await fetchAllItemIdsForUser(user.meli_user_id, user.access_token)
+
+      console.log(`Fetching items for user: ${user.meli_user_id} (${itemIds.length} items)`);
       
       if (itemIds.length === 0) {
         continue
@@ -152,39 +207,79 @@ export async function fetchAllItems() {
         // Store item
         const itemData = parseItem(itemDetail, user.meli_user_id)
         
-        const { error: itemError } = await supabase.from('meli_items').upsert(itemData, { onConflict: ['id'] })
+        const { error: itemError } = await supabase.from('meli_items').upsert(itemData)
         
         if (itemError) {
+          console.error(`Error storing item ${itemId}:`, itemError)
           continue
         }
         
         totalItems++
         
-        // Process variations from the same response (now includes all attributes)
-        if (itemDetail.variations && itemDetail.variations.length > 0) {
-          const variations = itemDetail.variations.map((variation, index) => 
-            parseVariation(itemId, variation, index)
-          )
-          
-          const { error: variationError } = await supabase.from('meli_variations').upsert(variations, { 
-            onConflict: ['item_id', 'variation_id'] 
+        // Analyze item structure for scenario detection
+        const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
+        const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
+        const itemUserProductId = itemDetail.user_product_id
+        
+        
+        let variationsToStore = []
+        
+        if (hasVariations) {
+          // SCENARIO 1 or SCENARIO 3: Item has explicit variations
+          variationsToStore = itemDetail.variations.map((variation, index) => {
+            const parsedVariation = parseVariation(itemId, variation, index, itemDetail)
+            
+            // Count scenarios
+            if (variation.user_product_id) {
+              scenarioCounts.scenario1++
+            } else if (variation.id) {
+              scenarioCounts.scenario3++
+            } else {
+              scenarioCounts.scenario4++
+            }
+            
+            return parsedVariation
           })
+        } else if (hasFamilyName && itemUserProductId) {
+          // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
+          const syntheticVariation = createVariationFromItem(itemDetail)
+          if (syntheticVariation) {
+            variationsToStore.push(syntheticVariation)
+            scenarioCounts.scenario2++
+          }
+        }
+        // If no family_name and no variations, don't create any variations (old model, single item)
+        
+        // Store variations if any
+        if (variationsToStore.length > 0) {
+          const { error: variationError } = await supabase.from('meli_variations').upsert(variationsToStore)
           
           if (variationError) {
+            console.error(`Error storing variations for item ${itemId}:`, variationError)
           } else {
-            totalVariations += variations.length
+            totalVariations += variationsToStore.length
           }
+        } else {
         }
         
         // Rate limiting
         await new Promise(resolve => setTimeout(resolve, 100))
       }
-      
+      console.log(`User ${user.meli_user_id} - Items processed: `);
+
     } catch (error) {
+      console.error(`Error processing user ${user.meli_user_id}:`, error)
       continue
     }
   }
   
+  console.log(`\n=== SUMMARY ===`)
+  console.log(`Total items processed: ${totalItems}`)
+  console.log(`Total variations processed: ${totalVariations}`)
+  console.log(`Scenario 1 (New Model with Variations): ${scenarioCounts.scenario1}`)
+  console.log(`Scenario 2 (End State - Single Variant): ${scenarioCounts.scenario2}`)
+  console.log(`Scenario 3 (Old Model with Variations): ${scenarioCounts.scenario3}`)
+  console.log(`Scenario 4 (Fallback): ${scenarioCounts.scenario4}`)
 }
 
 // Fetch items for specific user
@@ -210,17 +305,31 @@ export async function fetchUserItems(meliUserId) {
     )
     
     const itemData = parseItem(itemDetail, meliUserId)
-    await supabase.from('meli_items').upsert(itemData, { onConflict: ['id'] })
+    await supabase.from('meli_items').upsert(itemData)
     
-    // Process variations from the same response (now includes all attributes)
-    if (itemDetail.variations?.length > 0) {
-      const variations = itemDetail.variations.map((variation, index) => 
-        parseVariation(itemId, variation, index)
+    // Handle variations based on all scenarios
+    const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
+    const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
+    const itemUserProductId = itemDetail.user_product_id
+    
+    let variationsToStore = []
+    
+    if (hasVariations) {
+      // SCENARIO 1 or SCENARIO 3: Item has explicit variations
+      variationsToStore = itemDetail.variations.map((variation, index) => 
+        parseVariation(itemId, variation, index, itemDetail)
       )
-      
-      await supabase.from('meli_variations').upsert(variations, { 
-        onConflict: ['item_id', 'variation_id'] 
-      })
+    } else if (hasFamilyName && itemUserProductId) {
+      // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
+      const syntheticVariation = createVariationFromItem(itemDetail)
+      if (syntheticVariation) {
+        variationsToStore.push(syntheticVariation)
+      }
+    }
+    
+    // Store variations if any
+    if (variationsToStore.length > 0) {
+      await supabase.from('meli_variations').upsert(variationsToStore)
     }
     
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -231,7 +340,11 @@ export async function fetchUserItems(meliUserId) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   fetchAllItems()
     .then(() => {
+      console.log('Fetch completed successfully')
       process.exit(0)
     })
-    .catch(console.error)
+    .catch((error) => {
+      console.error('Fetch failed:', error)
+      process.exit(1)
+    })
 }
