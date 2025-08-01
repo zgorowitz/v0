@@ -456,13 +456,13 @@ const ShipmentsPage = () => {
                 </div>
               </div>
 
-              <button
+              {/* <button
                 onClick={fetchShipments}
                 className="px-4 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
                            hover:bg-gray-700 transition-colors duration-200"
               >
                 Refresh
-              </button>
+              </button> */}
             </div>
           </div>
 
