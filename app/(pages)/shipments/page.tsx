@@ -1,13 +1,12 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
+import { LayoutWrapper } from "@/components/layout-wrapper"
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-import { supabase } from '@/lib/supabase/client';
-import { LayoutWrapper } from "@/components/layout-wrapper"
-
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -40,9 +39,17 @@ const ShipmentsPage = () => {
     try {
       setLoading(true);
       
+      const userOrganizationId = await getCurrentUserOrganizationId();
+      if (!userOrganizationId) {
+        setError('No organization found for user');
+        return;
+      }
+      
+      // Filter by organization_id - this is the key change
       const { data, error } = await supabase
         .from('shipments_packing_view')
         .select('*')
+        .eq('organization_id', userOrganizationId) // Filter by user's organization
         .order('shipment_id');
 
       if (error) throw error;
