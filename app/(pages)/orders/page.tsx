@@ -1,804 +1,506 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import React, { useState, useEffect, useMemo } from 'react';
+import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
 
-export default function InventoryPage() {
-  const [data, setData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [meta, setMeta] = useState(null)
-  const [expandedItems, setExpandedItems] = useState(new Set())
+const OrdersPage = () => {
+  const [ordersData, setOrdersData] = useState([]);
+  const [orderItemsData, setOrderItemsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showItems, setShowItems] = useState(false);
 
-  // Cache for inventory data
-  const cachedInventory = useRef(null)
-  const cachedAt = useRef(null)
+  // Filter options for the AG Grid - all columns
+  const filterOptions = [
+    { value: 'id', label: 'Order ID' },
+    { value: 'status', label: 'Status' },
+    { value: 'buyer_id', label: 'Buyer ID' },
+    { value: 'currency_id', label: 'Currency' },
+    { value: 'total_amount', label: 'Total Amount' },
+    { value: 'items_count', label: 'Items Count' },
+    { value: 'total_quantity', label: 'Total Quantity' },
+    { value: 'fulfilled', label: 'Fulfilled' },
+    { value: 'date_created', label: 'Created Date' },
+    { value: 'date_last_updated', label: 'Updated Date' },
+  ];
 
-  const fetchInventory = async () => {
-    setLoading(true)
-    if (cachedInventory.current && Date.now() - cachedAt.current < 10 * 60 * 60 * 1000) { // 1 hour cache
-      setData(cachedInventory.current)
-      setLoading(false)
-      return
-    }
+  // Fetch orders data
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/inventory')
-      const result = await response.json()
-      console.log(result)
-      setData(result.data || [])
-      setMeta(result.meta)
-      cachedInventory.current = result.data || []
-      cachedAt.current = Date.now()
-    } catch (error) {
-      setError(error.message)
+      setLoading(true);
+      
+      // Get current user's organization ID
+      const organizationId = await getCurrentUserOrganizationId();
+      if (!organizationId) {
+        throw new Error('User organization not found');
+      }
+      
+      // Get all meli_user_ids connected to this organization
+      const { data: meliAccounts, error: accountsError } = await supabase
+        .from('meli_accounts')
+        .select('meli_user_id')
+        .eq('organization_id', organizationId);
+      
+      if (accountsError) throw accountsError;
+      
+      if (!meliAccounts || meliAccounts.length === 0) {
+        throw new Error('No MercadoLibre accounts found for this organization');
+      }
+      
+      const meliUserIds = meliAccounts.map(account => account.meli_user_id);
+      
+      // Get orders only for the organization's meli_user_ids
+      const { data: orders, error: ordersError } = await supabase
+        .from('meli_orders')
+        .select('*')
+        .in('meli_user_id', meliUserIds)
+        .order('date_created', { ascending: false })
+        .limit(1000); // Limit for performance
+
+      if (ordersError) throw ordersError;
+
+      // Get all order items for these orders
+      const orderIds = orders.map(order => order.id);
+      const { data: orderItems, error: itemsError } = await supabase
+        .from('meli_order_items')
+        .select('*')
+        .in('order_id', orderIds);
+
+      if (itemsError) throw itemsError;
+
+      // Get unique item IDs from order items
+      const itemIds = [...new Set(orderItems.map(item => item.item_id).filter(Boolean))];
+      
+      // Get item data
+      const { data: items, error: itemsDataError } = await supabase
+        .from('meli_items')
+        .select('id, title, thumbnail, user_product_id')
+        .in('id', itemIds);
+
+      if (itemsDataError) throw itemsDataError;
+
+      // Get variations data - we need to handle both variation_id and user_product_id cases
+      const variationQueries = [];
+      
+      // Get variations by variation_id
+      const variationIds = orderItems
+        .map(item => item.variation_id)
+        .filter(Boolean);
+      
+      if (variationIds.length > 0) {
+        variationQueries.push(
+          supabase
+            .from('meli_variations')
+            .select('item_id, variation_id, user_product_id, seller_sku, picture_url')
+            .in('variation_id', variationIds)
+        );
+      }
+      
+      // Get variations by user_product_id (for items without variation_id)
+      const userProductIds = items
+        .map(item => item.user_product_id)
+        .filter(Boolean);
+        
+      if (userProductIds.length > 0) {
+        variationQueries.push(
+          supabase
+            .from('meli_variations')
+            .select('item_id, variation_id, user_product_id, seller_sku, picture_url')
+            .in('user_product_id', userProductIds)
+        );
+      }
+
+      // Execute variation queries
+      let allVariations = [];
+      for (const query of variationQueries) {
+        const { data, error } = await query;
+        if (!error && data) {
+          allVariations = [...allVariations, ...data];
+        }
+      }
+
+      // Create lookup maps
+      const itemsMap = new Map(items.map(item => [item.id, item]));
+      const variationsByVariationId = new Map();
+      const variationsByUserProductId = new Map();
+      
+      allVariations.forEach(variation => {
+        if (variation.variation_id) {
+          variationsByVariationId.set(variation.variation_id, variation);
+        }
+        if (variation.user_product_id) {
+          variationsByUserProductId.set(variation.user_product_id, variation);
+        }
+      });
+
+      // Enrich order items with variation and item data
+      const enrichedOrderItems = orderItems.map(orderItem => {
+        const item = itemsMap.get(orderItem.item_id);
+        let variation = null;
+
+        // Try to find variation by variation_id first
+        if (orderItem.variation_id) {
+          variation = variationsByVariationId.get(orderItem.variation_id);
+        }
+        
+        // If no variation found and item has user_product_id, try that
+        if (!variation && item?.user_product_id) {
+          variation = variationsByUserProductId.get(item.user_product_id);
+        }
+
+        return {
+          ...orderItem,
+          item_data: item,
+          variation_data: variation
+        };
+      });
+
+      // Group order items by order_id
+      const itemsByOrder = enrichedOrderItems.reduce((acc, item) => {
+        if (!acc[item.order_id]) {
+          acc[item.order_id] = [];
+        }
+        acc[item.order_id].push(item);
+        return acc;
+      }, {});
+
+      // Enrich orders with item count and total items quantity
+      const enrichedOrders = orders.map(order => ({
+        ...order,
+        items_count: itemsByOrder[order.id]?.length || 0,
+        total_quantity: itemsByOrder[order.id]?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+      }));
+
+      setOrdersData(enrichedOrders);
+      setOrderItemsData(enrichedOrderItems);
+      
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Toggle expand/collapse for an item
-  const toggleExpanded = (itemId) => {
-    const newExpanded = new Set(expandedItems)
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId)
-    } else {
-      newExpanded.add(itemId)
+  // Handle order selection
+  const handleOrderSelect = (orderId) => {
+    setSelectedOrder(orderId);
+    setShowItems(true);
+  };
+
+  // Get status badge color
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'shipped':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
-    setExpandedItems(newExpanded)
-  }
+  };
 
-  // Format date
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    try {
-      return new Date(dateString).toLocaleDateString('es-AR')
-    } catch {
-      return '-'
-    }
-  }
+  // Orders column definitions
+  const ordersColumnDefs = useMemo(() => [
+    AGGridColumnTypes.actionButton(
+      (data) => handleOrderSelect(data.id),
+      "+"
+    ),
+    {
+      headerName: 'Order ID',
+      field: 'id',
+      width: 150,
+      cellRenderer: (params) => (
+        <span className="font-mono text-sm">{params.value}</span>
+      )
+    },
+    {
+      headerName: 'Status',
+      field: 'status',
+      width: 120,
+    },
+    AGGridColumnTypes.numeric('Total Amount', 'total_amount', {
+      width: 130,
+      formatter: (params) => {
+        if (!params.value) return '-';
+        return new Intl.NumberFormat('es-AR', {
+          style: 'currency',
+          currency: params.data.currency_id || 'ARS'
+        }).format(params.value);
+      }
+    }),
+    AGGridColumnTypes.numeric('Items', 'items_count', { width: 80 }),
+    AGGridColumnTypes.numeric('Qty', 'total_quantity', { width: 80 }),
+    {
+      headerName: 'Buyer ID',
+      field: 'buyer_id',
+      width: 120,
+      cellRenderer: (params) => (
+        <span className="font-mono text-xs">{params.value || '-'}</span>
+      )
+    },
+    {
+      headerName: 'Fulfilled',
+      field: 'fulfilled',
+      width: 100,
+      valueFormatter: (params) => params.value ? 'Yes' : 'No'
+    },
+    AGGridColumnTypes.date('Created', 'date_created', { width: 160 }),
+    AGGridColumnTypes.date('Updated', 'date_last_updated', { width: 160 })
+  ], []);
 
-  // Get error type for styling
-  const getErrorType = (errorMessage) => {
-    if (errorMessage.includes('AUTHENTICATION_REQUIRED')) return 'auth'
-    if (errorMessage.includes('API_ERROR')) return 'api'
-    return 'general'
-  }
+  // Get items for selected order
+  const selectedOrderItems = useMemo(() => {
+    if (!selectedOrder) return [];
+    return orderItemsData.filter(item => item.order_id === selectedOrder);
+  }, [selectedOrder, orderItemsData]);
 
-  // Render error state
-  const renderError = () => {
-    const errorType = getErrorType(error)
+  // Get selected order data
+  const selectedOrderData = useMemo(() => {
+    if (!selectedOrder) return null;
+    return ordersData.find(order => order.id === selectedOrder);
+  }, [selectedOrder, ordersData]);
+
+  // Format variation attributes for display
+  const formatVariationAttributes = (attributes) => {
+    if (!attributes || !Array.isArray(attributes)) return '';
     
-    return (
-      <div className={`border rounded-lg p-8 text-center ${
-        errorType === 'auth' ? 'bg-amber-50 border-amber-200' : 
-        errorType === 'api' ? 'bg-red-50 border-red-200' : 
-        'bg-gray-50 border-gray-200'
-      }`}>
-        <h3 className={`text-xl font-semibold mb-3 ${
-          errorType === 'auth' ? 'text-amber-800' : 
-          errorType === 'api' ? 'text-red-800' : 
-          'text-gray-800'
-        }`}>
-          {errorType === 'auth' ? '🔐 Autenticación requerida' :
-           errorType === 'api' ? '❌ Error de API' :
-           '⚠️ Error'}
-        </h3>
+    return attributes
+      .map(attr => `${attr.name}: ${attr.value_name}`)
+      .join(', ');
+  };
+
+  // Order Item Card Component
+  const OrderItemCard = ({ item }) => (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+      <div className="flex gap-3">
+        {/* Thumbnail */}
+        {(item.variation_data?.picture_url || item.item_data?.thumbnail) && (
+          <div className="flex-shrink-0">
+            <img 
+              src={item.variation_data?.picture_url || item.item_data?.thumbnail} 
+              alt={item.variation_data?.seller_sku || item.item_id}
+              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+            />
+          </div>
+        )}
         
-        <p className={`mb-6 text-sm ${
-          errorType === 'auth' ? 'text-amber-700' : 
-          errorType === 'api' ? 'text-red-700' : 
-          'text-gray-700'
-        }`}>
-          {error}
-        </p>
-        
-        <div className="flex gap-3 justify-center">
-          {errorType === 'auth' ? (
-            <Button 
-              onClick={() => window.location.href = '/settings'}
-              className="bg-amber-600 hover:bg-amber-700 text-white px-6"
-            >
-              Ir a Configuración para Conectar
-            </Button>
-          ) : (
-            <Button 
-              onClick={fetchInventory}
-              className="bg-gray-900 hover:bg-gray-800 text-white px-6"
-            >
-              Intentar de nuevo
-            </Button>
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">
+                {item.variation_data?.seller_sku || item.item_id}
+              </h3>
+              {item.item_data?.title && (
+                <p className="text-xs text-gray-600 truncate">{item.item_data.title}</p>
+              )}
+            </div>
+            <span className="font-semibold text-gray-900 font-medium px-2 py-1 rounded-full flex-shrink-0 ml-2">
+              Qty: {item.quantity}
+            </span>
+          </div>
+          
+          {/* Item ID if different from SKU */}
+          {item.variation_data?.seller_sku && (
+            <p className="text-xs text-gray-500 mb-2 font-mono">
+              Item ID: {item.item_id}
+            </p>
           )}
+          
+          {/* Variation ID */}
+          {item.variation_id && (
+            <p className="text-xs text-gray-500 mb-2 font-mono">
+              Variation: {item.variation_id}
+            </p>
+          )}
+          
+          {/* User Product ID */}
+          {item.variation_data?.user_product_id && (
+            <p className="text-xs text-gray-500 mb-2 font-mono">
+              Product ID: {item.variation_data.user_product_id}
+            </p>
+          )}
+          
+          {/* Variation Attributes */}
+          {item.variation_attributes && item.variation_attributes.length > 0 && (
+            <p className="text-xs text-gray-500 mb-2">
+              <span className="font-medium">Attributes:</span> {formatVariationAttributes(item.variation_attributes)}
+            </p>
+          )}
+          
+          {/* Price */}
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-medium text-gray-900">
+              Unit: {new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: item.currency_id || 'ARS'
+              }).format(item.unit_price || 0)}
+            </p>
+            <p className="text-sm font-bold text-gray-900">
+              Total: {new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: item.currency_id || 'ARS'
+              }).format((item.unit_price || 0) * (item.quantity || 0))}
+            </p>
+          </div>
+          
+          {/* Additional Info */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            {item.listing_type_id && (
+              <div>
+                <span className="font-medium">Listing:</span> {item.listing_type_id}
+              </div>
+            )}
+            {item.sale_fee && (
+              <div>
+                <span className="font-medium">Fee:</span> {new Intl.NumberFormat('es-AR', {
+                  style: 'currency',
+                  currency: item.currency_id || 'ARS'
+                }).format(item.sale_fee)}
+              </div>
+            )}
+          </div>
         </div>
-        
-        {/* Debug info */}
-        <details className="mt-6 text-left">
-          <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">Información de depuración</summary>
-          <pre className="mt-3 text-xs bg-white border rounded-md p-3 overflow-x-auto text-gray-600">
-            {JSON.stringify({ error, timestamp: new Date().toISOString() }, null, 2)}
-          </pre>
-        </details>
       </div>
-    )
-  }
+    </div>
+  );
 
-  // Calculate totals for summary
-  const calculateTotals = () => {
-    return data.reduce((acc, item) => {
-      acc.totalItems += 1
-      acc.totalQty7d += item.totals?.qty7d || 0
-      acc.totalQty30d += item.totals?.qty30d || 0
-      acc.totalAvailable += item.totals?.availableQty || 0
-      return acc
-    }, { totalItems: 0, totalQty7d: 0, totalQty30d: 0, totalAvailable: 0 })
-  }
-
-  // Render inventory table
-  const renderInventoryTable = () => {
-    const totals = calculateTotals()
-
+  if (loading) {
     return (
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  ID de artículo / SKU
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Título
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Cantidad 7d
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Prom/Día 7d
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Cantidad 30d
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Prom/Día 30d
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Disponible
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                  Días en stock
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {data.map((item, index) => {
-                const isExpanded = expandedItems.has(item.itemId)
-                const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0
-                
-                return (
-                  <React.Fragment key={item.itemId}>
-                    {/* Parent Row */}
-                    <tr 
-                      className={`
-                        hover:bg-gray-50 transition-colors duration-150
-                        ${hasChildren ? 'cursor-pointer' : ''}
-                        ${index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}
-                      `}
-                      onClick={() => hasChildren && toggleExpanded(item.itemId)}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {hasChildren && (
-                            <div className="w-4 h-4 flex items-center justify-center text-gray-500">
-                              <svg 
-                                className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
-                                fill="currentColor" 
-                                viewBox="0 0 20 20"
-                              >
-                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          )}
-                          {!hasChildren && <div className="w-4"></div>}
-                          <div className="font-mono text-sm font-semibold text-gray-900">
-                            {item.itemId || 'N/A'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="max-w-xs">
-                          <div className="font-medium text-gray-900 truncate" title={item.title || ''}>
-                            {item.title || '-'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-semibold text-gray-900">
-                          {(item.totals?.qty7d || 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-gray-600">
-                          {(item.totals?.avgPerDay7d || 0).toFixed(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-semibold text-gray-900">
-                          {(item.totals?.qty30d || 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="text-gray-600">
-                          {(item.totals?.avgPerDay30d || 0).toFixed(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="font-semibold text-emerald-600">
-                          {(item.totals?.availableQty || 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`font-medium ${
-                          !item.totals?.daysInStock ? 'text-gray-400' :
-                          item.totals?.daysInStock < 7 ? 'text-red-600' :
-                          item.totals?.daysInStock < 30 ? 'text-amber-600' :
-                          'text-emerald-600'
-                        }`}>
-                          {item.totals?.daysInStock || '-'}
-                        </span>
-                      </td>
-                    </tr>
-
-                    {/* Child Rows */}
-                    {isExpanded && hasChildren && item.children.map((child, childIndex) => (
-                      <tr key={`${item.itemId}-${child.variationId || childIndex}`} className="bg-gray-50">
-                        <td className="px-4 py-2 pl-12">
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-400 text-sm">
-                              {childIndex === item.children.length - 1 ? '└─' : '├─'}
-                            </span>
-                            <div className="font-mono text-sm text-gray-600">
-                              {child.seller_sku || child.variationId || 'N/A'}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2">
-                          <div className="text-sm text-gray-600">
-                            Variación {child.variationId || 'Desconocido'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className="text-sm text-gray-700">
-                            {(child.qty7d || 0).toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className="text-sm text-gray-600">
-                            {(child.avgPerDay7d || 0).toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className="text-sm text-gray-700">
-                            {(child.qty30d || 0).toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className="text-sm text-gray-600">
-                            {(child.avgPerDay30d || 0).toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className="text-sm text-emerald-600 font-medium">
-                            {child.availableQty !== undefined ? child.availableQty.toLocaleString() : '-'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2 text-center">
-                          <span className={`text-sm font-medium ${
-                            !child.daysInStock ? 'text-gray-400' :
-                            child.daysInStock < 7 ? 'text-red-600' :
-                            child.daysInStock < 30 ? 'text-amber-600' :
-                            'text-emerald-600'
-                          }`}>
-                            {child.daysInStock || '-'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                )
-              })}
-            </tbody>
-            
-            {/* Summary Row */}
-            <tfoot className="bg-gray-100 border-t-2 border-gray-300">
-              <tr>
-                <td className="px-4 py-3 font-semibold text-gray-900">
-                  RESUMEN
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {totals.totalItems} artículos
-                </td>
-                <td className="px-4 py-3 text-center font-semibold text-gray-900">
-                  {totals.totalQty7d.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {(totals.totalQty7d / 7).toFixed(1)}
-                </td>
-                <td className="px-4 py-3 text-center font-semibold text-gray-900">
-                  {totals.totalQty30d.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  {(totals.totalQty30d / 30).toFixed(1)}
-                </td>
-                <td className="px-4 py-3 text-center font-semibold text-emerald-600">
-                  {totals.totalAvailable.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-center text-gray-600">
-                  -
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+      <div className="p-6 bg-stone-50 min-h-screen">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-700">Loading orders...</div>
         </div>
       </div>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 bg-stone-50 min-h-screen">
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          <strong className="font-bold">Error: </strong>
+          <span>{error}</span>
+        </div>
+      </div>
+    );
   }
 
   return (
     <LayoutWrapper>
-      <div className="p-6 max-w-full bg-gray-50 min-h-screen">
-        <Card className="shadow-sm border-0">
-          <CardHeader className="bg-white border-b border-gray-200">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-2xl font-bold text-gray-900">Gestión de inventario</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Monitorea los niveles de stock y el rendimiento de ventas</p>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => setExpandedItems(new Set())}
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Colapsar todo
-                </Button>
-                <Button 
-                  onClick={() => setExpandedItems(new Set(data.map(item => item.itemId)))}
-                  variant="outline"
-                  size="sm"
-                  disabled={loading}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Expandir todo
-                </Button>
-                <Button 
-                  onClick={fetchInventory}
-                  disabled={loading}
-                  className="bg-gray-900 text-white hover:bg-gray-800 px-6"
-                >
-                  {loading ? 'Cargando...' : 'Actualizar'}
-                </Button>
-              </div>
+      <div className="p-6 space-y-4 bg-stone-50 min-h-screen">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="font-semibold text-gray-700 mb-1">Total Orders</h3>
+            <p className="text-2xl font-bold text-gray-900">{ordersData.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="font-semibold text-gray-700 mb-1">Total Revenue</h3>
+            <p className="text-2xl font-bold text-gray-900">
+              {new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: 'ARS'
+              }).format(
+                ordersData.reduce((sum, order) => sum + (order.total_amount || 0), 0)
+              )}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="font-semibold text-gray-700 mb-1">Fulfilled</h3>
+            <p className="text-2xl font-bold text-green-600">
+              {ordersData.filter(order => order.fulfilled).length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="font-semibold text-gray-700 mb-1">Pending</h3>
+            <p className="text-2xl font-bold text-yellow-600">
+              {ordersData.filter(order => !order.fulfilled).length}
+            </p>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className={`grid gap-4 ${showItems ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+          {/* Orders Grid */}
+          <div>
+            <div className="p-3">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Orders</h2>
             </div>
-            
-            {/* Meta information */}
-            {meta && (
-              <div className="mt-4 bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-gray-900">{(meta.total_items || 0).toLocaleString()}</span>
-                    <span className="text-gray-600">Total de artículos</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-gray-900">{(meta.total_orders || 0).toLocaleString()}</span>
-                    <span className="text-gray-600">Total de pedidos</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-gray-900">{meta.days_analyzed || 30}</span>
-                    <span className="text-gray-600">Días analizados</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-gray-900">{formatDate(meta.generated_at)}</span>
-                    <span className="text-gray-600">Última actualización</span>
+
+            <AGGridWrapper
+              columnDefs={ordersColumnDefs}
+              rowData={ordersData}
+              filters={filterOptions}
+              height="600px"
+              defaultColDef={{
+                resizable: true,
+                sortable: true,
+              }}
+              gridOptions={{
+                pagination: true,
+                paginationPageSize: 50,
+                rowSelection: 'single',
+              }}
+            />
+          </div>
+
+          {/* Order Items - Show when order is selected */}
+          {showItems && selectedOrder && selectedOrderData && (
+            <div>
+              <div className="p-3 flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    Order #{selectedOrder}
+                  </h2>
+                  <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                    <span>Status: <span className={`px-2 py-1 rounded text-xs ${getStatusColor(selectedOrderData.status)}`}>{selectedOrderData.status}</span></span>
+                    <span>Total: {new Intl.NumberFormat('es-AR', {
+                      style: 'currency',
+                      currency: selectedOrderData.currency_id || 'ARS'
+                    }).format(selectedOrderData.total_amount || 0)}</span>
                   </div>
                 </div>
+                <div className="flex gap-3 items-center">
+                  <span className="text-sm text-gray-600 px-3 py-1">
+                    {selectedOrderItems.length} items
+                  </span>
+                  <button
+                    onClick={() => setShowItems(false)}
+                    className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
+                             hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-            )}
-          </CardHeader>
-          
-          <CardContent className="p-0">
-            {/* Loading State */}
-            {loading && (
-              <div className="text-center py-16 bg-white">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-                <p className="mt-4 text-gray-700 font-medium">Cargando datos de inventario...</p>
-                <p className="text-sm text-gray-500">Esto puede tardar unos momentos</p>
-              </div>
-            )}
 
-            {/* Error State */}
-            {!loading && error && (
-              <div className="p-6 bg-white">
-                {renderError()}
+              <div className="max-h-[600px] overflow-y-auto">
+                <div className="grid gap-3">
+                  {selectedOrderItems.map((item, index) => (
+                    <OrderItemCard key={`${item.item_id}-${item.variation_id}-${index}`} item={item} />
+                  ))}
+                </div>
               </div>
-            )}
-
-            {/* Success State */}
-            {!loading && !error && (
-              <>
-                {data.length === 0 ? (
-                  <div className="text-center py-16 bg-white">
-                    <div className="text-gray-400 mb-4">
-                      <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <p className="text-lg font-medium text-gray-900">No se encontraron datos de inventario</p>
-                    <p className="text-sm text-gray-500 mt-2">Intenta revisar tu cuenta de MercadoLibre o actualiza los datos</p>
-                  </div>
-                ) : (
-                  <div className="p-6 bg-white">
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        💡 <strong>Consejo:</strong> Haz clic en los artículos con variaciones (indicados por la flecha) para expandir detalles. 
-                        Los colores indican el estado del stock: <span className="text-red-600 font-medium">rojo (bajo)</span>, 
-                        <span className="text-amber-600 font-medium"> ámbar (medio)</span>, 
-                        <span className="text-emerald-600 font-medium">verde (bueno)</span>.
-                      </p>
-                    </div>
-                    {renderInventoryTable()}
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
       </div>
     </LayoutWrapper>
-  )
-}
+  );
+};
 
-// "use client"
-
-// import React, { useState, useEffect, useRef } from "react"
-// import { Button } from "@/components/ui/button"
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-// import { LayoutWrapper } from "@/components/layout-wrapper"
-
-// export default function InventoryPage() {
-//   const [data, setData] = useState([])
-//   const [loading, setLoading] = useState(false)
-//   const [error, setError] = useState(null)
-//   const [meta, setMeta] = useState(null)
-//   const [expandedItems, setExpandedItems] = useState(new Set())
-
-//   // Cache for inventory data
-//   const cachedInventory = useRef(null);
-//   const cachedAt = useRef(null);
-
-//   const fetchInventory = async () => {
-//     setLoading(true); 
-//     if (cachedInventory.current && Date.now() - cachedAt.current < 10 * 60 * 60 * 1000) { // 1 hour cache
-//       setData(cachedInventory.current);
-//       setLoading(false);
-//       return;
-//     }
-//     try {
-//       const response = await fetch('/api/inventory');
-//       const result = await response.json();
-//       console.log(result)
-//       setData(result.data || []);
-//       setMeta(result.meta);
-//       cachedInventory.current = result.data || [];
-//       cachedAt.current = Date.now();
-//     } catch (error) {
-//       setError(error.message);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Load data on mount
-//   // useEffect(() => {
-//   //   fetchInventory()
-//   // }, [])
-
-//   // Toggle expand/collapse for an item
-//   const toggleExpanded = (itemId) => {
-//     const newExpanded = new Set(expandedItems)
-//     if (newExpanded.has(itemId)) {
-//       newExpanded.delete(itemId)
-//     } else {
-//       newExpanded.add(itemId)
-//     }
-//     setExpandedItems(newExpanded)
-//   }
-
-//   // Format date
-//   const formatDate = (dateString) => {
-//     if (!dateString) return '-'
-//     try {
-//       return new Date(dateString).toLocaleDateString('es-AR')
-//     } catch {
-//       return '-'
-//     }
-//   }
-
-//   // Get error type for styling
-//   const getErrorType = (errorMessage) => {
-//     if (errorMessage.includes('AUTHENTICATION_REQUIRED')) return 'auth'
-//     if (errorMessage.includes('API_ERROR')) return 'api'
-//     return 'general'
-//   }
-
-//   // Render error state
-//   const renderError = () => {
-//     const errorType = getErrorType(error)
-    
-//     return (
-//       <div className={`border rounded p-6 text-center ${
-//         errorType === 'auth' ? 'bg-yellow-50 border-yellow-200' : 
-//         errorType === 'api' ? 'bg-red-50 border-red-200' : 
-//         'bg-gray-50 border-gray-200'
-//       }`}>
-//         <h3 className={`text-lg font-bold mb-2 ${
-//           errorType === 'auth' ? 'text-yellow-800' : 
-//           errorType === 'api' ? 'text-red-800' : 
-//           'text-gray-800'
-//         }`}>
-//           {errorType === 'auth' ? '🔐 Authentication Required' :
-//            errorType === 'api' ? '❌ API Error' :
-//            '⚠️ Error'}
-//         </h3>
-        
-//         <p className={`mb-4 ${
-//           errorType === 'auth' ? 'text-yellow-700' : 
-//           errorType === 'api' ? 'text-red-700' : 
-//           'text-gray-700'
-//         }`}>
-//           {error}
-//         </p>
-        
-//         <div className="flex gap-2 justify-center">
-//           {errorType === 'auth' ? (
-//             <Button 
-//               onClick={() => window.location.href = '/settings'}
-//               className="bg-yellow-600 hover:bg-yellow-700 text-white"
-//             >
-//               Go to Settings to Connect
-//             </Button>
-//           ) : (
-//             <Button 
-//               onClick={fetchInventory}
-//               className="bg-black hover:bg-gray-800 text-white"
-//             >
-//               Try Again
-//             </Button>
-//           )}
-//         </div>
-        
-//         {/* Debug info */}
-//         <details className="mt-4 text-left">
-//           <summary className="cursor-pointer text-sm text-gray-600">Debug Information</summary>
-//           <pre className="mt-2 text-xs bg-white border rounded p-2 overflow-x-auto">
-//             {JSON.stringify({ error, timestamp: new Date().toISOString() }, null, 2)}
-//           </pre>
-//         </details>
-//       </div>
-//     )
-//   }
-
-//   // Render inventory table
-//   const renderInventoryTable = () => {
-//     return (
-//       <div className="overflow-x-auto">
-//         <table className="w-full border-collapse border border-gray-300">
-//           <thead>
-//             <tr className="bg-gray-100">
-//               <th className="border border-gray-300 p-3 text-left">Item ID / SKU</th>
-//               <th className="border border-gray-300 p-3 text-left">Title</th>
-//               <th className="border border-gray-300 p-3 text-center">Qty 7d</th>
-//               <th className="border border-gray-300 p-3 text-center">Avg/Day 7d</th>
-//               <th className="border border-gray-300 p-3 text-center">Qty 30d</th>
-//               <th className="border border-gray-300 p-3 text-center">Avg/Day 30d</th>
-//               <th className="border border-gray-300 p-3 text-center">Available Qty</th>
-//               <th className="border border-gray-300 p-3 text-center">Days in Stock</th>
-//             </tr>
-//           </thead>
-//           <tbody>
-//             {data.map((item) => {
-//               const isExpanded = expandedItems.has(item.itemId)
-//               const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0
-              
-//               return (
-//                 <React.Fragment key={item.itemId}>
-//                   {/* Parent Row */}
-//                   <tr 
-//                     className={`hover:bg-gray-50 ${hasChildren ? 'cursor-pointer bg-blue-50' : ''}`}
-//                     onClick={() => hasChildren && toggleExpanded(item.itemId)}
-//                   >
-//                     <td className="border border-gray-300 p-3">
-//                       <div className="flex items-center gap-2">
-//                         {hasChildren && (
-//                           <div className="w-4 h-4 flex items-center justify-center text-gray-600 font-bold">
-//                             {isExpanded ? '▼' : '▶'}
-//                           </div>
-//                         )}
-//                         {!hasChildren && <div className="w-4"></div>}
-//                         <div className="font-mono text-sm font-bold">
-//                           {item.itemId || 'N/A'}
-//                         </div>
-//                       </div>
-//                     </td>
-//                     <td className="border border-gray-300 p-3 max-w-xs">
-//                       <div className="truncate font-semibold" title={item.title || ''}>
-//                         {item.title || '-'}
-//                       </div>
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center font-bold">
-//                       {item.totals?.qty7d || 0}
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center">
-//                       {item.totals?.avgPerDay7d || 0}
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center font-bold">
-//                       {item.totals?.qty30d || 0}
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center">
-//                       {item.totals?.avgPerDay30d || 0}
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center font-bold text-green-600">
-//                       {item.totals?.availableQty || 0}
-//                     </td>
-//                     <td className="border border-gray-300 p-3 text-center">
-//                       <span className={`${
-//                         !item.totals?.daysInStock ? 'text-gray-500' :
-//                         item.totals?.daysInStock < 7 ? 'text-red-600 font-bold' :
-//                         item.totals?.daysInStock < 30 ? 'text-yellow-600' :
-//                         'text-green-600'
-//                       }`}>
-//                         {item.totals?.daysInStock || '-'}
-//                       </span>
-//                     </td>
-//                   </tr>
-
-//                   {/* Child Rows */}
-//                   {isExpanded && hasChildren && item.children.map((child, index) => (
-//                     <tr key={`${item.itemId}-${child.variationId || index}`} className="bg-gray-25 hover:bg-gray-100">
-//                       <td className="border border-gray-300 p-3 pl-8">
-//                         <div className="flex items-center gap-2">
-//                           <span className="text-gray-400">
-//                             {index === item.children.length - 1 ? '└──' : '├──'}
-//                           </span>
-//                           <div className="font-mono text-sm text-gray-600">
-//                             {child.seller_sku || child.variationId || 'N/A'}
-//                           </div>
-//                         </div>
-//                       </td>
-//                       <td className="border border-gray-300 p-3 pl-8">
-//                         <div className="text-sm text-gray-600">
-//                           Variation {child.variationId || 'Unknown'}
-//                         </div>
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center">
-//                         {child.qty7d || 0}
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center">
-//                         {child.avgPerDay7d || 0}
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center">
-//                         {child.qty30d || 0}
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center">
-//                         {child.avgPerDay30d || 0}
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center text-green-600">
-//                         {child.availableQty || '-'}
-//                       </td>
-//                       <td className="border border-gray-300 p-3 text-center">
-//                         <span className={`${
-//                           !child.daysInStock ? 'text-gray-500' :
-//                           child.daysInStock < 7 ? 'text-red-600 font-bold' :
-//                           child.daysInStock < 30 ? 'text-yellow-600' :
-//                           'text-green-600'
-//                         }`}>
-//                           {child.daysInStock || '-'}
-//                         </span>
-//                       </td>
-//                     </tr>
-//                   ))}
-//                 </React.Fragment>
-//               )
-//             })}
-//           </tbody>
-//         </table>
-//       </div>
-//     )
-//   }
-
-//   return (
-//     <LayoutWrapper>
-//       <div className="p-6 max-w-full">
-//         <Card>
-//           <CardHeader>
-//             <div className="flex justify-between items-center">
-//               <CardTitle className="text-2xl">Inventory Management</CardTitle>
-//               <div className="flex gap-2">
-//                 <Button 
-//                   onClick={() => setExpandedItems(new Set())}
-//                   variant="outline"
-//                   size="sm"
-//                   disabled={loading}
-//                 >
-//                   Collapse All
-//                 </Button>
-//                 <Button 
-//                   onClick={() => setExpandedItems(new Set(data.map(item => item.itemId)))}
-//                   variant="outline"
-//                   size="sm"
-//                   disabled={loading}
-//                 >
-//                   Expand All
-//                 </Button>
-//                 <Button 
-//                   onClick={fetchInventory}
-//                   disabled={loading}
-//                   className="bg-black text-white hover:bg-gray-800"
-//                 >
-//                   {loading ? 'Loading...' : 'Refresh'}
-//                 </Button>
-//               </div>
-//             </div>
-            
-//             {/* Meta information */}
-//             {meta && (
-//               <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
-//                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-//                   <div><strong>Items:</strong> {meta.total_items || 0}</div>
-//                   <div><strong>Orders:</strong> {meta.total_orders || 0}</div>
-//                   <div><strong>Period:</strong> {meta.days_analyzed || 30} days</div>
-//                   <div><strong>Updated:</strong> {formatDate(meta.generated_at)}</div>
-//                 </div>
-//               </div>
-//             )}
-//           </CardHeader>
-          
-//           <CardContent>
-//             {/* Loading State */}
-//             {loading && (
-//               <div className="text-center py-12">
-//                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-//                 <p className="mt-4 text-gray-600">Loading inventory data...</p>
-//                 <p className="text-sm text-gray-500">This may take a few moments</p>
-//               </div>
-//             )}
-
-//             {/* Error State */}
-//             {!loading && error && renderError()}
-
-//             {/* Success State */}
-//             {!loading && !error && (
-//               <>
-//                 {data.length === 0 ? (
-//                   <div className="text-center py-12 text-gray-500">
-//                     <p className="text-lg">No inventory data found</p>
-//                     <p className="text-sm mt-2">Try checking your MercadoLibre account or refreshing the data</p>
-//                   </div>
-//                 ) : (
-//                   <>
-//                     <div className="mb-4 text-sm text-gray-600">
-//                       <p>💡 Click on parent items to expand/collapse variations. Items with variations are highlighted in blue.</p>
-//                     </div>
-//                     {renderInventoryTable()}
-//                   </>
-//                 )}
-//               </>
-//             )}
-//           </CardContent>
-//         </Card>
-//       </div>
-//     </LayoutWrapper>
-//   )
-// }
+export default OrdersPage;
