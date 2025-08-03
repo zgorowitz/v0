@@ -1,25 +1,24 @@
+// app/(pages)/products/page.tsx
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
-import { AGGridExpandableWrapper, AGGridExpandableColumnTypes } from '@/components/ui/ag-grid-expandable-wrapper';
+import { EnhancedTableWrapper, TableColumnTypes } from '@/components/ui/enhanced-table-wrapper';
 
 const ProductsPage = () => {
   const [productsData, setProductsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filter options for the AG Grid - all relevant columns
+  // Filter options for the table
   const filterOptions = [
     { value: 'title', label: 'Product Title' },
     { value: 'id', label: 'Item ID' },
-    { value: 'category_id', label: 'Category' },
+    { value: 'category', label: 'Category' },
     { value: 'status', label: 'Status' },
-    { value: 'price', label: 'Price' },
-    { value: 'available_quantity', label: 'Available Quantity' },
-    { value: 'condition', label: 'Condition' },
-    { value: 'listing_type', label: 'Listing Type' },
+    { value: 'account', label: 'Account' },
+    { value: 'family_name', label: 'Family Name' },
   ];
 
   // Fetch products data
@@ -38,7 +37,7 @@ const ProductsPage = () => {
         .from('items_view')
         .select('*', { count: 'exact', head: true })
         .eq('organization_id', organizationId)
-        .gt('v_available_quantity', 0)  // Add filter for z_available_quantity > 0
+        .gt('v_available_quantity', 0)
         .gt('v_sold_quantity', 0);   
 
       console.log('Total records:', count);
@@ -56,7 +55,7 @@ const ProductsPage = () => {
           .from('items_view')
           .select('*')
           .eq('organization_id', organizationId)
-          .gt('v_available_quantity', 0)  // Add filter for z_available_quantity > 0
+          .gt('v_available_quantity', 0)
           .gt('v_sold_quantity', 0)  
           .order('sold_quantity', { ascending: false })
           .range(from, to);
@@ -67,7 +66,7 @@ const ProductsPage = () => {
 
       console.log('Fetched all records:', allData.length);
       
-      // grouping logic
+      // Grouping logic
       const groupedData = new Map();
 
       allData.forEach(item => {
@@ -83,7 +82,7 @@ const ProductsPage = () => {
       const processedProducts = [];
 
       groupedData.forEach((groupItems, groupKey) => {
-        // Sort by available_quantity descending to find the parent (most stock)
+        // Sort by sold_quantity descending to find the parent (most sold)
         groupItems.sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0));
         
         const parentItem = groupItems[0];
@@ -92,38 +91,40 @@ const ProductsPage = () => {
         // If there are multiple items in group, others become variations
         if (groupItems.length > 1) {
           // Add other items as family variations
-          groupItems.slice(1).forEach(item => {
+          groupItems.slice(1).forEach((item, index) => {
             variations.push({
-              id: item.user_product_id || item.item_id,
+              id: `${item.item_id}_var_${index}`,
+              item_id: item.item_id,
               user_product_id: item.user_product_id,
               seller_sku: item.seller_sku,
-              v_price: item.price,
-              v_available_quantity: item.v_available_quantity,
-              v_sold_quantity: item.v_sold_quantity,
-              v_thumbnail: item.v_thumbnail || item.thumbnail,
+              title: item.seller_sku || `Variation ${index + 1}`,
+              thumbnail: item.v_thumbnail || item.thumbnail,
+              price: item.price,
+              available_quantity: item.v_available_quantity || item.available_quantity,
+              sold_quantity: item.v_sold_quantity || item.sold_quantity,
               attributes: item.attributes,
-              isVariation: true,
               type: 'family_item',
-              // Keep reference to original item data
-              original_item: item
+              isVariation: true,
             });
           });
         }
 
         // Add traditional variations (where user_product_id exists and is different from main item)
-        groupItems.forEach(item => {
+        groupItems.forEach((item, index) => {
           if (item.user_product_id && item.user_product_id !== item.item_id) {
             variations.push({
-              id: item.user_product_id,
+              id: `${item.user_product_id}_${index}`,
+              item_id: item.item_id,
               user_product_id: item.user_product_id,
               seller_sku: item.seller_sku,
-              v_price: item.v_price || item.price,
-              v_available_quantity: item.v_available_quantity || item.available_quantity,
-              v_sold_quantity: item.v_sold_quantity || item.sold_quantity,
-              v_thumbnail: item.v_thumbnail,
+              title: item.seller_sku || 'Product Variation',
+              thumbnail: item.v_thumbnail,
+              price: item.v_price || item.price,
+              available_quantity: item.v_available_quantity || item.available_quantity,
+              sold_quantity: item.v_sold_quantity || item.sold_quantity,
               attributes: item.attributes,
+              type: 'variation',
               isVariation: true,
-              type: 'variation'
             });
           }
         });
@@ -133,8 +134,8 @@ const ProductsPage = () => {
           index === self.findIndex(v => v.user_product_id === variation.user_product_id)
         );
 
-        // Create the parent product
-        processedProducts.push({
+        // Create the parent product with subRows for TanStack Table
+        const parentProduct = {
           id: parentItem.item_id,
           item_id: parentItem.item_id,
           title: parentItem.title,
@@ -146,14 +147,17 @@ const ProductsPage = () => {
           permalink: parentItem.permalink,
           family_name: parentItem.family_name,
           variations_count: uniqueVariations.length,
-          variations: uniqueVariations,
           group_size: groupItems.length,
           account: parentItem.nickname,
-          category: parentItem.name
-        });
+          category: parentItem.name,
+          // TanStack Table uses subRows for child data
+          subRows: uniqueVariations,
+        };
+
+        processedProducts.push(parentProduct);
       });
 
-      // Sort final products by available_quantity descending
+      // Sort final products by sold_quantity descending
       processedProducts.sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0));
 
       console.log('Grouped data size:', groupedData.size);
@@ -167,30 +171,6 @@ const ProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Function to get child rows (variations) for a product
-  const getChildRows = (product) => {
-    return product.variations || [];
-  };
-
-  // Function to identify if a row is a child
-  const isChildRow = (row) => {
-    return row.isVariation === true;
-  };
-
-  // Get status color
-  const getStatusText = (status) => {
-    return status || 'unknown';
-  };
-
-  // Format price
-  const formatPrice = (price, currency = 'ARS') => {
-    if (!price) return '-';
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: currency
-    }).format(price);
   };
 
   // Format attributes for variations
@@ -208,197 +188,175 @@ const ProductsPage = () => {
       .join(', ');
   };
 
-  // Products column definitions
-  const productsColumnDefs = useMemo(() => [
-    {
-      headerName: 'Image',
-      field: 'thumbnail',
+  // Table column definitions using TanStack Table
+  const columns = useMemo(() => [
+    TableColumnTypes.image('Image', 'thumbnail', {
       width: 80,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          // Variation image
-          return params.data.v_thumbnail ? (
-            <img 
-              src={params.data.v_thumbnail} 
-              alt="Variation"
-              className="w-10 h-10 object-cover rounded border border-gray-200"
-            />
-          ) : (
-            <div className="w-10 h-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
-              <span className="text-xs text-gray-400">No img</span>
-            </div>
-          );
-        }
-        // Product image
-        return params.value ? (
-          <img 
-            src={params.value} 
-            alt={params.data.title}
-            className="w-10 h-10 object-cover rounded border border-gray-200"
-          />
-        ) : (
-          <div className="w-10 h-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
-            <span className="text-xs text-gray-400">No img</span>
-          </div>
-        );
-      }
-    },
-    AGGridExpandableColumnTypes.childIndicator('Product / SKU', 'title', {
-      width: 300,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
+      alt: 'Product',
+    }),
+    
+    {
+      header: 'Product / SKU',
+      accessorKey: 'title',
+      size: 300,
+      cell: ({ getValue, row }) => {
+        const value = getValue();
+        const data = row.original;
+        
+        if (data.isVariation) {
           // Variation row
           return (
-            <div className="flex items-center gap-2">
-              {/* <span className="text-gray-400 text-xs">└─</span> */}
+            <div>
+              <span></span>
               <div>
-                <div className="font-medium text-sm">{params.data.seller_sku || 'No SKU'}</div>
-                <div className="text-xs text-gray-500 font-mono">{params.data.user_product_id}</div>
+                <div >{data.seller_sku || 'No SKU'}</div>
+                <div className="text-xs text-gray-500 font-mono">{data.user_product_id}</div>
               </div>
             </div>
           );
         }
+        
         // Parent product row
         return (
           <div>
             <div className="font-medium text-sm">
-              {params.data.permalink ? (
+              {data.permalink ? (
                 <a 
-                  href={params.data.permalink} 
+                  href={data.permalink} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-gray-600 hover:text-gray-800 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {params.value}
+                  {value}
                 </a>
               ) : (
-                params.value
+                value
               )}
             </div>
             <div className="text-xs text-gray-500">
-              <span className="font-mono">{params.data.item_id}</span>
-              {params.data.family_name && (
-                <span className="ml-2">• Family: {params.data.family_name}</span>
+              <span className="font-mono">{data.item_id}</span>
+              {data.family_name && (
+                <span className="ml-2">• Family: {data.family_name}</span>
               )}
             </div>
           </div>
         );
       }
-    }),
-    AGGridExpandableColumnTypes.numeric('Price', 'price', {
+    },
+
+    TableColumnTypes.currency('Price', 'price', {
       width: 120,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          return formatPrice(params.data.v_price);
-        }
-        return formatPrice(params.value);
-      }
+      currency: 'ARS',
     }),
-    AGGridExpandableColumnTypes.numeric('Available', 'available_quantity', { 
+
+    TableColumnTypes.numeric('Available', 'available_quantity', { 
       width: 100,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          return (
-            <span className="font-medium">
-              {params.data.v_available_quantity || 0}
-            </span>
-          );
-        }
+      cell: ({ getValue, row }) => {
+        const value = getValue();
         return (
-          <span className="font-medium">
-            {params.value || 0}
+          <span>
+            {value || 0}
           </span>
         );
       }
     }),
-    AGGridExpandableColumnTypes.numeric('Sold', 'sold_quantity', { 
+
+    TableColumnTypes.numeric('Sold', 'sold_quantity', { 
       width: 80,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          return params.data.v_sold_quantity || 0;
-        }
-        return params.value || 0;
+      cell: ({ getValue }) => {
+        const value = getValue();
+        return value || 0;
       }
     }),
+
     {
-      headerName: 'Status / Attributes',
-      field: 'status',
-      width: 150,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          // Show attributes for variations
-          const attributes = formatAttributes(params.data.attributes);
+      header: 'Status / Attributes',
+      accessorKey: 'status',
+      size: 150,
+      cell: ({ getValue, row }) => {
+        const value = getValue();
+        const data = row.original;
+        
+        if (data.isVariation) {
           return (
-            <div className="text-xs text-gray-600">
-              {attributes || 'No attributes'}
+            <div>
+
+              {data.attributes && (
+                <div>
+                  {formatAttributes(data.attributes)}
+                </div>
+              )}
             </div>
           );
         }
-        // Show status for parent products
+        
         return (
-          <span className="text-sm font-medium">
-            {params.value}
+          <span>
+            {value || 'Active'}
           </span>
         );
       }
     },
-    {
-      headerName: 'Variations',
-      field: 'variations_count',
+
+    TableColumnTypes.badge('Variations', 'variations_count', {
       width: 100,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
+      cell: ({ getValue, row }) => {
+        if (row.original.isVariation) {
           return null;
         }
-        const count = params.value || 0;
+        const count = getValue() || 0;
         return (
-          <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
+          <span>
             {count}
           </span>
         );
       }
-    },
-    {
-      headerName: 'Account',
-      field: 'account',
+    }),
+
+    TableColumnTypes.text('Account', 'account', {
       width: 100,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
+      cell: ({ getValue, row }) => {
+        if (row.original.isVariation) {
           return null;
         }
         return (
-          <span className="text-sm font-medium">
-            {params.value}
+          <span>
+            {getValue()}
           </span>
         );
       }
-    },
-    {
-      headerName: 'Category',
-      field: 'category',
-      width: 100,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
+    }),
+
+    TableColumnTypes.text('Category', 'category', {
+      width: 120,
+      cell: ({ getValue, row }) => {
+        if (row.original.isVariation) {
           return null;
         }
         return (
-          <span className="text-sm font-medium">
-            {params.value}
+          <span>
+            {getValue()}
           </span>
         );
       }
-    }
+    }),
   ], []);
 
-  if (loading) {
-    return (
-      <div className="p-6 bg-stone-50 min-h-screen">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-700">Loading products...</div>
-        </div>
-      </div>
-    );
-  }
+  // Function to get sub-rows (variations) for TanStack Table
+  const getSubRows = (row) => {
+    return row.subRows || [];
+  };
+
+  // if (loading) {
+  //   return (
+  //     <div className="p-6 bg-stone-50 min-h-screen">
+  //       <div className="flex items-center justify-center h-64">
+  //         <div className="text-lg text-gray-700">Loading products...</div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -413,21 +371,15 @@ const ProductsPage = () => {
 
   return (
     <LayoutWrapper>
-      <div className="p-6 space-y-4 bg-stone-50 min-h-screen">
+      <div className="p-6 space-y-6 bg-stone-50 min-h-screen">
         {/* Summary Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Total Products</h3>
+            <h3 className="font-semibold text-gray-700 mb-1">Products</h3>
             <p className="text-2xl font-bold text-gray-900">{productsData.length}</p>
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Active Products</h3>
-            <p className="text-2xl font-bold text-gray-900">
-              {productsData.filter(product => product.status === 'active').length}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Total Variations</h3>
+            <h3 className="font-semibold text-gray-700 mb-1">Variations</h3>
             <p className="text-2xl font-bold text-gray-900">
               {productsData.reduce((sum, product) => sum + (product.variations_count || 0), 0)}
             </p>
@@ -440,27 +392,25 @@ const ProductsPage = () => {
           </div>
         </div>
 
-        {/* Products Grid */}
+        {/* Products Table */}
         <div>
-
-
-          <AGGridExpandableWrapper
-            columnDefs={productsColumnDefs}
-            rowData={productsData}
-            getChildRows={getChildRows}
-            isChildRow={isChildRow}
-            filters={filterOptions}
-            height="800px"
+          <EnhancedTableWrapper
+            data={productsData}
+            columns={columns}
+            getSubRows={getSubRows}
+            enableExpanding={true}
+            enableSorting={true}
+            enableFiltering={true}
+            enablePagination={true}
+            pageSize={50}
+            filterColumns={filterOptions}
+            height="700px"
             expandedByDefault={false}
-            defaultColDef={{
-              resizable: true,
-              sortable: true,
-            }}
-            gridOptions={{
-              pagination: true,
-              paginationPageSize: 100,
-              rowSelection: 'single',
-              suppressRowClickSelection: true,
+            onRefresh={fetchProducts}
+            onRowClick={(row) => {
+              if (row.permalink) {
+                window.open(row.permalink, '_blank');
+              }
             }}
           />
         </div>
