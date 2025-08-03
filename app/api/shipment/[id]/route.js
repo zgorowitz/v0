@@ -242,7 +242,7 @@ async function extractShipmentInfo(shipmentId) {
       } else if (itemDetails?.thumbnail) {
         thumbnail = itemDetails.thumbnail;
       }
-  
+
       
       return {
         order_id: shipmentItem.order_id,

@@ -1,6 +1,5 @@
 // scripts/fetch_items.mjs
 // Fetch all items and variations for all meli users
-// Updated to handle User Products model (user_product_id and family_name)
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
@@ -26,11 +25,11 @@ async function apiRequest(url, accessToken) {
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status} ${response.statusText}`)
   }
-  console.log("api")
+  
   return response.json()
 }
 
-// Parse item data - Updated to include family_name and user_product_id
+// Parse item data
 function parseItem(item, meliUserId) {
   // Defensive parsing - ensure required fields exist
   if (!item.id) {
@@ -51,6 +50,7 @@ function parseItem(item, meliUserId) {
     listing_type: item.listing_type_id || null,
     status: item.status || 'unknown',
     family_name: item.family_name || null,
+    // family_id: item.family_id || null,
     user_product_id: item.user_product_id || null
   }
 }
@@ -67,20 +67,9 @@ function extractSellerSku(attributes) {
 function parseVariation(itemId, variation, index = 0, item = null) {
   let userProductId = null
   let sellerSku = null
-  
-  // SCENARIO 1: New Model with Explicit Variations
-  if (variation.user_product_id) {
-    userProductId = variation.user_product_id
+
     // SKU from variation attributes
     sellerSku = extractSellerSku(variation.attributes)
-  }
-  // SCENARIO 3: Old Model with Variations
-  else if (variation.id) {
-    variationId = variation.id
-    userProductId = null
-    // SKU from variation attributes
-    sellerSku = extractSellerSku(variation.attributes)
-  }
   
   // Convert attribute_combinations to simpler attributes object
   let attributes = {}
@@ -109,13 +98,13 @@ function parseVariation(itemId, variation, index = 0, item = null) {
   let pictureUrl = null
   if (variation.picture_ids && variation.picture_ids.length > 0) {
     const pictureId = variation.picture_ids[0]
-    pictureUrl = `https://http2.mlstatic.com/D_${pictureId}.jpg`
+    pictureUrl = `https://http2.mlstatic.com/D_${pictureId}-O.jpg`
   }
-    
+      
   return {
     item_id: itemId,
     variation_id: variation.id || null,
-    user_product_id: userProductId,
+    user_product_id: variation.user_product_id || null,
     price: variation.price || 0,
     available_quantity: variation.available_quantity || 0,
     sold_quantity: variation.sold_quantity || 0,
@@ -168,6 +157,7 @@ async function fetchAllItemIdsForUser(meliUserId, accessToken) {
 // Main function
 export async function fetchAllItems() {
   const supabase = createClient()
+  const BATCH_SIZE = 30 // MercadoLibre's multiget limit
   
   // Get all meli users
   const { data: meliUsers, error } = await supabase
@@ -181,91 +171,89 @@ export async function fetchAllItems() {
   let scenarioCounts = { scenario1: 0, scenario2: 0, scenario3: 0, scenario4: 0 }
   
   for (const user of meliUsers) {
-    
     try {
-      // Use paginated fetch
       const itemIds = await fetchAllItemIdsForUser(user.meli_user_id, user.access_token)
-
-      console.log(`Fetching items for user: ${user.meli_user_id} (${itemIds.length} items)`);
+      console.log(`Fetching items for user: ${user.meli_user_id} (${itemIds.length} items)`)
       
-      if (itemIds.length === 0) {
-        continue
-      }
+      if (itemIds.length === 0) continue
       
-      for (const itemId of itemIds) {
-        // Get complete item data including all attributes for variations
-        const itemDetail = await apiRequest(
-          `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
+      // Process items in batches
+      for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
+        const batch = itemIds.slice(i, i + BATCH_SIZE)
+        const itemsQuery = batch.join('&ids=')
+        console.log(itemsQuery)
+        // Fetch multiple items at once
+        const itemsDetail = await apiRequest(
+          `https://api.mercadolibre.com/items?ids=${itemsQuery}&include_attributes=all`,
           user.access_token
         )
         
-        // Debug: Check if itemDetail has expected structure
-        if (!itemDetail.id) {
-          continue
-        }
-        
-        // Store item
-        const itemData = parseItem(itemDetail, user.meli_user_id)
-        
-        const { error: itemError } = await supabase.from('meli_items').upsert(itemData)
-        
-        if (itemError) {
-          console.error(`Error storing item ${itemId}:`, itemError)
-          continue
-        }
-        
-        totalItems++
-        
-        // Analyze item structure for scenario detection
-        const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
-        const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
-        const itemUserProductId = itemDetail.user_product_id
-        
-        
-        let variationsToStore = []
-        
-        if (hasVariations) {
-          // SCENARIO 1 or SCENARIO 3: Item has explicit variations
-          variationsToStore = itemDetail.variations.map((variation, index) => {
-            const parsedVariation = parseVariation(itemId, variation, index, itemDetail)
-            
-            // Count scenarios
-            if (variation.user_product_id) {
-              scenarioCounts.scenario1++
-            } else if (variation.id) {
-              scenarioCounts.scenario3++
-            } else {
-              scenarioCounts.scenario4++
-            }
-            
-            return parsedVariation
-          })
-        } else if (hasFamilyName && itemUserProductId) {
-          // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
-          const syntheticVariation = createVariationFromItem(itemDetail)
-          if (syntheticVariation) {
-            variationsToStore.push(syntheticVariation)
-            scenarioCounts.scenario2++
-          }
-        }
-        // If no family_name and no variations, don't create any variations (old model, single item)
-        
-        // Store variations if any
-        if (variationsToStore.length > 0) {
-          const { error: variationError } = await supabase.from('meli_variations').upsert(variationsToStore)
+        // Process each item in the batch
+        for (const response of itemsDetail) {
+          if (response.code !== 200 || !response.body?.id) continue
           
-          if (variationError) {
-            console.error(`Error storing variations for item ${itemId}:`, variationError)
-          } else {
-            totalVariations += variationsToStore.length
+          const itemDetail = response.body
+          const itemData = parseItem(itemDetail, user.meli_user_id)
+          
+          const { error: itemError } = await supabase.from('meli_items').upsert(itemData)
+          
+          if (itemError) {
+            console.error(`Error storing item ${itemDetail.id}:`, itemError)
+            continue
           }
-        } else {
+          
+          totalItems++
+          console.log(totalItems)
+
+          // Analyze item structure for scenario detection
+          const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
+          const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
+          const itemUserProductId = itemDetail.user_product_id
+          
+          let variationsToStore = []
+          
+          if (hasVariations) {
+            // SCENARIO 1 or SCENARIO 3: Item has explicit variations
+            variationsToStore = itemDetail.variations.map((variation, index) => {
+              const parsedVariation = parseVariation(itemDetail.id, variation, index, itemDetail)
+              
+              // Count scenarios
+              if (variation.user_product_id) {
+                scenarioCounts.scenario1++
+              } else if (variation.id) {
+                scenarioCounts.scenario3++
+              } else {
+                scenarioCounts.scenario4++
+              }
+              
+              return parsedVariation
+            })
+          } else if (hasFamilyName && itemUserProductId) {
+            // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
+            const syntheticVariation = createVariationFromItem(itemDetail)
+            if (syntheticVariation) {
+              variationsToStore.push(syntheticVariation)
+              scenarioCounts.scenario2++
+            }
+          }
+          
+          // Store variations if any
+          if (variationsToStore.length > 0) {
+            const { error: variationError } = await supabase.from('meli_variations').upsert(variationsToStore)
+            
+            if (variationError) {
+              console.error(`Error storing variations for item ${itemDetail.id}:`, variationError)
+            } else {
+              totalVariations += variationsToStore.length
+            }
+          }
         }
         
-        // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Rate limiting between batches
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
-      console.log(`User ${user.meli_user_id} - Items processed: `);
+      
+      console.log(`User ${user.meli_user_id} - Items processed: ${totalItems}`);
 
     } catch (error) {
       console.error(`Error processing user ${user.meli_user_id}:`, error)
@@ -283,58 +271,58 @@ export async function fetchAllItems() {
 }
 
 // Fetch items for specific user
-export async function fetchUserItems(meliUserId) {
-  const supabase = createClient()
+// export async function fetchUserItems(meliUserId) {
+//   const supabase = createClient()
   
-  const { data: userToken } = await supabase
-    .from('meli_tokens')
-    .select('access_token')
-    .eq('meli_user_id', meliUserId)
-    .single()
+//   const { data: userToken } = await supabase
+//     .from('meli_tokens')
+//     .select('access_token')
+//     .eq('meli_user_id', meliUserId)
+//     .single()
   
-  if (!userToken) throw new Error('User token not found')
+//   if (!userToken) throw new Error('User token not found')
   
-  // Use paginated fetch
-  const itemIds = await fetchAllItemIdsForUser(meliUserId, userToken.access_token)
+//   // Use paginated fetch
+//   const itemIds = await fetchAllItemIdsForUser(meliUserId, userToken.access_token)
   
-  for (const itemId of itemIds) {
-    // Get complete item data including all attributes for variations
-    const itemDetail = await apiRequest(
-      `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
-      userToken.access_token
-    )
+//   for (const itemId of itemIds) {
+//     // Get complete item data including all attributes for variations
+//     const itemDetail = await apiRequest(
+//       `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
+//       userToken.access_token
+//     )
     
-    const itemData = parseItem(itemDetail, meliUserId)
-    await supabase.from('meli_items').upsert(itemData)
+//     const itemData = parseItem(itemDetail, meliUserId)
+//     await supabase.from('meli_items').upsert(itemData)
     
-    // Handle variations based on all scenarios
-    const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
-    const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
-    const itemUserProductId = itemDetail.user_product_id
+//     // Handle variations based on all scenarios
+//     const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
+//     const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
+//     const itemUserProductId = itemDetail.user_product_id
     
-    let variationsToStore = []
+//     let variationsToStore = []
     
-    if (hasVariations) {
-      // SCENARIO 1 or SCENARIO 3: Item has explicit variations
-      variationsToStore = itemDetail.variations.map((variation, index) => 
-        parseVariation(itemId, variation, index, itemDetail)
-      )
-    } else if (hasFamilyName && itemUserProductId) {
-      // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
-      const syntheticVariation = createVariationFromItem(itemDetail)
-      if (syntheticVariation) {
-        variationsToStore.push(syntheticVariation)
-      }
-    }
+//     if (hasVariations) {
+//       // SCENARIO 1 or SCENARIO 3: Item has explicit variations
+//       variationsToStore = itemDetail.variations.map((variation, index) => 
+//         parseVariation(itemId, variation, index, itemDetail)
+//       )
+//     } else if (hasFamilyName && itemUserProductId) {
+//       // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
+//       const syntheticVariation = createVariationFromItem(itemDetail)
+//       if (syntheticVariation) {
+//         variationsToStore.push(syntheticVariation)
+//       }
+//     }
     
-    // Store variations if any
-    if (variationsToStore.length > 0) {
-      await supabase.from('meli_variations').upsert(variationsToStore)
-    }
+//     // Store variations if any
+//     if (variationsToStore.length > 0) {
+//       await supabase.from('meli_variations').upsert(variationsToStore)
+//     }
     
-    await new Promise(resolve => setTimeout(resolve, 100))
-  }
-}
+//     await new Promise(resolve => setTimeout(resolve, 100))
+//   }
+// }
 
 // Standalone runner
 if (import.meta.url === `file://${process.argv[1]}`) {

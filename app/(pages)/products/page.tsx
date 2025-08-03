@@ -31,131 +31,133 @@ const ProductsPage = () => {
     try {
       setLoading(true);
       
-      // Get current user's organization ID
       const organizationId = await getCurrentUserOrganizationId();
-      if (!organizationId) {
-        throw new Error('User organization not found');
+      
+      // First, get total count
+      const { count } = await supabase
+        .from('items_view')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .gt('v_available_quantity', 0)  // Add filter for z_available_quantity > 0
+        .gt('v_sold_quantity', 0);   
+
+      console.log('Total records:', count);
+
+      // Then fetch all records using range pagination
+      let allData = [];
+      const pageSize = 1000;
+      const pages = Math.ceil(count / pageSize);
+
+      for (let i = 0; i < pages; i++) {
+        const from = i * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, error } = await supabase
+          .from('items_view')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .gt('v_available_quantity', 0)  // Add filter for z_available_quantity > 0
+          .gt('v_sold_quantity', 0)  
+          .order('sold_quantity', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+        allData = [...allData, ...data];
       }
-      
-      // Get all meli_user_ids connected to this organization
-      const { data: meliAccounts, error: accountsError } = await supabase
-        .from('meli_accounts')
-        .select('meli_user_id')
-        .eq('organization_id', organizationId);
-      
-      if (accountsError) throw accountsError;
-      
-      if (!meliAccounts || meliAccounts.length === 0) {
-        throw new Error('No MercadoLibre accounts found for this organization');
-      }
-      
-      const meliUserIds = meliAccounts.map(account => account.meli_user_id);
-      
-      // Get products only for the organization's meli_user_ids
-      const { data: products, error: productsError } = await supabase
-        .from('meli_items')
-        .select('*')
-        .in('meli_user_id', meliUserIds)
-        .order('created_at', { ascending: false })
-        .limit(1000); // Limit for performance
 
-      if (productsError) throw productsError;
+      console.log('Fetched all records:', allData.length);
+      
+      // grouping logic
+      const groupedData = new Map();
 
-      // Get all variations for these products
-      const productIds = products.map(product => product.id);
-      const { data: variations, error: variationsError } = await supabase
-        .from('meli_variations')
-        .select('*')
-        .in('item_id', productIds);
-
-      if (variationsError) throw variationsError;
-
-      // Group products by family_name to handle family-based variations
-      const productsByFamily = new Map();
-      const standaloneProducts = [];
-
-      products.forEach(product => {
-        if (product.family_name) {
-          if (!productsByFamily.has(product.family_name)) {
-            productsByFamily.set(product.family_name, []);
-          }
-          productsByFamily.get(product.family_name).push(product);
-        } else {
-          standaloneProducts.push(product);
+      allData.forEach(item => {
+        const groupKey = item.family_name || item.item_id;
+        
+        if (!groupedData.has(groupKey)) {
+          groupedData.set(groupKey, []);
         }
+        groupedData.get(groupKey).push(item);
       });
 
-      // Group variations by item_id
-      const variationsByProduct = variations.reduce((acc, variation) => {
-        if (!acc[variation.item_id]) {
-          acc[variation.item_id] = [];
-        }
-        acc[variation.item_id].push({
-          ...variation,
-          id: variation.user_product_id || variation.variation_id || `${variation.item_id}_${variation.id}`,
-          isVariation: true,
-          type: 'variation'
-        });
-        return acc;
-      }, {});
-
+      // Process each group
       const processedProducts = [];
 
-      // Process family-based products
-      productsByFamily.forEach((familyProducts, familyName) => {
-        // Sort family products by created_at to get the "main" product (first one)
-        familyProducts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        const mainProduct = familyProducts[0];
-        const siblingProducts = familyProducts.slice(1);
-
-        // Collect all variations for this family
-        const allVariations = [];
+      groupedData.forEach((groupItems, groupKey) => {
+        // Sort by available_quantity descending to find the parent (most stock)
+        groupItems.sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0));
         
-        // Add traditional variations from all family products
-        familyProducts.forEach(product => {
-          const productVariations = variationsByProduct[product.id] || [];
-          allVariations.push(...productVariations);
-        });
+        const parentItem = groupItems[0];
+        const variations = [];
 
-        // Add sibling products as "family variations"
-        siblingProducts.forEach(siblingProduct => {
-          allVariations.push({
-            ...siblingProduct,
-            id: siblingProduct.id,
-            isVariation: true,
-            type: 'family_item',
-            // Keep original product fields but mark as variation
-            item_id: siblingProduct.id,
-            seller_sku: `ITEM-${siblingProduct.id}`, // Generate SKU for family items
-            picture_url: siblingProduct.thumbnail,
-            price: siblingProduct.price,
-            available_quantity: siblingProduct.available_quantity,
-            sold_quantity: siblingProduct.sold_quantity
+        // If there are multiple items in group, others become variations
+        if (groupItems.length > 1) {
+          // Add other items as family variations
+          groupItems.slice(1).forEach(item => {
+            variations.push({
+              id: item.user_product_id || item.item_id,
+              user_product_id: item.user_product_id,
+              seller_sku: item.seller_sku,
+              v_price: item.price,
+              v_available_quantity: item.v_available_quantity,
+              v_sold_quantity: item.v_sold_quantity,
+              v_thumbnail: item.v_thumbnail || item.thumbnail,
+              attributes: item.attributes,
+              isVariation: true,
+              type: 'family_item',
+              // Keep reference to original item data
+              original_item: item
+            });
           });
+        }
+
+        // Add traditional variations (where user_product_id exists and is different from main item)
+        groupItems.forEach(item => {
+          if (item.user_product_id && item.user_product_id !== item.item_id) {
+            variations.push({
+              id: item.user_product_id,
+              user_product_id: item.user_product_id,
+              seller_sku: item.seller_sku,
+              v_price: item.v_price || item.price,
+              v_available_quantity: item.v_available_quantity || item.available_quantity,
+              v_sold_quantity: item.v_sold_quantity || item.sold_quantity,
+              v_thumbnail: item.v_thumbnail,
+              attributes: item.attributes,
+              isVariation: true,
+              type: 'variation'
+            });
+          }
         });
 
-        // Create enhanced main product
+        // Remove duplicates based on user_product_id
+        const uniqueVariations = variations.filter((variation, index, self) => 
+          index === self.findIndex(v => v.user_product_id === variation.user_product_id)
+        );
+
+        // Create the parent product
         processedProducts.push({
-          ...mainProduct,
-          variations_count: allVariations.length,
-          variations: allVariations,
-          family_size: familyProducts.length
+          id: parentItem.item_id,
+          item_id: parentItem.item_id,
+          title: parentItem.title,
+          thumbnail: parentItem.thumbnail,
+          price: parentItem.price,
+          available_quantity: parentItem.available_quantity,
+          sold_quantity: parentItem.sold_quantity,
+          status: parentItem.status,
+          permalink: parentItem.permalink,
+          family_name: parentItem.family_name,
+          variations_count: uniqueVariations.length,
+          variations: uniqueVariations,
+          group_size: groupItems.length,
+          account: parentItem.nickname,
+          category: parentItem.name
         });
       });
 
-      // Process standalone products (no family_name)
-      standaloneProducts.forEach(product => {
-        const productVariations = variationsByProduct[product.id] || [];
-        processedProducts.push({
-          ...product,
-          variations_count: productVariations.length,
-          variations: productVariations,
-          family_size: 1
-        });
-      });
+      // Sort final products by available_quantity descending
+      processedProducts.sort((a, b) => (b.sold_quantity || 0) - (a.sold_quantity || 0));
 
-      // Sort final products by created_at
-      processedProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      console.log('Grouped data size:', groupedData.size);
+      console.log('Processed products:', processedProducts.length);
 
       setProductsData(processedProducts);
       
@@ -215,9 +217,9 @@ const ProductsPage = () => {
       cellRenderer: (params) => {
         if (params.data._isChild) {
           // Variation image
-          return params.data.picture_url ? (
+          return params.data.v_thumbnail ? (
             <img 
-              src={params.data.picture_url} 
+              src={params.data.v_thumbnail} 
               alt="Variation"
               className="w-10 h-10 object-cover rounded border border-gray-200"
             />
@@ -241,40 +243,40 @@ const ProductsPage = () => {
         );
       }
     },
-    AGGridExpandableColumnTypes.childIndicator('Title / SKU', 'title', {
-      width: 250,
+    AGGridExpandableColumnTypes.childIndicator('Product / SKU', 'title', {
+      width: 300,
       cellRenderer: (params) => {
         if (params.data._isChild) {
-          // Handle different types of variations
-          if (params.data.type === 'family_item') {
-            // Family item (sibling product)
-            return (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-xs">└─</span>
-                <div>
-                  <div className="font-medium text-sm">{params.data.title}</div>
-                  <div className="text-xs text-gray-500">Family Item • {params.data.seller_sku}</div>
-                </div>
+          // Variation row
+          return (
+            <div className="flex items-center gap-2">
+              {/* <span className="text-gray-400 text-xs">└─</span> */}
+              <div>
+                <div className="font-medium text-sm">{params.data.seller_sku || 'No SKU'}</div>
+                <div className="text-xs text-gray-500 font-mono">{params.data.user_product_id}</div>
               </div>
-            );
-          } else {
-            // Traditional variation
-            return (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-xs">└─</span>
-                <div>
-                  <div className="font-medium text-sm">{params.data.seller_sku || 'No SKU'}</div>
-                  <div className="text-xs text-gray-500">Variation • {params.data.variation_id || params.data.user_product_id}</div>
-                </div>
-              </div>
-            );
-          }
+            </div>
+          );
         }
+        // Parent product row
         return (
           <div>
-            <div className="font-medium text-sm">{params.value}</div>
+            <div className="font-medium text-sm">
+              {params.data.permalink ? (
+                <a 
+                  href={params.data.permalink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-600 hover:text-gray-800 hover:underline"
+                >
+                  {params.value}
+                </a>
+              ) : (
+                params.value
+              )}
+            </div>
             <div className="text-xs text-gray-500">
-              <span className="font-mono">{params.data.id}</span>
+              <span className="font-mono">{params.data.item_id}</span>
               {params.data.family_name && (
                 <span className="ml-2">• Family: {params.data.family_name}</span>
               )}
@@ -283,12 +285,48 @@ const ProductsPage = () => {
         );
       }
     }),
-    {
-      headerName: 'Category',
-      field: 'category_id',
+    AGGridExpandableColumnTypes.numeric('Price', 'price', {
       width: 120,
       cellRenderer: (params) => {
         if (params.data._isChild) {
+          return formatPrice(params.data.v_price);
+        }
+        return formatPrice(params.value);
+      }
+    }),
+    AGGridExpandableColumnTypes.numeric('Available', 'available_quantity', { 
+      width: 100,
+      cellRenderer: (params) => {
+        if (params.data._isChild) {
+          return (
+            <span className="font-medium">
+              {params.data.v_available_quantity || 0}
+            </span>
+          );
+        }
+        return (
+          <span className="font-medium">
+            {params.value || 0}
+          </span>
+        );
+      }
+    }),
+    AGGridExpandableColumnTypes.numeric('Sold', 'sold_quantity', { 
+      width: 80,
+      cellRenderer: (params) => {
+        if (params.data._isChild) {
+          return params.data.v_sold_quantity || 0;
+        }
+        return params.value || 0;
+      }
+    }),
+    {
+      headerName: 'Status / Attributes',
+      field: 'status',
+      width: 150,
+      cellRenderer: (params) => {
+        if (params.data._isChild) {
+          // Show attributes for variations
           const attributes = formatAttributes(params.data.attributes);
           return (
             <div className="text-xs text-gray-600">
@@ -296,21 +334,7 @@ const ProductsPage = () => {
             </div>
           );
         }
-        return params.value;
-      }
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 100,
-      cellRenderer: (params) => {
-        if (params.data._isChild) {
-          return (
-            <span className="text-xs text-gray-500">
-              Variation
-            </span>
-          );
-        }
+        // Show status for parent products
         return (
           <span className="text-sm font-medium">
             {params.value}
@@ -318,22 +342,6 @@ const ProductsPage = () => {
         );
       }
     },
-    AGGridExpandableColumnTypes.numeric('Price', 'price', {
-      width: 120,
-      formatter: (params) => formatPrice(params.value)
-    }),
-    AGGridExpandableColumnTypes.numeric('Available', 'available_quantity', { 
-      width: 100,
-      cellRenderer: (params) => {
-        const value = params.value || 0;
-        return (
-          <span className="font-medium">
-            {value}
-          </span>
-        );
-      }
-    }),
-    AGGridExpandableColumnTypes.numeric('Sold', 'sold_quantity', { width: 80 }),
     {
       headerName: 'Variations',
       field: 'variations_count',
@@ -351,18 +359,35 @@ const ProductsPage = () => {
       }
     },
     {
-      headerName: 'Listing Type',
-      field: 'listing_type',
-      width: 120,
+      headerName: 'Account',
+      field: 'account',
+      width: 100,
       cellRenderer: (params) => {
         if (params.data._isChild) {
           return null;
         }
-        return params.value;
+        return (
+          <span className="text-sm font-medium">
+            {params.value}
+          </span>
+        );
       }
     },
-    AGGridExpandableColumnTypes.date('Created', 'created_at', { width: 160 }),
-    AGGridExpandableColumnTypes.date('Updated', 'updated_at', { width: 160 })
+    {
+      headerName: 'Category',
+      field: 'category',
+      width: 100,
+      cellRenderer: (params) => {
+        if (params.data._isChild) {
+          return null;
+        }
+        return (
+          <span className="text-sm font-medium">
+            {params.value}
+          </span>
+        );
+      }
+    }
   ], []);
 
   if (loading) {
