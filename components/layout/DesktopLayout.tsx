@@ -13,8 +13,8 @@ interface DesktopLayoutProps {
 const navigationItems = [
   // { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Scan', href: '/scan', icon: QrCode },
-  { name: 'Ordenes', href: '/orders', icon: TrendingUp },
   { name: 'Productos', href: '/products', icon: Package },
+  { name: 'Ordenes', href: '/orders', icon: TrendingUp },
   { name: 'Envios', href: '/shipments', icon: Package },
   { name: 'Categorias', href: '/categories', icon: Folder },
   { name: 'Ajustes', href: '/settings', icon: Settings },
@@ -27,7 +27,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation Bar */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center h-16">
             {/* Left: Logo + Navigation */}
             <div className="flex items-center space-x-8">
@@ -80,7 +80,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main>
         {children}
       </main>
     </div>

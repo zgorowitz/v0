@@ -437,15 +437,11 @@ const OrdersPage = () => {
         <div className={`grid gap-4 ${showItems ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
           {/* Orders Grid */}
           <div>
-            <div className="p-3">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Orders</h2>
-            </div>
-
             <AGGridWrapper
               columnDefs={ordersColumnDefs}
               rowData={ordersData}
               filters={filterOptions}
-              height="600px"
+              height="800px"
               defaultColDef={{
                 resizable: true,
                 sortable: true,

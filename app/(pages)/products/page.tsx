@@ -442,9 +442,7 @@ const ProductsPage = () => {
 
         {/* Products Grid */}
         <div>
-          <div className="p-3">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Products & Variations</h2>
-          </div>
+
 
           <AGGridExpandableWrapper
             columnDefs={productsColumnDefs}
@@ -452,7 +450,7 @@ const ProductsPage = () => {
             getChildRows={getChildRows}
             isChildRow={isChildRow}
             filters={filterOptions}
-            height="700px"
+            height="800px"
             expandedByDefault={false}
             defaultColDef={{
               resizable: true,
