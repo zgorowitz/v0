@@ -265,9 +265,9 @@ export const AGGridButton = ({ onClick, children, className = "", ...props }) =>
 // Pre-configured column types for common use cases
 export const AGGridColumnTypes = {
   // Button column for actions
-  actionButton: (onClick, buttonText = "+") => ({
-    headerName: 'Actions',
-    width: 100,
+  actionButton: (headerName, onClick, buttonText = "+") => ({
+    headerName,
+    width: 70,
     cellClass: 'no-padding-cell',
     cellStyle: { padding: 5 },
     cellRenderer: (params) => (

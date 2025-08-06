@@ -6,6 +6,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
+import { Button } from '@/components/ui/button';
+import { Package, Loader2 } from 'lucide-react';
 
 const ShipmentsPage = () => {
   const [shipmentData, setShipmentData] = useState([]);
@@ -14,6 +16,9 @@ const ShipmentsPage = () => {
   const [error, setError] = useState(null);
   const [selectedShipment, setSelectedShipment] = useState(null);
   const [showItems, setShowItems] = useState(false);
+  const [packingLoading, setPackingLoading] = useState<string | null>(null);
+  const [showPackDialog, setShowPackDialog] = useState(false);
+  const [selectedShipmentToPack, setSelectedShipmentToPack] = useState<string | null>(null);
 
   // Filter options for the AG Grid
   const filterOptions = [
@@ -23,6 +28,7 @@ const ShipmentsPage = () => {
     { value: 'shipment_id', label: 'Shipment ID' },
     { value: 'total_items', label: 'Total Items' },
   ];
+
 
   // Fetch shipments data
   useEffect(() => {
@@ -39,17 +45,34 @@ const ShipmentsPage = () => {
         return;
       }
       
-      // Filter by organization_id - this is the key change
+      // Get shipments data
       const { data, error } = await supabase
         .from('shipments_packing_view')
         .select('*')
-        .eq('organization_id', userOrganizationId) // Filter by user's organization
+        .eq('organization_id', userOrganizationId)
         .order('shipment_id');
 
       if (error) throw error;
 
+      // Get packing data separately
+      const { data: packingData } = await supabase
+        .from('shipment_packing')
+        .select('*');
+
+      // Create packing lookup map
+      const packingMap = new Map();
+      packingData?.forEach(pack => {
+        packingMap.set(pack.shipment_id, pack);
+      });
+
+      // Combine data manually
+      const enrichedData = data.map(item => ({
+        ...item,
+        shipment_packing: packingMap.get(item.shipment_id) ? [packingMap.get(item.shipment_id)] : []
+      }));
+
       // Group data by shipment_id
-      const { shipments, allItems } = groupShipmentData(data);
+      const { shipments, allItems } = groupShipmentData(enrichedData);
       setShipmentData(shipments);
       setItemsData(allItems);
       
@@ -71,6 +94,7 @@ const ShipmentsPage = () => {
       
       // Create shipment summary
       if (!shipmentMap.has(shipmentId)) {
+        const packingInfo = item.shipment_packing?.[0]; // Get first packing record
         shipmentMap.set(shipmentId, {
           shipment_id: shipmentId,
           account: item.nickname,
@@ -78,7 +102,10 @@ const ShipmentsPage = () => {
           total_items: item.total_items,
           category: item.name,
           shipment_created: item.shipment_created,
-          sku_list: [item.seller_sku]
+          sku_list: [item.seller_sku],
+          packed_by_name: packingInfo?.packed_by_name || null,
+          packed_at: packingInfo?.created_at || null,
+          is_packed: !!packingInfo
         });
       } else {
         const existing = shipmentMap.get(shipmentId);
@@ -126,15 +153,49 @@ const ShipmentsPage = () => {
   };
 
   // Handle shipment selection
-  const handleShipmentSelect = (shipmentId) => {
+  const handleShipmentSelect = (shipmentId: any) => {
     setSelectedShipment(shipmentId);
     setShowItems(true);
+  };
+
+  // Handle pack shipment
+  const handlePackShipment = async (shipmentId: string) => {
+    setPackingLoading(shipmentId);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error("Debes estar autenticado para empacar");
+      }
+
+      const { data, error } = await supabase
+        .from('shipment_packing')
+        .insert({
+          shipment_id: shipmentId,
+          packed_by_user_id: user.id,
+          packed_by_name: user.user_metadata?.name || user.user_metadata?.full_name || 'Usuario',
+          packed_by_email: user.email
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Refresh data
+      await fetchShipments();
+    } catch (err: any) {
+      setError(`Error al empacar: ${err.message}`);
+      console.error('Packing error:', err);
+    } finally {
+      setPackingLoading(null);
+    }
   };
 
   // Shipment column definitions using the reusable column types
   const shipmentColumnDefs = useMemo(() => [
     AGGridColumnTypes.actionButton(
-      (data) => handleShipmentSelect(data.shipment_id),
+      "Abrir",
+      (data: any) => handleShipmentSelect(data.shipment_id),
       "+"
     ),
     AGGridColumnTypes.numeric('Items', 'total_items', { width: 120, filter: true }),
@@ -157,8 +218,25 @@ const ShipmentsPage = () => {
       width: 150,
       filter: true
     },
+    {
+      headerName: 'Packed By',
+      field: 'packed_by_name',
+      width: 120,
+      filter: true,
+      cellRenderer: (params: any) => {
+        return params.value || '-';
+      }
+    },
+    AGGridColumnTypes.actionButton(
+      "Empacar",
+      (data: any) => {
+        if (data.is_packed) return; // Do nothing if already packed
+        handlePackShipment(data.shipment_id);
+      }
+
+    ),
     AGGridColumnTypes.date('Created', 'shipment_created')
-  ], []);
+  ], [packingLoading]);
 
   // Get items for selected shipment
   const selectedShipmentItems = useMemo(() => {

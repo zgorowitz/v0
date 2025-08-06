@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Loader2, X, Flashlight, FlashlightOff, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, X, Flashlight, FlashlightOff, ChevronLeft, ChevronRight, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { extractShipmentInfo } from "@/lib/api"
 import { QRBarcodeScanner } from "@/lib/qr-barcode"
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { supabase } from "@/lib/supabase/client"
 
 export default function ScanPage() {
   const [showCamera, setShowCamera] = useState(false)
@@ -19,6 +20,8 @@ export default function ScanPage() {
   const [lastScannedCode, setLastScannedCode] = useState("")
   const [manualMode, setManualMode] = useState(false)
   const [manualInput, setManualInput] = useState("")
+  const [packingInfo, setPackingInfo] = useState(null)
+  const [packingLoading, setPackingLoading] = useState(false)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const scannerRef = useRef(null)
@@ -59,9 +62,9 @@ export default function ScanPage() {
         }
       }
     } catch (err) {
-      setError("No se pudo acceder a la cámara. Por favor, revisa los permisos e inténtalo de nuevo.")
+      setError("Cámara no disponible")
       console.error("Camera access error:", err)
-      setShowCamera(false)
+      // Keep showCamera true to show black placeholder
       setScanning(false)
     }
   }
@@ -140,6 +143,8 @@ export default function ScanPage() {
       if (itemsData && itemsData.length > 0) {
         setItems(itemsData)
         setCurrentItemIndex(0) // Reset to first item
+        // Check if this shipment is already packed
+        await checkPackingStatus(code)
         // Stop camera after successful scan and data retrieval
         stopCamera()
       } else {
@@ -184,6 +189,106 @@ export default function ScanPage() {
     }
   }
 
+  // Check if shipment is already packed
+  const checkPackingStatus = async (shipmentId) => {
+    try {
+      const { data, error } = await supabase
+        .from('shipment_packing')
+        .select('*')
+        .eq('shipment_id', shipmentId)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error checking packing status:', error)
+        setPackingInfo(null)
+        return
+      }
+
+      setPackingInfo(data) // data will be null if no record found
+    } catch (err) {
+      console.error('Error checking packing status:', err)
+      setPackingInfo(null)
+    }
+  }
+
+  // Handle pack button click
+  const handlePack = async () => {
+    setPackingLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        throw new Error("Debes estar autenticado para empacar")
+      }
+
+      const { data, error } = await supabase
+        .from('shipment_packing')
+        .insert({
+          shipment_id: lastScannedCode,
+          packed_by_user_id: user.id,
+          packed_by_name: user.user_metadata?.name || user.user_metadata?.full_name || 'Usuario',
+          packed_by_email: user.email
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setPackingInfo(data)
+      navigator.vibrate?.(200) // Success vibration
+    } catch (err: any) {
+      setError(`Error al empacar: ${err.message}`)
+      console.error('Packing error:', err)
+    } finally {
+      setPackingLoading(false)
+    }
+  }
+
+  // Handle repack button click
+  const handleRepack = async () => {
+    setPackingLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        throw new Error("Debes estar autenticado para reempacar")
+      }
+
+      const { data, error } = await supabase
+        .from('shipment_packing')
+        .update({
+          packed_by_user_id: user.id,
+          packed_by_name: user.user_metadata?.name || user.user_metadata?.full_name || 'Usuario',
+          packed_by_email: user.email
+        })
+        .eq('shipment_id', lastScannedCode)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      // If update succeeded but no data returned, fetch the record
+      if (!data) {
+        const { data: fetchedData, error: fetchError } = await supabase
+          .from('shipment_packing')
+          .select('*')
+          .eq('shipment_id', lastScannedCode)
+          .single()
+        
+        if (fetchError) throw fetchError
+        setPackingInfo(fetchedData)
+      } else {
+        setPackingInfo(data)
+      }
+      navigator.vibrate?.(200) // Success vibration
+    } catch (err: any) {
+      setError(`Error al reempacar: ${err.message}`)
+      console.error('Repacking error:', err)
+    } finally {
+      setPackingLoading(false)
+    }
+  }
+
   // Restart scanning
   const restartScanning = () => {
     setItems(null)
@@ -191,6 +296,7 @@ export default function ScanPage() {
     setError("")
     setLastScannedCode("")
     setManualMode(false)
+    setPackingInfo(null)
     startCamera()
   }
 
@@ -234,6 +340,15 @@ return (
           
           {/* Header */}
           <div className="px-6 pt-6 pb-2">
+            {/* Error Message at Top */}
+            {error && (
+              <div className="mb-4 text-center">
+                <p className="text-gray-600 text-sm font-medium">
+                  {error.length > 20 ? error.substring(0, 20) : error}
+                </p>
+              </div>
+            )}
+            
             {!items && (
               <div className="flex items-center justify-between mb-4">
                 <h1 className="text-2xl font-light text-gray-900">Scanner</h1>
@@ -299,12 +414,6 @@ return (
               </div>
             )}
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-700 p-4 rounded-xl text-sm">
-                {error}
-              </div>
-            )}
 
             {/* Camera Preview */}
             {showCamera && !manualMode && (
@@ -450,13 +559,73 @@ return (
                   </div>
                 ))}
 
-                {/* Action Button */}
+                {/* Packing Status or Button */}
+                {packingInfo ? (
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Package className="h-5 w-5 text-green-600" />
+                        <div>
+                          <div className="text-sm font-medium text-green-800">
+                            Empacado por {(packingInfo as any)?.packed_by_name || 'Usuario'}
+                          </div>
+                          <div className="text-xs text-green-600">
+                            {(packingInfo as any)?.created_at 
+                              ? new Date((packingInfo as any).created_at).toLocaleString('es-AR', {
+                                  day: '2-digit',
+                                  month: '2-digit', 
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : 'Actualizado recientemente'
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          navigator.vibrate?.(50);
+                          handleRepack();
+                        }}
+                        disabled={packingLoading}
+                        size="sm"
+                        className="bg-white/60 backdrop-blur-sm border border-black/20 hover:bg-white/80 text-gray-700 hover:text-gray-900 rounded-lg px-3 py-1 text-xs font-medium transition-all active:scale-95"
+                      >
+                        {packingLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          "Reempacar"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      navigator.vibrate?.(100);
+                      handlePack();
+                    }}
+                    disabled={packingLoading}
+                    className="w-full h-12 mt-6 bg-white/60 backdrop-blur-sm border border-black/30 hover:bg-white/80 text-gray-900 font-medium rounded-xl transition-all active:scale-98 flex items-center gap-2"
+                  >
+                    {packingLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Package className="h-5 w-5" />
+                    )}
+                    {packingLoading ? "Empacando..." : "Marcar como Empacado"}
+                  </Button>
+                )}
+
+                {/* Scan Another Button */}
                 <Button
                   onClick={() => {
                     navigator.vibrate?.(100);
                     restartScanning();
                   }}
-                  className="w-full h-12 mt-6 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-all active:scale-98"
+                  variant="outline"
+                  className="w-full h-12 mt-3 border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all active:scale-98"
                 >
                   Escanear otro código
                 </Button>
