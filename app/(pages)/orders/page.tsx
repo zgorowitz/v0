@@ -378,15 +378,7 @@ const OrdersPage = () => {
     </div>
   );
 
-  if (loading) {
-    return (
-      <div className="p-6 bg-stone-50 min-h-screen">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg text-gray-700">Loading orders...</div>
-        </div>
-      </div>
-    );
-  }
+
 
   if (error) {
     return (
@@ -452,6 +444,13 @@ const OrdersPage = () => {
                 rowSelection: 'single',
               }}
             />
+
+                      {loading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
+              <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+              <div className="text-lg text-gray-700">Loading...</div>
+            </div>
+          )}
           </div>
 
           {/* Order Items - Show when order is selected */}

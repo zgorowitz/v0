@@ -413,8 +413,10 @@ const ProductsPage = () => {
               }
             }}
           />
+          {/* Loader inside table */}
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
+              <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
               <div className="text-lg text-gray-700">Loading products...</div>
             </div>
           )}
