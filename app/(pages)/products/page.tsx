@@ -393,7 +393,7 @@ const ProductsPage = () => {
         </div>
 
         {/* Products Table */}
-        <div>
+        <div className="relative">
           <EnhancedTableWrapper
             data={productsData}
             columns={columns}
@@ -413,6 +413,11 @@ const ProductsPage = () => {
               }
             }}
           />
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+              <div className="text-lg text-gray-700">Loading products...</div>
+            </div>
+          )}
         </div>
       </div>
     </LayoutWrapper>
