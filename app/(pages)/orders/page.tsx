@@ -199,7 +199,7 @@ const OrdersPage = () => {
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'paid':
-        return 'bg-green-100 text-green-800';
+        return 'bg-gray-100 text-gray-800';
       case 'confirmed':
         return 'bg-blue-100 text-blue-800';
       case 'cancelled':
@@ -221,6 +221,7 @@ const OrdersPage = () => {
       headerName: 'Order ID',
       field: 'id',
       width: 150,
+      filter: true,
       cellRenderer: (params) => (
         <span className="font-mono text-sm">{params.value}</span>
       )
@@ -229,9 +230,11 @@ const OrdersPage = () => {
       headerName: 'Status',
       field: 'status',
       width: 120,
+      filter: true,
     },
     AGGridColumnTypes.numeric('Total Amount', 'total_amount', {
       width: 130,
+      filter: true,
       formatter: (params) => {
         if (!params.value) return '-';
         return new Intl.NumberFormat('es-AR', {
@@ -240,12 +243,13 @@ const OrdersPage = () => {
         }).format(params.value);
       }
     }),
-    AGGridColumnTypes.numeric('Items', 'items_count', { width: 80 }),
-    AGGridColumnTypes.numeric('Qty', 'total_quantity', { width: 80 }),
+    AGGridColumnTypes.numeric('Items', 'items_count', { width: 80, filter: true }),
+    AGGridColumnTypes.numeric('Qty', 'total_quantity', { width: 80, filter: true, }),
     {
       headerName: 'Buyer ID',
       field: 'buyer_id',
       width: 120,
+      filter: true,
       cellRenderer: (params) => (
         <span className="font-mono text-xs">{params.value || '-'}</span>
       )
@@ -254,6 +258,7 @@ const OrdersPage = () => {
       headerName: 'Fulfilled',
       field: 'fulfilled',
       width: 100,
+      filter: true,
       valueFormatter: (params) => params.value ? 'Yes' : 'No'
     },
     AGGridColumnTypes.date('Created', 'date_created', { width: 160 }),
@@ -340,7 +345,22 @@ const OrdersPage = () => {
               <span className="font-medium">Attributes:</span> {formatVariationAttributes(item.variation_attributes)}
             </p>
           )}
-          
+          {/* Additional Info */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            {item.sale_fee && (
+              <div>
+                <span className="font-medium">Fee:</span> {new Intl.NumberFormat('es-AR', {
+                  style: 'currency',
+                  currency: item.currency_id || 'ARS'
+                }).format(item.sale_fee)}
+              </div>
+            )}
+              {item.listing_type_id && (
+              <div className='text-right'>
+                <span className="font-medium">Listing:</span> {item.listing_type_id}
+              </div>
+            )}
+          </div>          
           {/* Price */}
           <div className="flex justify-between items-center mb-2">
             <p className="text-sm font-medium text-gray-900">
@@ -357,22 +377,7 @@ const OrdersPage = () => {
             </p>
           </div>
           
-          {/* Additional Info */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-            {item.listing_type_id && (
-              <div>
-                <span className="font-medium">Listing:</span> {item.listing_type_id}
-              </div>
-            )}
-            {item.sale_fee && (
-              <div>
-                <span className="font-medium">Fee:</span> {new Intl.NumberFormat('es-AR', {
-                  style: 'currency',
-                  currency: item.currency_id || 'ARS'
-                }).format(item.sale_fee)}
-              </div>
-            )}
-          </div>
+
         </div>
       </div>
     </div>
@@ -413,7 +418,7 @@ const OrdersPage = () => {
           </div>
           <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
             <h3 className="font-semibold text-gray-700 mb-1">Fulfilled</h3>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-2xl font-bold text-gray-600">
               {ordersData.filter(order => order.fulfilled).length}
             </p>
           </div>

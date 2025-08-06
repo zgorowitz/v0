@@ -284,6 +284,7 @@ export const AGGridColumnTypes = {
     field,
     width: options.width || 120,
     type: 'numericColumn',
+    filter: 'agNumberColumnFilter',
     valueFormatter: options.formatter || ((params) => {
       if (params.value == null) return '';
       return params.value.toLocaleString();

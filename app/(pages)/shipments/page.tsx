@@ -137,22 +137,25 @@ const ShipmentsPage = () => {
       (data) => handleShipmentSelect(data.shipment_id),
       "+"
     ),
-    AGGridColumnTypes.numeric('Total Items', 'total_items', { width: 100 }),
-    AGGridColumnTypes.array('SKUs', 'sku_list', { width: 120 }),
+    AGGridColumnTypes.numeric('Items', 'total_items', { width: 120, filter: true }),
+    AGGridColumnTypes.array('SKUs', 'sku_list', { width: 120, filter: true, }),
     {
       headerName: 'Category',
       field: 'category',
       width: 120,
+      filter: true
     },
     {
       headerName: 'Account',
       field: 'account',
       width: 150,
+      filter: true
     },
     {
       headerName: 'Shipment ID',
       field: 'shipment_id',
       width: 150,
+      filter: true
     },
     AGGridColumnTypes.date('Created', 'shipment_created')
   ], []);
