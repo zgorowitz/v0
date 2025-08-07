@@ -27,6 +27,8 @@ const ShipmentsPage = () => {
     { value: 'category', label: 'Category' },
     { value: 'shipment_id', label: 'Shipment ID' },
     { value: 'total_items', label: 'Total Items' },
+    { value: 'shipment_status', label: 'status' },
+    { value: 'shipment_last_updated', label: 'last_updated' },
   ];
 
 
@@ -97,6 +99,8 @@ const ShipmentsPage = () => {
         const packingInfo = item.shipment_packing?.[0]; // Get first packing record
         shipmentMap.set(shipmentId, {
           shipment_id: shipmentId,
+          shipment_status: item.shipment_status,
+          shipment_updated: item.shipment_last_updated,
           account: item.nickname,
           total_orders: item.total_orders,
           total_items: item.total_items,
@@ -201,6 +205,12 @@ const ShipmentsPage = () => {
     AGGridColumnTypes.numeric('Items', 'total_items', { width: 120, filter: true }),
     AGGridColumnTypes.array('SKUs', 'sku_list', { width: 120, filter: true, }),
     {
+      headerName: 'Status',
+      field: 'Shipment_status',
+      width: 120,
+      filter: true
+    },
+    {
       headerName: 'Category',
       field: 'category',
       width: 120,
@@ -232,10 +242,12 @@ const ShipmentsPage = () => {
       (data: any) => {
         if (data.is_packed) return; // Do nothing if already packed
         handlePackShipment(data.shipment_id);
-      }
+      },
+      
+
 
     ),
-    AGGridColumnTypes.date('Created', 'shipment_created')
+    AGGridColumnTypes.date('Actualizado', 'shipment_updated')
   ], [packingLoading]);
 
   // Get items for selected shipment

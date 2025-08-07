@@ -1,0 +1,214 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+
+CREATE TABLE public.allowed_emails (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  role USER-DEFINED NOT NULL DEFAULT 'manager'::user_role,
+  added_by uuid NOT NULL,
+  added_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT allowed_emails_pkey PRIMARY KEY (id),
+  CONSTRAINT allowed_emails_added_by_fkey FOREIGN KEY (added_by) REFERENCES auth.users(id),
+  CONSTRAINT allowed_emails_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+);
+CREATE TABLE public.meli_accounts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid,
+  meli_user_id bigint NOT NULL,
+  nickname text,
+  permalink text,
+  thumbnail_url text,
+  first_name text,
+  last_name text,
+  country_id text,
+  site_id text,
+  user_type text,
+  seller_level_id text,
+  power_seller_status text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT meli_accounts_pkey PRIMARY KEY (id),
+  CONSTRAINT meli_accounts_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+);
+CREATE TABLE public.meli_attributes (
+  category_id character varying NOT NULL,
+  attribute_id character varying NOT NULL,
+  attribute_name character varying NOT NULL,
+  is_required boolean DEFAULT false,
+  is_catalog_required boolean DEFAULT false,
+  is_conditional_required boolean DEFAULT false,
+  is_variation_attribute boolean DEFAULT false,
+  allows_variations boolean DEFAULT false,
+  is_hidden boolean DEFAULT false,
+  is_multivalued boolean DEFAULT false,
+  value_type character varying NOT NULL CHECK (value_type::text = ANY (ARRAY['string'::character varying, 'number'::character varying, 'boolean'::character varying, 'list'::character varying, 'number_unit'::character varying]::text[])),
+  hierarchy character varying,
+  CONSTRAINT meli_attributes_pkey PRIMARY KEY (category_id, attribute_id),
+  CONSTRAINT meli_attributes_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.meli_categories(category_id)
+);
+CREATE TABLE public.meli_categories (
+  category_id character varying NOT NULL,
+  name character varying NOT NULL,
+  parent_category_id character varying,
+  total_items integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  level integer DEFAULT 0 CHECK (level >= 0),
+  CONSTRAINT meli_categories_pkey PRIMARY KEY (category_id),
+  CONSTRAINT meli_categories_parent_category_id_fkey FOREIGN KEY (parent_category_id) REFERENCES public.meli_categories(category_id)
+);
+CREATE TABLE public.meli_items (
+  id character varying NOT NULL,
+  meli_user_id bigint NOT NULL,
+  title text NOT NULL,
+  category_id character varying NOT NULL,
+  price numeric,
+  condition character varying,
+  available_quantity integer DEFAULT 0,
+  sold_quantity integer DEFAULT 0,
+  thumbnail character varying,
+  permalink character varying,
+  listing_type character varying,
+  status character varying,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  family_name text,
+  user_product_id character varying,
+  CONSTRAINT meli_items_pkey PRIMARY KEY (id),
+  CONSTRAINT items_meli_user_id_fkey FOREIGN KEY (meli_user_id) REFERENCES public.meli_tokens(meli_user_id)
+);
+CREATE TABLE public.meli_order_items (
+  id integer NOT NULL DEFAULT nextval('meli_order_items_id_seq'::regclass),
+  order_id bigint NOT NULL,
+  item_id character varying,
+  variation_id character varying,
+  quantity integer DEFAULT 1,
+  unit_price numeric,
+  full_unit_price numeric,
+  sale_fee numeric,
+  currency_id character varying,
+  listing_type_id character varying,
+  warranty text,
+  manufacturing_days integer,
+  variation_attributes jsonb DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT meli_order_items_pkey PRIMARY KEY (id),
+  CONSTRAINT meli_order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.meli_orders(id)
+);
+CREATE TABLE public.meli_orders (
+  id bigint NOT NULL,
+  meli_user_id bigint NOT NULL,
+  status character varying NOT NULL,
+  status_detail character varying,
+  buying_mode character varying,
+  fulfilled boolean DEFAULT false,
+  total_amount numeric,
+  paid_amount numeric,
+  shipping_cost numeric DEFAULT 0,
+  currency_id character varying,
+  buyer_id bigint,
+  seller_id bigint,
+  date_created timestamp with time zone,
+  date_closed timestamp with time zone,
+  date_last_updated timestamp with time zone,
+  payments jsonb DEFAULT '[]'::jsonb,
+  shipping_id bigint,
+  shipping jsonb DEFAULT '{}'::jsonb,
+  feedback jsonb DEFAULT '{}'::jsonb,
+  mediations jsonb DEFAULT '[]'::jsonb,
+  coupon jsonb DEFAULT '{}'::jsonb,
+  taxes jsonb DEFAULT '{}'::jsonb,
+  tags ARRAY,
+  comments text,
+  pack_id bigint,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT meli_orders_pkey PRIMARY KEY (id),
+  CONSTRAINT meli_orders_meli_user_id_fkey FOREIGN KEY (meli_user_id) REFERENCES public.meli_tokens(meli_user_id)
+);
+CREATE TABLE public.meli_shipment_pack_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  shipment_id bigint NOT NULL,
+  order_id bigint NOT NULL,
+  item_id character varying NOT NULL,
+  variation_id character varying,
+  user_product_id character varying,
+  quantity integer NOT NULL DEFAULT 1,
+  unit_price numeric,
+  currency_id character varying,
+  variation_attributes jsonb DEFAULT '{}'::jsonb,
+  item_title text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT meli_shipment_pack_items_pkey PRIMARY KEY (id),
+  CONSTRAINT meli_shipment_pack_items_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.meli_shipments(shipment_id),
+  CONSTRAINT meli_shipment_pack_items_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.meli_items(id)
+);
+CREATE TABLE public.meli_shipments (
+  shipment_id bigint NOT NULL,
+  meli_user_id bigint NOT NULL,
+  total_orders integer DEFAULT 0,
+  total_items integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT meli_shipments_pkey PRIMARY KEY (shipment_id),
+  CONSTRAINT meli_shipments_meli_user_id_fkey FOREIGN KEY (meli_user_id) REFERENCES public.meli_tokens(meli_user_id)
+);
+CREATE TABLE public.meli_tokens (
+  organization_id uuid NOT NULL,
+  meli_user_id bigint NOT NULL,
+  access_token text NOT NULL,
+  refresh_token text NOT NULL,
+  token_type text DEFAULT 'Bearer'::text,
+  expires_at bigint NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  is_default boolean DEFAULT false,
+  CONSTRAINT meli_tokens_pkey PRIMARY KEY (meli_user_id),
+  CONSTRAINT meli_tokens_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+);
+CREATE TABLE public.meli_variations (
+  id integer NOT NULL DEFAULT nextval('variations_id_seq'::regclass),
+  item_id character varying NOT NULL,
+  variation_id character varying NOT NULL,
+  price numeric,
+  available_quantity integer DEFAULT 0,
+  sold_quantity integer DEFAULT 0,
+  picture_url character varying,
+  attributes jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  seller_sku text,
+  user_product_id character varying NOT NULL,
+  CONSTRAINT meli_variations_pkey PRIMARY KEY (user_product_id),
+  CONSTRAINT variations_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.meli_items(id)
+);
+CREATE TABLE public.organization_users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  user_id uuid NOT NULL UNIQUE,
+  role USER-DEFINED NOT NULL DEFAULT 'manager'::user_role,
+  invited_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  joined_at timestamp with time zone,
+  invited_by uuid,
+  current_meli_user_id bigint,
+  CONSTRAINT organization_users_pkey PRIMARY KEY (id),
+  CONSTRAINT organization_users_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES auth.users(id),
+  CONSTRAINT organization_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT organization_users_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+);
+CREATE TABLE public.organizations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  admin_user_id uuid NOT NULL,
+  default_meli_user_id bigint,
+  CONSTRAINT organizations_pkey PRIMARY KEY (id),
+  CONSTRAINT organizations_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.shipment_packing (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  shipment_id bigint NOT NULL UNIQUE,
+  packed_by_user_id uuid NOT NULL,
+  packed_by_name text NOT NULL,
+  packed_by_email text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT shipment_packing_pkey PRIMARY KEY (id),
+  CONSTRAINT shipment_packing_packed_by_user_id_fkey FOREIGN KEY (packed_by_user_id) REFERENCES auth.users(id)
+);

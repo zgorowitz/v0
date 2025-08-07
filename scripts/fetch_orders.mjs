@@ -52,7 +52,10 @@ function parseOrder(order, meliUserId) {
     taxes: order.taxes || {},
     tags: order.tags || [],
     comments: order.comments || null,
-    pack_id: order.pack_id || null
+    pack_id: order.pack_id || null,
+    order_request: order.order_request || {},
+    manufacturing_ending_date: order.manufacturing_ending_date ? new Date(order.manufacturing_ending_date).toISOString() : null,
+    last_updated: order.last_updated ? new Date(order.last_updated).toISOString() : null
   }
 }
 
@@ -71,20 +74,27 @@ function parseOrderItems(orderId, orderItems) {
     listing_type_id: item.listing_type_id || null,
     warranty: item.item?.warranty || null,
     manufacturing_days: item.manufacturing_days || null,
-    variation_attributes: item.item?.variation_attributes || []
+    variation_attributes: item.item?.variation_attributes || [],
+    seller_custom_field: item.item?.seller_custom_field || null,
+    condition: item.item?.condition || null,
+    category_id: item.item?.category_id || null,
+    title: item.item?.title || null,
+    seller_sku: item.item?.seller_sku || null,
+    differential_pricing_id: item.differential_pricing_id || null,
+    base_currency_id: item.base_currency_id || null,
+    base_exchange_rate: item.base_exchange_rate || null
   }))
 }
 
-function getYesterdayFilter() {
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  yesterday.setHours(0, 0, 0, 0)
-  return yesterday.toISOString()
+function getLast24HoursFilter() {
+  const twentyFourHoursAgo = new Date()
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+  return twentyFourHoursAgo.toISOString()
 }
 
 export async function fetchOrders(options = {}) {
   const { 
-    fromDate = getYesterdayFilter(),
+    fromDate = getLast24HoursFilter(),
     fullSync = false
   } = options
   
@@ -220,8 +230,8 @@ export async function fetchAllOrders() {
 }
 
 export async function fetchDailyOrders() {
-  console.log('Starting DAILY orders sync (yesterday updates)...')
-  return fetchOrders({ fromDate: getYesterdayFilter() })
+  console.log('Starting DAILY orders sync (last 24 hours)...')
+  return fetchOrders({ fromDate: getLast24HoursFilter() })
 }
 
 export async function fetchOrdersFromDate(fromDate, toDate = null) {
