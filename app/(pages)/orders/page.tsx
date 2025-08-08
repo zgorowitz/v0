@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
@@ -13,6 +13,7 @@ const OrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showItems, setShowItems] = useState(false);
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  const itemsCardRef = useRef<HTMLDivElement>(null);
 
   // Filter options for the AG Grid - all columns
   const filterOptions = [
@@ -212,6 +213,22 @@ const OrdersPage = () => {
     setDateFilter(dates);
   };
 
+  // Handle click outside to close items card
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (itemsCardRef.current && !itemsCardRef.current.contains(event.target)) {
+        setShowItems(false);
+      }
+    };
+
+    if (showItems) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showItems]);
+
   // Get status badge color
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -306,7 +323,7 @@ const OrdersPage = () => {
 
   // Order Item Card Component
   const OrderItemCard = ({ item }) => (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 hover:bg-gray-100 transition-colors">
       <div className="flex gap-3">
         {/* Thumbnail */}
         {(item.variation_data?.picture_url || item.item_data?.thumbnail) && (
@@ -314,7 +331,7 @@ const OrdersPage = () => {
             <img 
               src={item.variation_data?.picture_url || item.item_data?.thumbnail} 
               alt={item.variation_data?.seller_sku || item.item_id}
-              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+              className="w-12 h-12 object-cover rounded border border-gray-200"
             />
           </div>
         )}
@@ -322,49 +339,50 @@ const OrdersPage = () => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start mb-1">
             <div>
-              <h3 className="font-semibold text-gray-900 text-sm">
+              <h3 className="font-medium text-gray-900 text-sm truncate">
                 {item.variation_data?.seller_sku || item.item_id}
               </h3>
               {item.item_data?.title && (
                 <p className="text-xs text-gray-600 truncate">{item.item_data.title}</p>
               )}
             </div>
-            <span className="font-semibold text-gray-900 font-medium px-2 py-1 rounded-full flex-shrink-0 ml-2">
+            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full flex-shrink-0 ml-2">
               Qty: {item.quantity}
             </span>
           </div>
           
-          {/* Item ID if different from SKU */}
-          {item.variation_data?.seller_sku && (
-            <p className="text-xs text-gray-500 mb-2 font-mono">
-              Item ID: {item.item_id}
+          {/* Price */}
+          <div className="flex justify-between items-center mb-1">
+            <p className="text-xs font-medium text-gray-900">
+              Unit: {new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: item.currency_id || 'ARS'
+              }).format(item.unit_price || 0)}
             </p>
-          )}
-          
-          {/* Variation ID */}
-          {item.variation_id && (
-            <p className="text-xs text-gray-500 mb-2 font-mono">
-              Variation: {item.variation_id}
+            <p className="text-xs font-bold text-gray-900">
+              Total: {new Intl.NumberFormat('es-AR', {
+                style: 'currency',
+                currency: item.currency_id || 'ARS'
+              }).format((item.unit_price || 0) * (item.quantity || 0))}
             </p>
-          )}
-          
-          {/* User Product ID */}
-          {item.variation_data?.user_product_id && (
-            <p className="text-xs text-gray-500 mb-2 font-mono">
-              Product ID: {item.variation_data.user_product_id}
-            </p>
-          )}
+          </div>
           
           {/* Variation Attributes */}
           {item.variation_attributes && item.variation_attributes.length > 0 && (
-            <p className="text-xs text-gray-500 mb-2">
-              <span className="font-medium">Attributes:</span> {formatVariationAttributes(item.variation_attributes)}
+            <p className="text-xs text-gray-500 mb-1">
+              <span className="font-medium">Attr:</span> {formatVariationAttributes(item.variation_attributes)}
             </p>
           )}
-          {/* Additional Info */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+
+          {/* IDs and Additional Info */}
+          <div className="flex gap-4 text-xs text-gray-500">
+            {item.variation_id && (
+              <div>
+                <span className="font-medium">Var:</span> {item.variation_id}
+              </div>
+            )}
             {item.sale_fee && (
               <div>
                 <span className="font-medium">Fee:</span> {new Intl.NumberFormat('es-AR', {
@@ -373,29 +391,7 @@ const OrdersPage = () => {
                 }).format(item.sale_fee)}
               </div>
             )}
-              {item.listing_type_id && (
-              <div className='text-right'>
-                <span className="font-medium">Listing:</span> {item.listing_type_id}
-              </div>
-            )}
-          </div>          
-          {/* Price */}
-          <div className="flex justify-between items-center mb-2">
-            <p className="text-sm font-medium text-gray-900">
-              Unit: {new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: item.currency_id || 'ARS'
-              }).format(item.unit_price || 0)}
-            </p>
-            <p className="text-sm font-bold text-gray-900">
-              Total: {new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: item.currency_id || 'ARS'
-              }).format((item.unit_price || 0) * (item.quantity || 0))}
-            </p>
           </div>
-          
-
         </div>
       </div>
     </div>
@@ -448,10 +444,10 @@ const OrdersPage = () => {
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className={`grid gap-4 ${showItems ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Main Content - Single column */}
+        <div className="grid gap-4 grid-cols-1">
           {/* Orders Grid */}
-          <div>
+          <div className="relative">
             <AGGridWrapper
               columnDefs={ordersColumnDefs}
               rowData={ordersData}
@@ -470,18 +466,20 @@ const OrdersPage = () => {
               }}
             />
 
-                      {loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
-              <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-              <div className="text-lg text-gray-700">Loading...</div>
-            </div>
-          )}
+            {loading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
+                <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                <div className="text-lg text-gray-700">Loading...</div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Order Items - Show when order is selected */}
-          {showItems && selectedOrder && selectedOrderData && (
-            <div>
-              <div className="p-3 flex justify-between items-center">
+        {/* Order Items Popup - Show when order is selected */}
+        {showItems && selectedOrder && selectedOrderData && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div ref={itemsCardRef} className="bg-white border border-gray-200 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-800">
                     Order #{selectedOrder}
@@ -493,31 +491,28 @@ const OrdersPage = () => {
                       currency: selectedOrderData.currency_id || 'ARS'
                     }).format(selectedOrderData.total_amount || 0)}</span>
                   </div>
-                </div>
-                <div className="flex gap-3 items-center">
-                  <span className="text-sm text-gray-600 px-3 py-1">
+                  <span className="text-sm text-gray-600">
                     {selectedOrderItems.length} items
                   </span>
-                  <button
-                    onClick={() => setShowItems(false)}
-                    className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
-                             hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    Close
-                  </button>
                 </div>
+                <button
+                  onClick={() => setShowItems(false)}
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  ×
+                </button>
               </div>
 
-              <div className="max-h-[600px] overflow-y-auto">
-                <div className="grid gap-3">
+              <div className="max-h-[calc(90vh-120px)] overflow-y-auto p-4">
+                <div className="space-y-3">
                   {selectedOrderItems.map((item, index) => (
                     <OrderItemCard key={`${item.item_id}-${item.variation_id}-${index}`} item={item} />
                   ))}
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );

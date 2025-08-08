@@ -2,7 +2,7 @@
 
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
@@ -20,6 +20,7 @@ const ShipmentsPage = () => {
   const [showPackDialog, setShowPackDialog] = useState(false);
   const [selectedShipmentToPack, setSelectedShipmentToPack] = useState<string | null>(null);
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  const itemsCardRef = useRef<HTMLDivElement>(null);
 
   // Filter options for the AG Grid
   const filterOptions = [
@@ -69,7 +70,7 @@ const ShipmentsPage = () => {
 
       // Get packing data separately
       const { data: packingData } = await supabase
-        .from('shipment_packing')
+        .from('shipments_packing_view')
         .select('*');
 
       // Create packing lookup map
@@ -142,7 +143,7 @@ const ShipmentsPage = () => {
         currency_id: item.currency_id,
         item_title: item.item_title,
         item_full_title: item.item_full_title,
-        item_thumbnail: item.item_thumbnail,
+        item_thumbnail: item.picture_url,
         variation_attributes: item.variation_attributes
       });
     });
@@ -177,6 +178,22 @@ const ShipmentsPage = () => {
   const handleDateChange = (dates) => {
     setDateFilter(dates);
   };
+
+  // Handle click outside to close items card
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (itemsCardRef.current && !itemsCardRef.current.contains(event.target)) {
+        setShowItems(false);
+      }
+    };
+
+    if (showItems) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showItems]);
 
   // Handle pack shipment
   const handlePackShipment = async (shipmentId: string) => {
@@ -274,7 +291,7 @@ const ShipmentsPage = () => {
 
   // Item Card Component
   const ItemCard = ({ item }) => (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 hover:shadow-md transition-shadow">
+    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 hover:bg-gray-100 transition-colors">
       <div className="flex gap-3">
         {/* Thumbnail */}
         {item.item_thumbnail && (
@@ -282,7 +299,7 @@ const ShipmentsPage = () => {
             <img 
               src={item.item_thumbnail} 
               alt= {item.sku}
-              className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+              className="w-12 h-12 object-cover rounded border border-gray-200"
             />
           </div>
         )}
@@ -290,37 +307,37 @@ const ShipmentsPage = () => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-gray-900 truncate">{item.sku}</h3>
-            <span className="font-semibold text-gray-900 font-medium px-2 py-1 rounded-full flex-shrink-0 ml-2">
-              Cantidad: {item.quantity}
+          <div className="flex justify-between items-start mb-1">
+            <h3 className="font-medium text-gray-900 text-sm truncate">{item.sku}</h3>
+            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full flex-shrink-0 ml-2">
+              Qty: {item.quantity}
             </span>
           </div>
           
           {/* Title */}
-          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{item.item_title}</p>
-          
-          {/* Variation */}
-          {item.variation_attributes && formatVariationAttributes(item.variation_attributes) && (
-            <p className="text-xs text-gray-500 mb-2">
-              <span className="font-medium">Variation:</span> {formatVariationAttributes(item.variation_attributes)}
-            </p>
-          )}
+          <p className="text-xs text-gray-600 mb-2 line-clamp-2">{item.item_title}</p>
           
           {/* Price */}
           {item.unit_price && (
-            <p className="text-sm font-medium text-gray-900 mb-2">
+            <p className="text-xs font-medium text-gray-900 mb-1">
               ${item.unit_price} {item.currency_id}
             </p>
           )}
           
+          {/* Variation */}
+          {item.variation_attributes && formatVariationAttributes(item.variation_attributes) && (
+            <p className="text-xs text-gray-500 mb-1">
+              <span className="font-medium">Var:</span> {formatVariationAttributes(item.variation_attributes)}
+            </p>
+          )}
+          
           {/* IDs */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+          <div className="flex gap-4 text-xs text-gray-500">
             <div>
-              <span className="font-medium">Item ID:</span> {item.item_id}
+              <span className="font-medium">Item:</span> {item.item_id}
             </div>
             <div>
-              <span className="font-medium">Order ID:</span> {item.order_id}
+              <span className="font-medium">Order:</span> {item.order_id}
             </div>
           </div>
         </div>
@@ -376,10 +393,10 @@ const ShipmentsPage = () => {
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className={`grid gap-4 ${showItems ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+        {/* Main Content - Single column */}
+        <div className="grid gap-4 grid-cols-1">
           {/* Shipments Grid */}
-          <div>
+          <div className="relative">
             <AGGridWrapper
               columnDefs={shipmentColumnDefs}
               rowData={shipmentData}
@@ -404,38 +421,39 @@ const ShipmentsPage = () => {
               </div>
             )}
           </div>
+        </div>
 
-          {/* Items Cards - Show when shipment is selected */}
-          {showItems && selectedShipment && (
-            <div>
-              <div className="p-3 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-800">
-                  Items for Shipment #{selectedShipment}
-                </h2>
-                <div className="flex gap-3 items-center">
-                  <span className="text-sm text-gray-600 px-3 py-1">
+        {/* Items Popup - Show when shipment is selected */}
+        {showItems && selectedShipment && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div ref={itemsCardRef} className="bg-white border border-gray-200 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    Items for Shipment #{selectedShipment}
+                  </h2>
+                  <span className="text-sm text-gray-600">
                     {selectedShipmentItems.length} items
                   </span>
-                  <button
-                    onClick={() => setShowItems(false)}
-                    className="px-3 py-1.5 bg-gray-800 text-stone-50 text-sm rounded-md 
-                             hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    Close
-                  </button>
                 </div>
+                <button
+                  onClick={() => setShowItems(false)}
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  ×
+                </button>
               </div>
 
-              <div className="max-h-[600px] overflow-y-auto">
-                <div className="grid gap-3">
+              <div className="max-h-[calc(90vh-80px)] overflow-y-auto p-4">
+                <div className="space-y-3">
                   {selectedShipmentItems.map((item, index) => (
                     <ItemCard key={`${item.item_id}-${item.variation_id}-${index}`} item={item} />
                   ))}
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );
