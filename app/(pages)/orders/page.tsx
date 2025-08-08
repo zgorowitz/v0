@@ -12,6 +12,7 @@ const OrdersPage = () => {
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showItems, setShowItems] = useState(false);
+  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
 
   // Filter options for the AG Grid - all columns
   const filterOptions = [
@@ -30,7 +31,7 @@ const OrdersPage = () => {
   // Fetch orders data
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [dateFilter]);
 
   const fetchOrders = async () => {
     try {
@@ -56,13 +57,24 @@ const OrdersPage = () => {
       
       const meliUserIds = meliAccounts.map(account => account.meli_user_id);
       
-      // Get orders only for the organization's meli_user_ids
-      const { data: orders, error: ordersError } = await supabase
+      // Build the query with date filtering
+      let ordersQuery = supabase
         .from('meli_orders')
         .select('*')
-        .in('meli_user_id', meliUserIds)
+        .in('meli_user_id', meliUserIds);
+
+      // Apply date filtering if dates are set
+      if (dateFilter.from) {
+        ordersQuery = ordersQuery.gte('date_created', `${dateFilter.from}T00:00:00.000Z`);
+      }
+      if (dateFilter.to) {
+        ordersQuery = ordersQuery.lte('date_created', `${dateFilter.to}T23:59:59.999Z`);
+      }
+
+      // Get orders only for the organization's meli_user_ids
+      const { data: orders, error: ordersError } = await ordersQuery
         .order('date_created', { ascending: false })
-        .limit(1000); // Limit for performance
+        .limit(3000); 
 
       if (ordersError) throw ordersError;
 
@@ -195,6 +207,11 @@ const OrdersPage = () => {
     setShowItems(true);
   };
 
+  // Handle date filter changes
+  const handleDateChange = (dates) => {
+    setDateFilter(dates);
+  };
+
   // Get status badge color
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -214,6 +231,7 @@ const OrdersPage = () => {
   // Orders column definitions
   const ordersColumnDefs = useMemo(() => [
     AGGridColumnTypes.actionButton(
+      "Abrir",
       (data) => handleOrderSelect(data.id),
       "+"
     ),
@@ -439,6 +457,8 @@ const OrdersPage = () => {
               rowData={ordersData}
               filters={filterOptions}
               height="800px"
+              showDateSelector={true}
+              onDateChange={handleDateChange}
               defaultColDef={{
                 resizable: true,
                 sortable: true,

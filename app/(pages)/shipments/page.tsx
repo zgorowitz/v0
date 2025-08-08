@@ -19,6 +19,7 @@ const ShipmentsPage = () => {
   const [packingLoading, setPackingLoading] = useState<string | null>(null);
   const [showPackDialog, setShowPackDialog] = useState(false);
   const [selectedShipmentToPack, setSelectedShipmentToPack] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
 
   // Filter options for the AG Grid
   const filterOptions = [
@@ -35,7 +36,7 @@ const ShipmentsPage = () => {
   // Fetch shipments data
   useEffect(() => {
     fetchShipments();
-  }, []);
+  }, [dateFilter]);
 
   const fetchShipments = async () => {
     try {
@@ -47,12 +48,22 @@ const ShipmentsPage = () => {
         return;
       }
       
-      // Get shipments data
-      const { data, error } = await supabase
+      // Build the query with date filtering
+      let shipmentsQuery = supabase
         .from('shipments_packing_view')
         .select('*')
-        .eq('organization_id', userOrganizationId)
-        .order('shipment_id');
+        .eq('organization_id', userOrganizationId);
+
+      // Apply date filtering if dates are set
+      if (dateFilter.from) {
+        shipmentsQuery = shipmentsQuery.gte('shipment_created', `${dateFilter.from}T00:00:00.000Z`);
+      }
+      if (dateFilter.to) {
+        shipmentsQuery = shipmentsQuery.lte('shipment_created', `${dateFilter.to}T23:59:59.999Z`);
+      }
+
+      // Get shipments data
+      const { data, error } = await shipmentsQuery.order('shipment_id');
 
       if (error) throw error;
 
@@ -162,6 +173,11 @@ const ShipmentsPage = () => {
     setShowItems(true);
   };
 
+  // Handle date filter changes
+  const handleDateChange = (dates) => {
+    setDateFilter(dates);
+  };
+
   // Handle pack shipment
   const handlePackShipment = async (shipmentId: string) => {
     setPackingLoading(shipmentId);
@@ -206,7 +222,7 @@ const ShipmentsPage = () => {
     AGGridColumnTypes.array('SKUs', 'sku_list', { width: 120, filter: true, }),
     {
       headerName: 'Status',
-      field: 'Shipment_status',
+      field: 'shipment_status',
       width: 120,
       filter: true
     },
@@ -369,6 +385,8 @@ const ShipmentsPage = () => {
               rowData={shipmentData}
               filters={filterOptions}
               height="800px"
+              showDateSelector={true}
+              onDateChange={handleDateChange}
               defaultColDef={{
                 resizable: true,
                 sortable: true,
