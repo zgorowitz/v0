@@ -1,17 +1,10 @@
 // scripts/fetch_orders.mjs
 // Fetch orders for all meli users with daily incremental updates
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
-
-function createClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
 
 async function apiRequest(url, accessToken) {
   const response = await fetch(url, {
@@ -88,17 +81,27 @@ function parseOrderItems(orderId, orderItems) {
 
 function getLast24HoursFilter() {
   const twentyFourHoursAgo = new Date()
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 12)
   return twentyFourHoursAgo.toISOString()
 }
 
 export async function fetchOrders(options = {}) {
   const { 
     fromDate = getLast24HoursFilter(),
-    fullSync = false
+    fullSync = false,
+    refreshTokens = true
   } = options
   
   const supabase = createClient()
+  
+  // Refresh tokens before fetching orders
+  if (refreshTokens) {
+    try {
+      await refreshAllTokens()
+    } catch (error) {
+      console.warn(error.message)
+    }
+  }
   
   const { data: meliUsers, error } = await supabase
     .from('meli_tokens')

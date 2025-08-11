@@ -19,7 +19,9 @@ const ShipmentsPage = () => {
   const [packingLoading, setPackingLoading] = useState<string | null>(null);
   const [showPackDialog, setShowPackDialog] = useState(false);
   const [selectedShipmentToPack, setSelectedShipmentToPack] = useState<string | null>(null);
-  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  // Initialize date filter with today's date
+  const today = new Date().toISOString().split('T')[0];
+  const [dateFilter, setDateFilter] = useState({ from: today, to: today });
   const itemsCardRef = useRef<HTMLDivElement>(null);
 
   // Filter options for the AG Grid
@@ -55,13 +57,11 @@ const ShipmentsPage = () => {
         .select('*')
         .eq('organization_id', userOrganizationId);
 
-      // Apply date filtering if dates are set
-      if (dateFilter.from) {
-        shipmentsQuery = shipmentsQuery.gte('shipment_created', `${dateFilter.from}T00:00:00.000Z`);
-      }
-      if (dateFilter.to) {
-        shipmentsQuery = shipmentsQuery.lte('shipment_created', `${dateFilter.to}T23:59:59.999Z`);
-      }
+      const startDate = new Date(`${dateFilter.from}T00:00:00`);
+      const endDate = new Date(`${dateFilter.to}T23:59:59`);
+             
+      shipmentsQuery = shipmentsQuery.gte('shipment_created', startDate.toISOString());
+      shipmentsQuery = shipmentsQuery.lte('shipment_created', endDate.toISOString());
 
       // Get shipments data
       const { data, error } = await shipmentsQuery.order('shipment_id');
@@ -70,7 +70,7 @@ const ShipmentsPage = () => {
 
       // Get packing data separately
       const { data: packingData } = await supabase
-        .from('shipments_packing_view')
+        .from('shipment_packing')
         .select('*');
 
       // Create packing lookup map
@@ -280,7 +280,9 @@ const ShipmentsPage = () => {
 
 
     ),
-    AGGridColumnTypes.date('Actualizado', 'shipment_updated')
+    AGGridColumnTypes.date('shipment_created', 'shipment_created'),
+    AGGridColumnTypes.date('shipment_updated', 'shipment_updated'),
+    AGGridColumnTypes.date('packed_at', 'packed_at')
   ], [packingLoading]);
 
   // Get items for selected shipment

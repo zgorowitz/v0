@@ -4,7 +4,6 @@ import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
-
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -71,7 +70,7 @@ const AG_GRID_STYLES = `
   .ag-grid-filter-input:focus {
     outline: none;
     background-color: white;
-    border-color: #3b82f6;
+    border-color: #6b7280;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
   .ag-grid-clear-filter {
@@ -131,7 +130,7 @@ export const AGGridWrapper = ({
   const defaultColumnDef = useMemo(() => ({
     resizable: true,
     sortable: true,
-    filter: false, // We use external filtering
+    filter: true, // We use external filtering
     ...defaultColDef
   }), [defaultColDef]);
 

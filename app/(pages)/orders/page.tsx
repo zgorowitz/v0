@@ -12,7 +12,9 @@ const OrdersPage = () => {
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showItems, setShowItems] = useState(false);
-  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  // Initialize date filter with today's date
+  const today = new Date().toISOString().split('T')[0];
+  const [dateFilter, setDateFilter] = useState({ from: today, to: today });
   const itemsCardRef = useRef<HTMLDivElement>(null);
 
   // Filter options for the AG Grid - all columns
@@ -64,13 +66,9 @@ const OrdersPage = () => {
         .select('*')
         .in('meli_user_id', meliUserIds);
 
-      // Apply date filtering if dates are set
-      if (dateFilter.from) {
-        ordersQuery = ordersQuery.gte('date_created', `${dateFilter.from}T00:00:00.000Z`);
-      }
-      if (dateFilter.to) {
-        ordersQuery = ordersQuery.lte('date_created', `${dateFilter.to}T23:59:59.999Z`);
-      }
+      // Apply date filtering - always filter by date range
+      ordersQuery = ordersQuery.gte('date_created', `${dateFilter.from}T00:00:00.000Z`);
+      ordersQuery = ordersQuery.lte('date_created', `${dateFilter.to}T23:59:59.999Z`);
 
       // Get orders only for the organization's meli_user_ids
       const { data: orders, error: ordersError } = await ordersQuery

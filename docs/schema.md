@@ -8,8 +8,8 @@ CREATE TABLE public.allowed_emails (
   added_by uuid NOT NULL,
   added_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   CONSTRAINT allowed_emails_pkey PRIMARY KEY (id),
-  CONSTRAINT allowed_emails_added_by_fkey FOREIGN KEY (added_by) REFERENCES auth.users(id),
-  CONSTRAINT allowed_emails_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id)
+  CONSTRAINT allowed_emails_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id),
+  CONSTRAINT allowed_emails_added_by_fkey FOREIGN KEY (added_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.meli_accounts (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -91,6 +91,14 @@ CREATE TABLE public.meli_order_items (
   variation_attributes jsonb DEFAULT '[]'::jsonb,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  seller_custom_field text,
+  condition character varying,
+  category_id character varying,
+  title text,
+  seller_sku text,
+  differential_pricing_id bigint,
+  base_currency_id character varying,
+  base_exchange_rate numeric,
   CONSTRAINT meli_order_items_pkey PRIMARY KEY (id),
   CONSTRAINT meli_order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.meli_orders(id)
 );
@@ -122,6 +130,9 @@ CREATE TABLE public.meli_orders (
   pack_id bigint,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  order_request jsonb DEFAULT '{}'::jsonb,
+  manufacturing_ending_date timestamp with time zone,
+  last_updated timestamp with time zone,
   CONSTRAINT meli_orders_pkey PRIMARY KEY (id),
   CONSTRAINT meli_orders_meli_user_id_fkey FOREIGN KEY (meli_user_id) REFERENCES public.meli_tokens(meli_user_id)
 );
@@ -141,6 +152,44 @@ CREATE TABLE public.meli_shipment_pack_items (
   CONSTRAINT meli_shipment_pack_items_pkey PRIMARY KEY (id),
   CONSTRAINT meli_shipment_pack_items_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.meli_shipments(shipment_id),
   CONSTRAINT meli_shipment_pack_items_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.meli_items(id)
+);
+CREATE TABLE public.meli_shipment_status (
+  id bigint NOT NULL,
+  status text,
+  substatus text,
+  tracking_number text,
+  tracking_method text,
+  date_created timestamp with time zone,
+  last_updated timestamp with time zone,
+  declared_value numeric,
+  logistic_mode text,
+  logistic_type text,
+  logistic_direction text,
+  priority_class_id text,
+  origin_node text,
+  origin_sender_id bigint,
+  origin_type text,
+  origin_address jsonb,
+  destination_receiver_id bigint,
+  destination_receiver_name text,
+  destination_receiver_phone text,
+  destination_type text,
+  destination_address jsonb,
+  source_site_id text,
+  source_market_place text,
+  tags jsonb,
+  items_types jsonb,
+  lead_time jsonb,
+  dimensions jsonb,
+  snapshot_packing jsonb,
+  sibling jsonb,
+  external_reference text,
+  quotation jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  meli_user_id bigint,
+  CONSTRAINT meli_shipment_status_pkey PRIMARY KEY (id),
+  CONSTRAINT meli_shipment_status_meli_user_id_fkey FOREIGN KEY (meli_user_id) REFERENCES public.meli_tokens(meli_user_id)
 );
 CREATE TABLE public.meli_shipments (
   shipment_id bigint NOT NULL,

@@ -1,18 +1,10 @@
 // scripts/fetch_shipments.mjs
 // Fetch shipment status for meli orders
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
-
-// Create Supabase client
-function createClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
 
 // API request with auth and x-format-new header
 async function apiRequest(url, accessToken) {
@@ -117,9 +109,21 @@ async function getShipmentsToFetch(supabase) {
 }
 
 // Main function
-export async function fetchShipments() {
+export async function fetchShipments(options = {}) {
+  const { refreshTokens = true } = options
+  
   const supabase = createClient()
   const BATCH_SIZE = 20 // Batch size for API calls
+  
+  // Refresh tokens before fetching shipments
+  if (refreshTokens) {
+    console.log('🔄 Refreshing tokens before fetching shipments...')
+    try {
+      await refreshAllTokens()
+    } catch (error) {
+      console.warn('⚠️  Token refresh failed, continuing with existing tokens:', error.message)
+    }
+  }
   
   // Get all meli users with their tokens
   const { data: meliUsers, error } = await supabase
