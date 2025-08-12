@@ -746,7 +746,7 @@ function Scan2Main() {
                   ) : (
                     <Package className="h-4 w-4" />
                   )}
-                  Continue ({scannedCodes.length} shipments)
+                  Continue ({scannedCodes.length} Etiquetas)
                 </Button>
               </motion.div>
             ) : (
@@ -755,8 +755,8 @@ function Scan2Main() {
               >
                 <p className="text-white text-xs text-center">
                   {multipleMode 
-                    ? "Scan multiple shipment codes"
-                    : "Hold steady for auto-detection"
+                    ? "Escanear múltiple etiquetas"
+                    : "mantener el dispositivo estable para auto-detección"
                   }
                 </p>
               </motion.div>
@@ -780,12 +780,12 @@ function Scan2Main() {
         {/* Results Header */}
         <div className="text-center mb-2">
           <h2 className="text-base font-semibold text-gray-900">
-            {hasMultipleShipments ? 'Scanned Shipments' : 'Products Found'}
+            {hasMultipleShipments ? 'Etiquetas Escaneadas' : 'Productos Encontrados'}
           </h2>
           <p className="text-xs text-gray-600">
             {hasMultipleShipments 
-              ? `${shipments.length} shipment${shipments.length !== 1 ? 's' : ''} found`
-              : `${currentShipment?.items.length || 0} item${(currentShipment?.items.length || 0) !== 1 ? 's' : ''}`
+              ? `${shipments.length} Etiqueta${shipments.length !== 1 ? 's' : ''} Encontrada${shipments.length !== 1 ? 's' : ''} `
+              : `${currentShipment?.items.length || 0} producto${(currentShipment?.items.length || 0) !== 1 ? 's' : ''}`
             }
           </p>
         </div>
@@ -801,7 +801,7 @@ function Scan2Main() {
               <div className="flex justify-between items-center mb-2">
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm">
-                    {hasMultipleShipments ? `Shipment: ${shipment.shipmentId}` : shipment.shipmentId}
+                    {hasMultipleShipments ? `Etiqueta: ${shipment.shipmentId}` : shipment.shipmentId}
                   </h3>
                   <p className="text-xs text-gray-600">
                     {shipment.items.length} item{shipment.items.length !== 1 ? 's' : ''}
@@ -816,7 +816,7 @@ function Scan2Main() {
                         <Package className="h-3 w-3 text-green-600" />
                       </div>
                       <div className="text-green-700">
-                        <div className="font-medium">Packed</div>
+                        <div className="font-medium">Empacado</div>
                         <div className="text-green-600">{packingInfo.packed_by_name || 'User'}</div>
                       </div>
                       <Button
@@ -826,7 +826,7 @@ function Scan2Main() {
                         variant="outline"
                         className="h-6 text-xs px-2 border-green-300 text-green-700 hover:bg-green-50"
                       >
-                        Repack
+                        Reempacar
                       </Button>
                     </div>
                   ) : (
@@ -844,7 +844,7 @@ function Scan2Main() {
                       ) : (
                         <>
                           <Package className="h-3 w-3 mr-1" />
-                          Pack
+                          Empacar
                         </>
                       )}
                     </Button>
@@ -874,7 +874,7 @@ function Scan2Main() {
               variant="outline"
               className="w-full h-10 border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-all text-sm"
             >
-              Scan Another Code
+              Escanear otra etiqueta
             </Button>
           </motion.div>
         </div>
@@ -946,7 +946,7 @@ function Scan2Main() {
     const footerMessage = scanMode === 'manual' 
       ? "💡 Enter code manually or use camera" 
       : isScanning
-        ? "📱 Keep device steady for better accuracy" 
+        ? "📱 mantén el dispositivo estable para una mejor detección" 
         : ""
 
     return (
