@@ -270,6 +270,12 @@ function Scan2Main() {
     enableLogging: true
   })
   
+  // Ref to always have latest multipleMode value (avoid stale closure)
+  const multipleModeRef = useRef(multipleMode)
+  useEffect(() => {
+    multipleModeRef.current = multipleMode
+  }, [multipleMode])
+  
   
   // Manual input state
   const [manualInput, setManualInput] = useState("")
@@ -368,18 +374,6 @@ function Scan2Main() {
   // SCANNING HANDLERS
   // ============================================================================
 
-  const handleScannedCode = useCallback(async (code: string) => {
-    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode, '| scannedCodes:', scannedCodes.length)
-    
-    if (multipleMode) {
-      console.log('➡️ Routing to handleMultipleScan')
-      handleMultipleScan(code)
-    } else {
-      console.log('➡️ Routing to handleSingleScan')
-      handleSingleScan(code)
-    }
-  }, [multipleMode, scannedCodes])
-
   const handleMultipleScan = useCallback((code: string) => {
     console.log('🔢 handleMultipleScan called:', code, '| current codes:', scannedCodes)
     
@@ -474,6 +468,20 @@ function Scan2Main() {
     }
   }, [scannedCodes, processMultipleShipments])
 
+
+  const handleScannedCode = useCallback(async (code: string) => {
+    // Get current multiple mode state from ref to avoid stale closure
+    const currentMultipleMode = multipleModeRef.current
+    console.log('📱 Code scanned:', code, '| multipleMode:', currentMultipleMode, '| scannedCodes:', scannedCodes.length)
+    
+    if (currentMultipleMode) {
+      console.log('➡️ Routing to handleMultipleScan')
+      handleMultipleScan(code)
+    } else {
+      console.log('➡️ Routing to handleSingleScan')
+      handleSingleScan(code)
+    }
+  }, [scannedCodes, handleMultipleScan, handleSingleScan])
   // ============================================================================
   // PACKING HANDLERS
   // ============================================================================
