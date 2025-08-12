@@ -198,14 +198,12 @@ async function extractShipmentInfo(shipmentId) {
     const accessToken = await getValidAccessToken();
     
     const shipmentItemsData = await getShipmentWithItems(shipmentId, accessToken);
-    console.log('---------  shipmentItemsData', shipmentItemsData);
     
     // Process each shipping item
     return shipmentItemsData.map(shipmentItem => {
       const variation = shipmentItem.variationData;
       const itemDetails = shipmentItem.itemDetails;
       
-      console.log('---------  processing item', shipmentItem.item_id);
       
       // Extract seller_sku from attributes array
       const sellerSku = 

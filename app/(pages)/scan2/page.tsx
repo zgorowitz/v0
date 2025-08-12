@@ -72,23 +72,26 @@ type ViewState = 'scanning' | 'results' | 'loading'
 
 const useCameraManager = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const cameraManagerRef = useRef<CameraManager | null>(null)
-  const scannerRef = useRef<EnhancedBarcodeScanner | null>(null)
+  const [cameraManager, setCameraManager] = useState<CameraManager | null>(null)
+  const [scanner, setScanner] = useState<EnhancedBarcodeScanner | null>(null)
 
   useEffect(() => {
-    cameraManagerRef.current = new CameraManager()
-    scannerRef.current = new EnhancedBarcodeScanner()
+    const cameraManagerInstance = new CameraManager()
+    const scannerInstance = new EnhancedBarcodeScanner()
+    
+    setCameraManager(cameraManagerInstance)
+    setScanner(scannerInstance)
 
     return () => {
-      cameraManagerRef.current?.stopCamera()
-      scannerRef.current?.stopScanning()
+      cameraManagerInstance?.stopCamera()
+      scannerInstance?.stopScanning()
     }
   }, [])
 
   return {
     videoRef,
-    cameraManager: cameraManagerRef.current,
-    scanner: scannerRef.current
+    cameraManager,
+    scanner
   }
 }
 
@@ -167,62 +170,52 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
     <motion.div
       {...fadeIn}
       transition={{ delay: index * 0.1 }}
-      className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white via-gray-50 to-gray-100 border border-gray-200/50 shadow-sm hover:shadow-lg transition-all duration-300"
+      className="group relative overflow-hidden rounded-lg bg-white border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      <div className="relative p-4">
-        <div className="flex gap-4">
-          {/* Product Image */}
-          <div className="relative w-20 h-20 flex-shrink-0">
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl" />
+      <div className="relative p-2">
+        <div className="flex gap-2">
+          {/* Product Image - smaller */}
+          <div className="relative w-12 h-12 flex-shrink-0">
             {itemThumbnail ? (
-              <motion.img
-                whileHover={{ scale: 1.1 }}
+              <img
                 src={itemThumbnail}
                 alt={itemTitle}
-                className="relative w-full h-full object-cover rounded-xl shadow-sm"
+                className="w-full h-full object-cover rounded-md"
                 loading="lazy"
               />
             ) : (
-              <div className="relative w-full h-full flex items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 to-gray-200">
-                <Package className="w-6 h-6 text-gray-400" />
+              <div className="w-full h-full flex items-center justify-center rounded-md bg-gray-100">
+                <Package className="w-4 h-4 text-gray-400" />
               </div>
             )}
           </div>
 
-          {/* Product Info */}
+          {/* Product Info - more compact */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 text-base leading-tight line-clamp-2 mb-2">
+            <h3 className="font-medium text-gray-900 text-sm leading-tight truncate mb-1">
               {itemTitle}
             </h3>
             
-            <div className="space-y-2">
-              <div className="inline-flex items-center bg-gray-100 text-gray-700 rounded-lg px-2 py-1 text-sm font-mono">
+            <div className="space-y-1">
+              <div className="text-xs font-mono text-gray-700 bg-gray-50 rounded px-1.5 py-0.5 inline-block">
                 {itemSku}
               </div>
               
-              <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex flex-wrap gap-1 text-xs">
                 {item.talle && (
-                  <span className="border border-blue-200 rounded-lg px-2 py-1">
-                    Size: {item.talle}
+                  <span className="bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
+                    {item.talle}
                   </span>
                 )}
                 {item.color && (
-                  <span className="border border-green-200 rounded-lg px-2 py-1">
-                    Color: {item.color}
+                  <span className="bg-green-50 text-green-700 rounded px-1.5 py-0.5">
+                    {item.color}
                   </span>
                 )}
-                <span className="border border-purple-200 rounded-lg px-2 py-1 font-medium">
+                <span className="bg-purple-50 text-purple-700 rounded px-1.5 py-0.5 font-medium">
                   Qty: {item.quantity}
                 </span>
               </div>
-              
-              {item.available_quantity !== undefined && (
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Available:</span> {item.available_quantity}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -278,6 +271,7 @@ export default function Scan2Page() {
   const [viewState, setViewState] = useState<ViewState>('scanning')
   const [scanMode, setScanMode] = useState<ScanMode>('camera')
   const [error, setError] = useState("")
+  const [permissionState, setPermissionState] = useState('unknown')
   
   // Scanning state
   const [isScanning, setIsScanning] = useState(false)
@@ -312,32 +306,53 @@ export default function Scan2Page() {
   // EFFECTS
   // ============================================================================
 
+  // Set up permission change callback when cameraManager is ready
   useEffect(() => {
-    if (scanMode === 'camera' && viewState === 'scanning') {
+    if (cameraManager) {
+      cameraManager.setPermissionChangeCallback((newState) => {
+        setPermissionState(newState)
+        if (newState === 'granted' && scanMode === 'camera' && viewState === 'scanning') {
+          // Permission granted, restart camera
+          setTimeout(() => {
+            setError("")
+            startCamera()
+          }, 100)
+        }
+      })
+    }
+  }, [cameraManager])
+
+  // Handle camera start/stop based on mode and state
+  useEffect(() => {
+    if (scanMode === 'camera' && viewState === 'scanning' && cameraManager && scanner) {
       startCamera()
     }
     
     return () => {
       stopCamera()
     }
-  }, [scanMode, viewState])
+  }, [scanMode, viewState, cameraManager, scanner])
 
   // ============================================================================
   // CAMERA FUNCTIONS
   // ============================================================================
 
   const startCamera = useCallback(async () => {
-    if (!cameraManager || !scanner || !videoRef.current) return
+    if (!cameraManager || !scanner || !videoRef.current) {
+      return
+    }
 
     try {
       setError("")
       setIsScanning(true)
       await cameraManager.startCamera(videoRef.current)
+      setPermissionState(cameraManager.getPermissionState())
       await startBarcodeDetection()
     } catch (err: any) {
       setError(err.message || "Failed to start camera")
       console.error("Camera access error:", err)
       setIsScanning(false)
+      setPermissionState(cameraManager.getPermissionState())
     }
   }, [cameraManager, scanner])
 
@@ -697,7 +712,12 @@ export default function Scan2Page() {
               className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20"
             >
               <p className="text-white text-sm font-medium flex items-center gap-2">
-                {multipleMode && justScanned ? (
+                {permissionState === 'denied' && error ? (
+                  <>
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    Permission needed
+                  </>
+                ) : multipleMode && justScanned ? (
                   <>
                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                     Scanned! Next one...
@@ -787,14 +807,14 @@ export default function Scan2Page() {
     return (
       <motion.div 
         {...fadeIn}
-        className="space-y-4"
+        className="space-y-3"
       >
         {/* Results Header */}
-        <div className="text-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="text-center mb-2">
+          <h2 className="text-base font-semibold text-gray-900">
             {hasMultipleShipments ? 'Scanned Shipments' : 'Products Found'}
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs text-gray-600">
             {hasMultipleShipments 
               ? `${shipments.length} shipment${shipments.length !== 1 ? 's' : ''} found`
               : `${currentShipment?.items.length || 0} item${(currentShipment?.items.length || 0) !== 1 ? 's' : ''}`
@@ -803,27 +823,70 @@ export default function Scan2Page() {
         </div>
 
         {/* Shipment Items */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           {displayShipments.map((shipment, shipmentIdx) => (
             <motion.div
               key={shipment.shipmentId}
               {...fadeIn}
               transition={{ delay: shipmentIdx * 0.1 }}
-              className={hasMultipleShipments ? "bg-gray-50 rounded-2xl p-4 border border-gray-200" : ""}
+              className="bg-gray-50 rounded-xl p-3 border border-gray-200"
             >
-              {hasMultipleShipments && (
-                <div className="mb-3">
+              <div className="flex justify-between items-center mb-2">
+                <div>
                   <h3 className="font-semibold text-gray-900 text-sm">
-                    Shipment: {shipment.shipmentId}
+                    {hasMultipleShipments ? `Shipment: ${shipment.shipmentId}` : shipment.shipmentId}
                   </h3>
                   <p className="text-xs text-gray-600">
                     {shipment.items.length} item{shipment.items.length !== 1 ? 's' : ''}
                   </p>
                 </div>
-              )}
+                
+                {/* Packing Button/Status for this shipment */}
+                <div className="flex items-center gap-2">
+                  {packingInfo && lastScannedCode === shipment.shipmentId ? (
+                    <div className="flex items-center gap-2 text-xs">
+                      <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                        <Package className="h-3 w-3 text-green-600" />
+                      </div>
+                      <div className="text-green-700">
+                        <div className="font-medium">Packed</div>
+                        <div className="text-green-600">{packingInfo.packed_by_name || 'User'}</div>
+                      </div>
+                      <Button
+                        onClick={() => handleRepack()}
+                        disabled={packingLoading}
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-xs px-2 border-green-300 text-green-700 hover:bg-green-50"
+                      >
+                        Repack
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setLastScannedCode(shipment.shipmentId)
+                        handlePack()
+                      }}
+                      disabled={packingLoading}
+                      size="sm"
+                      className="h-6 text-xs px-3 bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      {packingLoading && lastScannedCode === shipment.shipmentId ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Package className="h-3 w-3 mr-1" />
+                          Pack
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
               
-              <div className="space-y-3">
-                                {shipment.items.map((item, idx) => (
+              <div className="space-y-2">
+                {shipment.items.map((item, idx) => (
                   <ProductCard 
                     key={`${shipment.shipmentId}-${item.user_product_id || item.item_id || item.id || idx}`} 
                     item={item} 
@@ -835,79 +898,14 @@ export default function Scan2Page() {
           ))}
         </div>
 
-        {/* Packing Section */}
-        <AnimatePresence>
-          {packingInfo ? (
-            <motion.div 
-              {...slideUp}
-              className="mt-6 p-4 border border-green-200 rounded-xl bg-green-50/50"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 border border-green-200 rounded-full flex items-center justify-center bg-white">
-                    <Package className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-green-800">
-                      Packed by {packingInfo.packed_by_name || 'User'}
-                    </div>
-                    <div className="text-xs text-green-600">
-                      {packingInfo.created_at 
-                        ? new Date(packingInfo.created_at).toLocaleString('en-US', {
-                            day: '2-digit',
-                            month: '2-digit', 
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : 'Recently updated'
-                      }
-                    </div>
-                  </div>
-                </div>
-                <motion.div whileTap={{ scale: 0.95 }}>
-                  <Button
-                    onClick={handleRepack}
-                    disabled={packingLoading}
-                    size="sm"
-                    className="bg-white/80 backdrop-blur-sm border border-green-200 hover:bg-white text-green-700 hover:text-green-800 rounded-lg px-3 py-1 text-xs font-medium transition-all"
-                  >
-                    {packingLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      "Repack"
-                    )}
-                  </Button>
-                </motion.div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={handlePack}
-                disabled={packingLoading}
-                className="w-full h-14 mt-6 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all flex items-center gap-3 shadow-lg"
-              >
-                {packingLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Package className="h-5 w-5" />
-                )}
-                <span className="text-base">
-                  {packingLoading ? "Packing..." : "Mark as Packed"}
-                </span>
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-2 mt-3">
           <motion.div whileTap={{ scale: 0.98 }} className="flex-1">
             <Button
               onClick={resetScanner}
               variant="outline"
-              className="w-full h-12 border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all"
+              className="w-full h-10 border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-all text-sm"
             >
               Scan Another Code
             </Button>
@@ -915,9 +913,9 @@ export default function Scan2Page() {
         </div>
 
         {/* Technical Details */}
-        <details className="group mt-4">
-          <summary className="cursor-pointer p-4 bg-gray-50/80 backdrop-blur-sm rounded-xl border border-gray-100 hover:bg-gray-100/80 transition-colors">
-            <span className="text-sm font-medium text-gray-700">
+        <details className="group mt-3">
+          <summary className="cursor-pointer p-3 bg-gray-50/80 backdrop-blur-sm rounded-lg border border-gray-100 hover:bg-gray-100/80 transition-colors">
+            <span className="text-xs font-medium text-gray-700">
               View Technical Details
             </span>
             <span className="float-right text-gray-400 group-open:rotate-180 transition-transform">
@@ -927,16 +925,16 @@ export default function Scan2Page() {
           
           <motion.div 
             {...slideUp}
-            className="mt-3 p-4 bg-gray-50/80 backdrop-blur-sm rounded-xl border border-gray-100"
+            className="mt-2 p-3 bg-gray-50/80 backdrop-blur-sm rounded-lg border border-gray-100"
           >
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2 text-xs">
               {displayShipments.flatMap((shipment) =>
                 shipment.items.map((item, idx) => (
-                  <div key={`tech-${shipment.shipmentId}-${idx}`} className="border-b border-gray-200 last:border-b-0 pb-3 last:pb-0">
-                    <div className="font-mono text-gray-900 mb-2 font-medium">
+                  <div key={`tech-${shipment.shipmentId}-${idx}`} className="border-b border-gray-200 last:border-b-0 pb-2 last:pb-0">
+                    <div className="font-mono text-gray-900 mb-1 font-medium">
                       {item.seller_sku || item.sku || item.title || item.item_title || `Item ${idx + 1}`}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-gray-600">
+                    <div className="grid grid-cols-2 gap-1 text-gray-600">
                       <div>Order: <span className="text-gray-900">{item.order_id || "N/A"}</span></div>
                       <div>Item: <span className="text-gray-900">{item.item_id || item.id || "N/A"}</span></div>
                       <div>
@@ -1027,16 +1025,40 @@ export default function Scan2Page() {
                 {error && viewState === 'scanning' && !isScanning && scanMode === 'camera' && (
                   <motion.div 
                     {...fadeIn}
-                    className="text-center py-8"
+                    className="text-center py-6"
                   >
-                    <motion.div whileTap={{ scale: 0.98 }}>
-                      <Button 
-                        onClick={startCamera}
-                        className="w-full h-12 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all"
-                      >
-                        Try Again
-                      </Button>
-                    </motion.div>
+                    {permissionState === 'denied' ? (
+                      <div className="space-y-4">
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <div className="flex items-center gap-2 text-amber-800 mb-2">
+                            <Camera className="w-5 h-5" />
+                            <span className="font-medium text-sm">Camera Permission Required</span>
+                          </div>
+                          <p className="text-xs text-amber-700 leading-relaxed">
+                            Please allow camera access in your browser settings to scan barcodes. 
+                            Look for the camera icon in your address bar or refresh the page to try again.
+                          </p>
+                        </div>
+                        <motion.div whileTap={{ scale: 0.98 }}>
+                          <Button 
+                            onClick={startCamera}
+                            className="w-full h-10 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-all text-sm"
+                          >
+                            <Camera className="w-4 h-4 mr-2" />
+                            Request Camera Access
+                          </Button>
+                        </motion.div>
+                      </div>
+                    ) : (
+                      <motion.div whileTap={{ scale: 0.98 }}>
+                        <Button 
+                          onClick={startCamera}
+                          className="w-full h-10 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-lg transition-all text-sm"
+                        >
+                          Try Again
+                        </Button>
+                      </motion.div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
