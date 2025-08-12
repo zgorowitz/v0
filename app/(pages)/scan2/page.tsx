@@ -368,7 +368,7 @@ function Scan2Main() {
   // ============================================================================
 
   const handleScannedCode = useCallback(async (code: string) => {
-    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode, '| scannedCodes:', scannedCodes.length)
+    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode)
     
     if (multipleMode) {
       console.log('➡️ Routing to handleMultipleScan')
@@ -377,7 +377,7 @@ function Scan2Main() {
       console.log('➡️ Routing to handleSingleScan')
       handleSingleScan(code)
     }
-  }, [multipleMode, scannedCodes.length])
+  }, [multipleMode])
 
   const handleMultipleScan = useCallback((code: string) => {
     console.log('🔢 handleMultipleScan called:', code, '| current codes:', scannedCodes)
@@ -553,9 +553,6 @@ function Scan2Main() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-blue-500" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              
-            </h1>
           </div>
           {!isProcessing && (
             <div className="flex items-center gap-2">
