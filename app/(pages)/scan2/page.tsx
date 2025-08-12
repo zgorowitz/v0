@@ -12,7 +12,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LayoutWrapper } from "@/components/layout-wrapper"
-import { ScanProvider, useScanContext } from "@/contexts/scan-context"
 import { CameraManager } from "@/lib/scan2/camera"
 import { EnhancedBarcodeScanner } from "@/lib/scan2/barcode-scanner"
 import { 
@@ -23,9 +22,6 @@ import {
 } from "@/lib/scan2/packing"
 import { 
   triggerVibration, 
-  fadeIn, 
-  slideUp, 
-  scaleIn 
 } from "@/lib/scan2/scan-utils"
 
 // ============================================================================
@@ -167,7 +163,6 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
 
   return (
     <motion.div
-      {...fadeIn}
       transition={{ delay: index * 0.1 }}
       className="group relative overflow-hidden rounded-lg bg-white border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300"
     >
@@ -196,24 +191,19 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
             </h3>
             
             <div className="space-y-1">
-              <div className="text-xs font-mono text-gray-700 bg-gray-50 rounded px-1.5 py-0.5 inline-block">
-                {itemSku}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-900">
+                  {itemSku}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {item.available_quantity} disponible
+                </span>
               </div>
               
-              <div className="flex flex-wrap gap-1 text-xs">
-                {item.talle && (
-                  <span className="bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
-                    {item.talle}
-                  </span>
-                )}
-                {item.color && (
-                  <span className="bg-green-50 text-green-700 rounded px-1.5 py-0.5">
-                    {item.color}
-                  </span>
-                )}
-                <span className="bg-purple-50 text-purple-700 rounded px-1.5 py-0.5 font-medium">
-                  Qty: {item.quantity}
-                </span>
+              <div className="text-xs text-gray-600 space-x-2">
+                {item.talle && <span>{item.talle}</span>}
+                {item.color && <span>{item.color}</span>}
+                <span className="font-medium text-gray-900">{item.quantity}×</span>
               </div>
             </div>
           </div>
@@ -225,22 +215,17 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
 
 const ErrorMessage: React.FC<{ error: string }> = ({ error }) => {
   if (!error) return null
-
   return (
-    <motion.div 
-      {...slideUp}
-      className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl"
+    <div className="mb-4 text-sm font-medium text-center" 
     >
-      <p className="text-red-600 text-sm font-medium text-center">
-        {error}
-      </p>
-    </motion.div>
+      {error}
+
+    </div>
   )
 }
 
 const LoadingSpinner: React.FC<{ message?: string }> = ({ message = "Processing..." }) => (
   <motion.div 
-    {...fadeIn}
     className="text-center py-12"
   >
     <div className="flex flex-col items-center justify-center gap-6">
@@ -266,7 +251,9 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = "Processing.
 // ============================================================================
 
 function Scan2Main() {
-  const { multipleMode, setMultipleMode } = useScanContext();
+  // Multiple mode state
+  const [multipleMode, setMultipleMode] = useState(false)
+  
   // Core state
   const [viewState, setViewState] = useState<ViewState>('scanning')
   const [scanMode, setScanMode] = useState<ScanMode>('camera')
@@ -560,9 +547,7 @@ function Scan2Main() {
 
   const renderHeader = () => (
     <div className="px-6 pt-6 pb-2">
-      <AnimatePresence>
         <ErrorMessage error={error} />
-      </AnimatePresence>
       
       {viewState === 'scanning' && (
         <div className="flex items-center justify-between mb-4">
@@ -626,7 +611,6 @@ function Scan2Main() {
     <AnimatePresence>
       {scanMode === 'manual' && viewState === 'scanning' && (
         <motion.div 
-          {...slideUp}
           className="space-y-4"
         >
           <div>
@@ -669,7 +653,6 @@ function Scan2Main() {
     <AnimatePresence>
       {scanMode === 'camera' && viewState === 'scanning' && (
         <motion.div 
-          {...scaleIn}
           className="relative w-full h-[60vh] min-h-[320px] max-h-[400px] bg-black rounded-3xl overflow-hidden shadow-2xl"
         >
           <video 
@@ -714,7 +697,6 @@ function Scan2Main() {
           {/* Status Indicator */}
           <div className="absolute top-6 left-6 right-6 flex justify-center">
             <motion.div 
-              {...scaleIn}
               // className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20"
             >
               <p className="text-white text-sm font-medium flex items-center gap-2">
@@ -775,7 +757,6 @@ function Scan2Main() {
               </motion.div>
             ) : (
               <motion.div 
-                {...slideUp}
                 className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20"
               >
                 <p className="text-white text-xs text-center">
@@ -800,7 +781,6 @@ function Scan2Main() {
 
     return (
       <motion.div 
-        {...fadeIn}
         className="space-y-3"
       >
         {/* Results Header */}
@@ -821,7 +801,6 @@ function Scan2Main() {
           {displayShipments.map((shipment, shipmentIdx) => (
             <motion.div
               key={shipment.shipmentId}
-              {...fadeIn}
               transition={{ delay: shipmentIdx * 0.1 }}
               className="bg-gray-50 rounded-xl p-3 border border-gray-200"
             >
@@ -918,7 +897,6 @@ function Scan2Main() {
           </summary>
           
           <motion.div 
-            {...slideUp}
             className="mt-2 p-3 bg-gray-50/80 backdrop-blur-sm rounded-lg border border-gray-100"
           >
             <div className="space-y-2 text-xs">
@@ -1005,7 +983,6 @@ function Scan2Main() {
       {/* Main Content */}
       <main className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-safe px-4 pb-safe overflow-x-hidden">
         <motion.div 
-          {...fadeIn}
           className="w-full max-w-md mx-auto mt-8"
         >
           <div className="backdrop-blur-xl bg-white/80 rounded-3xl shadow-xl border border-white/20 overflow-hidden">
@@ -1018,7 +995,6 @@ function Scan2Main() {
               <AnimatePresence>
                 {error && viewState === 'scanning' && !isScanning && scanMode === 'camera' && (
                   <motion.div 
-                    {...fadeIn}
                     className="text-center py-6"
                   >
                     {permissionState === 'denied' ? (
@@ -1068,10 +1044,8 @@ function Scan2Main() {
 
 export default function Scan2Page() {
   return (
-    <ScanProvider>
-      <LayoutWrapper>
-        <Scan2Main />
-      </LayoutWrapper>
-    </ScanProvider>
+    <LayoutWrapper>
+      <Scan2Main />
+    </LayoutWrapper>
   )
 }

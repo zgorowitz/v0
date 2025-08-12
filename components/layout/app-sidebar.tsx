@@ -25,6 +25,11 @@ const navItems = [
     url: "/scan",
     icon: Scan,
   },
+  {
+    title: "Scanner 2.0",
+    url: "/scan2",
+    icon: Scan,
+  },
   // {
   //   title: "Analytics",
   //   url: "/orders",
