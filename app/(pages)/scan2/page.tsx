@@ -23,6 +23,7 @@ import {
 import { 
   triggerVibration, 
 } from "@/lib/scan2/scan-utils"
+import { useMultipleMode } from "@/hooks/use-multiple-mode"
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -251,9 +252,6 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = "Processing.
 // ============================================================================
 
 function Scan2Main() {
-  // Multiple mode state
-  const [multipleMode, setMultipleMode] = useState(false)
-  
   // Core state
   const [viewState, setViewState] = useState<ViewState>('scanning')
   const [scanMode, setScanMode] = useState<ScanMode>('camera')
@@ -265,10 +263,13 @@ function Scan2Main() {
   const [scannedCodes, setScannedCodes] = useState<string[]>([])
   const [justScanned, setJustScanned] = useState(false)
   
-  // Debug multipleMode changes
-  useEffect(() => {
-    console.log('🔄 multipleMode changed:', multipleMode)
-  }, [multipleMode])
+  // Multiple mode state with custom hook
+  const { multipleMode, toggleMultipleMode } = useMultipleMode({
+    clearScannedCodes: () => setScannedCodes([]),
+    enableVibration: true,
+    enableLogging: true
+  })
+  
   
   // Manual input state
   const [manualInput, setManualInput] = useState("")
@@ -368,7 +369,7 @@ function Scan2Main() {
   // ============================================================================
 
   const handleScannedCode = useCallback(async (code: string) => {
-    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode)
+    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode, '| scannedCodes:', scannedCodes.length)
     
     if (multipleMode) {
       console.log('➡️ Routing to handleMultipleScan')
@@ -377,7 +378,7 @@ function Scan2Main() {
       console.log('➡️ Routing to handleSingleScan')
       handleSingleScan(code)
     }
-  }, [multipleMode])
+  }, [multipleMode, scannedCodes])
 
   const handleMultipleScan = useCallback((code: string) => {
     console.log('🔢 handleMultipleScan called:', code, '| current codes:', scannedCodes)
@@ -408,7 +409,7 @@ function Scan2Main() {
         startBarcodeDetection()
       }
     }, 2000)
-  }, [scannedCodes, isScanning])
+  }, [scannedCodes, isScanning, startBarcodeDetection, multipleMode])
 
   const handleSingleScan = useCallback(async (code: string) => {
     setViewState('loading')
@@ -566,19 +567,7 @@ function Scan2Main() {
                         ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-md" 
                         : "border-gray-200 hover:bg-gray-50"
                     }`}
-                    onClick={() => {
-                      console.log('🔘 Multiple button clicked | current multipleMode:', multipleMode)
-                      if (multipleMode) {
-                        console.log('🔴 Disabling multiple mode')
-                        setMultipleMode(false)
-                        setScannedCodes([])
-                      } else {
-                        console.log('🟢 Enabling multiple mode')
-                        setMultipleMode(true)
-                        setScannedCodes([])
-                      }
-                      triggerVibration('click')
-                    }}
+                    onClick={toggleMultipleMode}
                   >
                     <Package className="h-4 w-4 mr-1" />
                     Multiple
