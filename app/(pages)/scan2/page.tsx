@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { 
   Loader2, 
   X, 
-  Flashlight, 
-  FlashlightOff, 
   Package, 
   Sparkles, 
   Camera, 
@@ -275,10 +273,14 @@ export default function Scan2Page() {
   
   // Scanning state
   const [isScanning, setIsScanning] = useState(false)
-  const [flashlightOn, setFlashlightOn] = useState(false)
   const [multipleMode, setMultipleMode] = useState(false)
   const [scannedCodes, setScannedCodes] = useState<string[]>([])
   const [justScanned, setJustScanned] = useState(false)
+  
+  // Debug multipleMode changes
+  useEffect(() => {
+    console.log('🔄 multipleMode changed:', multipleMode)
+  }, [multipleMode])
   
   // Manual input state
   const [manualInput, setManualInput] = useState("")
@@ -360,7 +362,6 @@ export default function Scan2Page() {
     scanner?.stopScanning()
     cameraManager?.stopCamera()
     setIsScanning(false)
-    setFlashlightOn(false)
   }, [cameraManager, scanner])
 
   const startBarcodeDetection = useCallback(async () => {
@@ -374,45 +375,45 @@ export default function Scan2Page() {
     }
   }, [scanner])
 
-  const toggleFlashlight = useCallback(async () => {
-    if (!cameraManager) return
-
-    try {
-      const newState = await cameraManager.toggleFlashlight()
-      setFlashlightOn(newState)
-      triggerVibration('click')
-    } catch (err: any) {
-      setError(err.message || "Flashlight toggle failed")
-      setTimeout(() => setError(""), 3000)
-    }
-  }, [cameraManager])
-
   // ============================================================================
   // SCANNING HANDLERS
   // ============================================================================
 
   const handleScannedCode = useCallback(async (code: string) => {
+    console.log('📱 Code scanned:', code, '| multipleMode:', multipleMode, '| scannedCodes:', scannedCodes.length)
+    
     if (multipleMode) {
+      console.log('➡️ Routing to handleMultipleScan')
       handleMultipleScan(code)
     } else {
+      console.log('➡️ Routing to handleSingleScan')
       handleSingleScan(code)
     }
-  }, [multipleMode])
+  }, [multipleMode, scannedCodes.length])
 
   const handleMultipleScan = useCallback((code: string) => {
+    console.log('🔢 handleMultipleScan called:', code, '| current codes:', scannedCodes)
+    
     if (scannedCodes.includes(code)) {
+      console.log('❌ Duplicate code detected')
       setError("Code already scanned")
       triggerVibration('error')
       setTimeout(() => setError(""), 2000)
       return
     }
 
-    setScannedCodes(prev => [...prev, code])
+    console.log('✅ Adding code to array')
+    setScannedCodes(prev => {
+      const newCodes = [...prev, code]
+      console.log('📝 Updated scannedCodes:', newCodes)
+      return newCodes
+    })
     setJustScanned(true)
     setLastScannedCode(code)
     triggerVibration('success')
     
     setTimeout(() => {
+      console.log('🔄 Attempting to restart scanner...', { isScanning, multipleMode })
       setJustScanned(false)
       if (isScanning) {
         startBarcodeDetection()
@@ -566,7 +567,7 @@ export default function Scan2Page() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-blue-500" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Version 2
+              
             </h1>
           </div>
           {!isProcessing && (
@@ -709,7 +710,7 @@ export default function Scan2Page() {
           <div className="absolute top-6 left-6 right-6 flex justify-center">
             <motion.div 
               {...scaleIn}
-              className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20"
+              // className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-3 border border-white/20"
             >
               <p className="text-white text-sm font-medium flex items-center gap-2">
                 {permissionState === 'denied' && error ? (
@@ -729,8 +730,6 @@ export default function Scan2Page() {
                   </>
                 ) : isScanning ? (
                   <>
-                    <span className="w-2 h-2 border border-green-400 rounded-full animate-pulse" />
-                    {multipleMode ? `Scanning... (${scannedCodes.length} codes)` : "Scanning..."}
                   </>
                 ):<></>}
               </p>
@@ -739,16 +738,6 @@ export default function Scan2Page() {
 
           {/* Camera Controls */}
           <div className="absolute top-6 right-6 flex gap-3">
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="bg-black/80 hover:bg-black/90 text-white border-0 rounded-2xl w-12 h-12 p-0 backdrop-blur-sm"
-                onClick={toggleFlashlight}
-              >
-                {flashlightOn ? <FlashlightOff className="h-5 w-5" /> : <Flashlight className="h-5 w-5" />}
-              </Button>
-            </motion.div>
 
             <motion.div whileTap={{ scale: 0.9 }}>
               <Button
@@ -981,7 +970,7 @@ export default function Scan2Page() {
       ? "💡 Enter code manually or use camera" 
       : isScanning
         ? "📱 Keep device steady for better accuracy" 
-        : "🚀 Ready to scan barcodes"
+        : ""
 
     return (
       <div className="px-6 pb-6 pt-2">
