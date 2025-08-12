@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Package, Loader2 } from 'lucide-react';
 
 const ShipmentsPage = () => {
-  const [shipmentData, setShipmentData] = useState([]);
-  const [itemsData, setItemsData] = useState([]);
+  const [shipmentData, setShipmentData] = useState<any[]>([]);
+  const [itemsData, setItemsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedShipment, setSelectedShipment] = useState(null);
@@ -200,10 +200,6 @@ const ShipmentsPage = () => {
     setPackingLoading(shipmentId);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("Debes estar autenticado para empacar");
-      }
 
       const { data, error } = await supabase
         .from('shipment_packing')
@@ -218,8 +214,19 @@ const ShipmentsPage = () => {
 
       if (error) throw error;
 
-      // Refresh data
-      await fetchShipments();
+      // Update only the packed shipment row locally
+      setShipmentData(prevShipments => 
+        prevShipments.map(shipment => 
+          shipment.shipment_id === shipmentId 
+            ? { 
+                ...shipment, 
+                is_packed: true, 
+                packed_by_name: data.packed_by_name,
+                packed_at: data.created_at 
+              }
+            : shipment
+        )
+      );
     } catch (err: any) {
       setError(`Error al empacar: ${err.message}`);
       console.error('Packing error:', err);
