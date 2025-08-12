@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { ScanProvider, useScanContext } from "@/contexts/scan-context"
 import { CameraManager } from "@/lib/scan2/camera"
 import { EnhancedBarcodeScanner } from "@/lib/scan2/barcode-scanner"
 import { 
@@ -264,7 +265,8 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = "Processing.
 // MAIN COMPONENT
 // ============================================================================
 
-export default function Scan2Page() {
+function Scan2Main() {
+  const { multipleMode, setMultipleMode } = useScanContext();
   // Core state
   const [viewState, setViewState] = useState<ViewState>('scanning')
   const [scanMode, setScanMode] = useState<ScanMode>('camera')
@@ -273,7 +275,6 @@ export default function Scan2Page() {
   
   // Scanning state
   const [isScanning, setIsScanning] = useState(false)
-  const [multipleMode, setMultipleMode] = useState(false)
   const [scannedCodes, setScannedCodes] = useState<string[]>([])
   const [justScanned, setJustScanned] = useState(false)
   
@@ -404,7 +405,8 @@ export default function Scan2Page() {
 
     console.log('✅ Adding code to array')
     setScannedCodes(prev => {
-      const newCodes = [...prev, code]
+      // Create new array with unique values (extra safety)
+      const newCodes = [...new Set([...prev, code])]
       console.log('📝 Updated scannedCodes:', newCodes)
       return newCodes
     })
@@ -531,7 +533,7 @@ export default function Scan2Page() {
     clearShipments()
     setError("")
     setLastScannedCode("")
-    setMultipleMode(false)
+    // Don't reset multipleMode - preserve user's choice
     setScannedCodes([])
     setJustScanned(false)
     setPackingInfo(null)
@@ -583,10 +585,13 @@ export default function Scan2Page() {
                         : "border-gray-200 hover:bg-gray-50"
                     }`}
                     onClick={() => {
+                      console.log('🔘 Multiple button clicked | current multipleMode:', multipleMode)
                       if (multipleMode) {
+                        console.log('🔴 Disabling multiple mode')
                         setMultipleMode(false)
                         setScannedCodes([])
                       } else {
+                        console.log('🟢 Enabling multiple mode')
                         setMultipleMode(true)
                         setScannedCodes([])
                       }
@@ -986,7 +991,7 @@ export default function Scan2Page() {
   // ============================================================================
 
   return (
-    <LayoutWrapper>
+    <>
       {/* Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" />
@@ -1057,6 +1062,16 @@ export default function Scan2Page() {
           </div>
         </motion.div>
       </main>
-    </LayoutWrapper>
+    </>
+  )
+}
+
+export default function Scan2Page() {
+  return (
+    <ScanProvider>
+      <LayoutWrapper>
+        <Scan2Main />
+      </LayoutWrapper>
+    </ScanProvider>
   )
 }

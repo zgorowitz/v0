@@ -115,6 +115,16 @@ export default function Home() {
                   >
                     Cerrar sesión
                   </Button>
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <Link href="/scan2" className="w-full">
+                      <Button variant="outline" className="w-full" size="sm">
+                        Escáner 2.0
+                      </Button>
+                    </Link>
+                    <p className="text-xs text-gray-500 text-center mt-1">
+                      Multi escáner beta
+                    </p>
+                  </div>
                 </>
               ) : (
                 <>
