@@ -3,7 +3,6 @@
 // app/api/auth/refresh/route.js
 
 import { getMeliTokens, refreshMeliTokens } from '@/lib/meliTokens'
-import { handleAuthError } from '@/lib/supabase/server'
 
 export async function POST(request) {
   try {
@@ -40,7 +39,6 @@ export async function POST(request) {
       )
     }
 
-    const { status, body } = handleAuthError(error) // USING NEW ERROR HANDLER
     return Response.json(body, { status })
   }
 }
