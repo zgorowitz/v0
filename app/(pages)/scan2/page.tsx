@@ -551,22 +551,50 @@ export default function Scan2Page() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-blue-500" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Scanner Pro
+              Version 2
             </h1>
           </div>
           {!isProcessing && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full border-gray-200 hover:bg-gray-50 transition-all active:scale-95"
-              onClick={toggleScanMode}
-            >
-              {scanMode === 'manual' ? (
-                <><Camera className="w-4 h-4 mr-1" /> Camera</>
-              ) : (
-                <><Edit3 className="w-4 h-4 mr-1" /> Manual</>
+            <div className="flex items-center gap-2">
+              {scanMode === 'camera' && (
+                <motion.div whileTap={{ scale: 0.9 }}>
+                  <Button
+                    variant={multipleMode ? "default" : "outline"}
+                    size="sm"
+                    className={`rounded-full transition-all active:scale-95 ${
+                      multipleMode 
+                        ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-md" 
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                    onClick={() => {
+                      if (multipleMode) {
+                        setMultipleMode(false)
+                        setScannedCodes([])
+                      } else {
+                        setMultipleMode(true)
+                        setScannedCodes([])
+                      }
+                      triggerVibration('click')
+                    }}
+                  >
+                    <Package className="h-4 w-4 mr-1" />
+                    Multiple
+                  </Button>
+                </motion.div>
               )}
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full border-gray-200 hover:bg-gray-50 transition-all active:scale-95"
+                onClick={toggleScanMode}
+              >
+                {scanMode === 'manual' ? (
+                  <><Camera className="w-4 h-4 mr-1" /> Camera</>
+                ) : (
+                  <><Edit3 className="w-4 h-4 mr-1" /> Manual</>
+                )}
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -684,33 +712,13 @@ export default function Scan2Page() {
                     <span className="w-2 h-2 border border-green-400 rounded-full animate-pulse" />
                     {multipleMode ? `Scanning... (${scannedCodes.length} codes)` : "Scanning..."}
                   </>
-                ) : (
-                  "Position code in frame"
-                )}
+                ):<></>}
               </p>
             </motion.div>
           </div>
 
           {/* Camera Controls */}
           <div className="absolute top-6 right-6 flex gap-3">
-            {!multipleMode && (
-              <motion.div whileTap={{ scale: 0.9 }}>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="bg-black/80 hover:bg-black/90 text-white border-0 rounded-2xl px-3 h-12 backdrop-blur-sm"
-                  onClick={() => {
-                    setMultipleMode(true)
-                    setScannedCodes([])
-                    triggerVibration('click')
-                  }}
-                >
-                  <Package className="h-4 w-4 mr-1" />
-                  Multiple
-                </Button>
-              </motion.div>
-            )}
-
             <motion.div whileTap={{ scale: 0.9 }}>
               <Button
                 variant="secondary"
@@ -817,7 +825,7 @@ export default function Scan2Page() {
               <div className="space-y-3">
                                 {shipment.items.map((item, idx) => (
                   <ProductCard 
-                    key={`${shipment.shipmentId}-${item.item_id || item.id || idx}`} 
+                    key={`${shipment.shipmentId}-${item.user_product_id || item.item_id || item.id || idx}`} 
                     item={item} 
                     index={idx}
                   />
