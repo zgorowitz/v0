@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, getAuthenticatedUser, handleAuthError } from '@/lib/supabase/server'
+import { createClient, getUser } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const supabase = await createClient()
-    const user = await getAuthenticatedUser(supabase) // USING NEW FUNCTION
+    const user = await getUser() // USING NEW FUNCTION
 
     // Check if user is already in an organization
     const { data: existingOrgUser } = await supabase
@@ -70,7 +70,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Create organization API error:', error)
-    const { status, body } = handleAuthError(error) // USING NEW ERROR HANDLER
-    return NextResponse.json(body, { status })
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json(
+      { error: errorMessage }, 
+      { status: errorMessage.includes('not authenticated') ? 401 : 500 }
+    )
   }
 }

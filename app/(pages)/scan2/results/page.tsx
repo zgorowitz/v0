@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   Loader2, 
@@ -203,7 +203,7 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message = "Processing.
   </motion.div>
 )
 
-function ResultsPage() {
+function ResultsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -476,6 +476,20 @@ function ResultsPage() {
         )}
       </div>
     </main>
+  )
+}
+
+function ResultsPage() {
+  return (
+    <Suspense fallback={
+      <LayoutWrapper>
+        <main className="flex min-h-screen flex-col items-center justify-center px-4">
+          <LoadingSpinner message="Loading..." />
+        </main>
+      </LayoutWrapper>
+    }>
+      <ResultsPageContent />
+    </Suspense>
   )
 }
 
