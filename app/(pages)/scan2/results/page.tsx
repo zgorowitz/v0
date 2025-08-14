@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { 
   get_packing, 
+  get_multiple_packing,
   pack_shipment, 
   repack_shipment, 
   getShipmentData,
@@ -55,6 +56,7 @@ interface PackingInfo {
 const useShipmentProcessor = () => {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [packingInfo, setPackingInfo] = useState<PackingInfo | null>(null)
+  const [packingInfoMap, setPackingInfoMap] = useState<{[key: string]: PackingInfo}>({})
   const [isProcessing, setIsProcessing] = useState(false)
 
   const processShipmentCode = useCallback(async (code: string): Promise<Shipment | null> => {
@@ -102,6 +104,13 @@ const useShipmentProcessor = () => {
         )
         .map(result => result.value as Shipment)
 
+      // Get packing info for all successful shipments
+      if (successfulShipments.length > 0) {
+        const shipmentIds = successfulShipments.map(s => s.shipmentId)
+        const packingData = await get_multiple_packing(shipmentIds)
+        setPackingInfoMap(packingData)
+      }
+
       setShipments(successfulShipments)
       return successfulShipments
     } finally {
@@ -112,8 +121,10 @@ const useShipmentProcessor = () => {
   return {
     shipments,
     packingInfo,
+    packingInfoMap,
     isProcessing,
     setPackingInfo,
+    setPackingInfoMap,
     processShipmentCode,
     processMultipleShipments,
     clearShipments: () => setShipments([])
@@ -219,7 +230,9 @@ function ResultsPageContent() {
   const {
     shipments,
     packingInfo,
+    packingInfoMap,
     setPackingInfo,
+    setPackingInfoMap,
     processShipmentCode,
     processMultipleShipments
   } = useShipmentProcessor()
@@ -270,6 +283,7 @@ function ResultsPageContent() {
     try {
       const data = await pack_shipment(targetShipmentId)
       setPackingInfo(data)
+      setPackingInfoMap(prev => ({ ...prev, [targetShipmentId]: data }))
       setLastScannedCode(targetShipmentId)
       setPackedShipments(prev => new Set(prev).add(targetShipmentId))
       triggerVibration('success')
@@ -365,13 +379,26 @@ function ResultsPageContent() {
                           
                     {/* Packing Button/Status for this shipment */}
                     <div className="flex items-center gap-2">
-                      {packedShipments.has(shipment.shipmentId) ? (
+                      {(packedShipments.has(shipment.shipmentId) || packingInfoMap[shipment.shipmentId]) ? (
                         <div className="flex items-center gap-3 text-sm">
                           <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                             <Package className="h-4 w-4 text-green-600" />
                           </div>
                           <div className="text-green-700">
                             <div className="font-semibold">Empacado</div>
+                            {packingInfoMap[shipment.shipmentId] && (
+                              <div className="text-xs text-green-600">
+                                por {packingInfoMap[shipment.shipmentId].packed_by_name}
+                                <br />
+                                {new Date(packingInfoMap[shipment.shipmentId].created_at!).toLocaleString('es-ES', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ) : (
