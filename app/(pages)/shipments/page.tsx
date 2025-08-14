@@ -3,7 +3,6 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
 import { Button } from '@/components/ui/button';
