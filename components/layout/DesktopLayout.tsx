@@ -17,6 +17,7 @@ const navigationItems = [
   { name: 'Ordenes', href: '/orders', icon: TrendingUp },
   { name: 'Envios', href: '/shipments', icon: Package },
   { name: 'Categorias', href: '/categories', icon: Folder },
+  { name: 'Admin', href: '/metrics', icon: BarChart3 },
   { name: 'Ajustes', href: '/settings', icon: Settings },
 ];
 

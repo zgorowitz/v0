@@ -117,7 +117,7 @@ export default function Home() {
         <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4">
           <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl border-0">
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-gray-800">Mercado Libre Scanner</CardTitle>
+              <CardTitle className="text-2xl text-gray-800 border-b pb-2">Mercado Libre Scanner</CardTitle>
               {/* <CardDescription className="text-gray-600">
                 Escanea códigos de barras para obtener información del envio.
               </CardDescription> */}
@@ -125,12 +125,13 @@ export default function Home() {
             <CardContent className="flex flex-col gap-4">
               {user ? (
                 <>
-                  <p className="text-center text-gray-700 mb-4">
-                    Bienvenido, {user.user_metadata?.name}!
-                  </p>
-                  
-                  <Card className="border border-black bg-white">
+                  <div>  
+                  {/* <p className="text-gray-700 mb-1">Paquetes Procesados {user.user_metadata?.name}</p> */}
+                  </div>
+
+                  <Card className="border mb-4">
                     <CardContent className="p-4">
+                      
                       {metricsLoading ? (
                         <div>Cargando...</div>
                       ) : (
