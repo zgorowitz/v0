@@ -6,11 +6,14 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useCallback } from 'react'
 import Script from 'next/script'
+import { fetchPackingMetrics, getMetricsForPeriod, type PackingMetric } from '@/lib/homepage/metrics'
 
 export default function Home() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false)
+  const [packingMetrics, setPackingMetrics] = useState<PackingMetric[]>([])
+  const [metricsLoading, setMetricsLoading] = useState(false)
   const supabase = createClient()
 
   // Check auth status
@@ -22,6 +25,28 @@ export default function Home() {
     }
     getUser()
   }, [])
+
+  // Fetch packing metrics
+  const fetchMetrics = useCallback(async () => {
+    if (!user?.email) return
+    
+    setMetricsLoading(true)
+    try {
+      const data = await fetchPackingMetrics(user.email)
+      setPackingMetrics(data)
+    } catch (error) {
+      console.error('Error fetching packing metrics:', error)
+    } finally {
+      setMetricsLoading(false)
+    }
+  }, [user])
+
+  // Fetch metrics when user loads
+  useEffect(() => {
+    if (user) {
+      fetchMetrics()
+    }
+  }, [user, fetchMetrics])
 
   // Handle Google sign-in (use useCallback to prevent recreation)
   const handleSignInWithGoogle = useCallback(async (response) => {
@@ -103,6 +128,35 @@ export default function Home() {
                   <p className="text-center text-gray-700 mb-4">
                     Bienvenido, {user.user_metadata?.name}!
                   </p>
+                  
+                  <Card className="border border-black bg-white">
+                    <CardContent className="p-4">
+                      {metricsLoading ? (
+                        <div>Cargando...</div>
+                      ) : (
+                        <div className="grid grid-cols-3 text-center">
+                          <div>
+                            <div className="text-sm">Hoy</div>
+                            <div className="text-2xl font-bold">
+                              {getMetricsForPeriod(packingMetrics, 1).totalPackages}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm">7 días</div>
+                            <div className="text-2xl font-bold">
+                              {getMetricsForPeriod(packingMetrics, 7).totalPackages}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm">30 días</div>
+                            <div className="text-2xl font-bold">
+                              {getMetricsForPeriod(packingMetrics, 30).totalPackages}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                   <Link href="/scan" className="w-full">
                     <Button className="w-full" size="lg">
                     Iniciar escaneo
