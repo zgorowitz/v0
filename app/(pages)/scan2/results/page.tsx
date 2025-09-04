@@ -13,7 +13,8 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 import { 
   get_packing, 
   get_multiple_packing,
-  pack_shipment, 
+  pack_shipment,
+  pack_multiple_shipments, 
   repack_shipment, 
   getShipmentData,
   track_scan_session,
@@ -76,13 +77,13 @@ const useShipmentProcessor = () => {
       // Track scan session
       await track_scan_session(code)
 
-      // Check packing status
+      // Check packing status  
       const packingStatus = await get_packing(code)
       if (packingStatus) {
         setPackingInfo(packingStatus)
       }
-
-      return shipment
+      
+      return { shipment, packingStatus }
     } catch (error) {
       console.error(`Failed to process shipment ${code}:`, error)
       throw error
@@ -99,10 +100,10 @@ const useShipmentProcessor = () => {
       const results = await Promise.allSettled(shipmentPromises)
       
       const successfulShipments = results
-        .filter((result): result is PromiseFulfilledResult<Shipment | null> => 
-          result.status === 'fulfilled' && result.value !== null
+        .filter((result): result is PromiseFulfilledResult<any> => 
+          result.status === 'fulfilled' && result.value?.shipment !== null
         )
-        .map(result => result.value as Shipment)
+        .map(result => result.value.shipment)
 
       // Get packing info for all successful shipments
       if (successfulShipments.length > 0) {
@@ -252,10 +253,14 @@ function ResultsPageContent() {
         
         if (codeArray.length === 1) {
           // Single shipment
-          const shipment = await processShipmentCode(codeArray[0])
-          if (shipment) {
-            setCurrentShipment(shipment)
+          const result = await processShipmentCode(codeArray[0])
+          if (result?.shipment) {
+            setCurrentShipment(result.shipment)
             setLastScannedCode(codeArray[0])
+            // Update packing info map for single shipment
+            if (result.packingStatus) {
+              setPackingInfoMap(prev => ({ ...prev, [codeArray[0]]: result.packingStatus }))
+            }
           } else {
             throw new Error("No items found")
           }
@@ -294,6 +299,40 @@ function ResultsPageContent() {
       setPackingLoading(false)
     }
   }, [lastScannedCode])
+
+  const handlePackAll = useCallback(async () => {
+    if (shipments.length === 0) return
+    
+    const unpackedShipments = shipments.filter(s => 
+      !packedShipments.has(s.shipmentId) && !packingInfoMap[s.shipmentId]
+    )
+    
+    if (unpackedShipments.length === 0) return
+
+    setPackingLoading(true)
+    try {
+      const shipmentIds = unpackedShipments.map(s => s.shipmentId)
+      const packingResults = await pack_multiple_shipments(shipmentIds)
+      
+      // Update state with all packed shipments
+      const newPackingMap = { ...packingInfoMap }
+      const newPackedShipments = new Set(packedShipments)
+      
+      packingResults.forEach((result: any) => {
+        newPackingMap[result.shipment_id] = result
+        newPackedShipments.add(result.shipment_id)
+      })
+      
+      setPackingInfoMap(newPackingMap)
+      setPackedShipments(newPackedShipments)
+      triggerVibration('success')
+    } catch (err: any) {
+      setError(err.message || "Bulk packing failed")
+      triggerVibration('error')
+    } finally {
+      setPackingLoading(false)
+    }
+  }, [shipments, packedShipments, packingInfoMap])
 
   const goBackToScan = () => {
     router.push('/scan2/scan')
@@ -434,6 +473,24 @@ function ResultsPageContent() {
 
             {/* Action Buttons */}
             <div className="flex justify-center gap-4 mt-8">
+              {hasMultipleShipments && (
+                <motion.div whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={handlePackAll}
+                    disabled={packingLoading || displayShipments.every(s => 
+                      packedShipments.has(s.shipmentId) || packingInfoMap[s.shipmentId]
+                    )}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-3"
+                  >
+                    {packingLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Package className="w-5 h-5" />
+                    )}
+                    Empacar Todo
+                  </Button>
+                </motion.div>
+              )}
               <motion.div whileTap={{ scale: 0.98 }}>
                 <Button
                   onClick={goBackToScan}
