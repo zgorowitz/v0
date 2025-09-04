@@ -41,6 +41,9 @@ interface Item {
   variation_id?: string
   user_product_id?: string
   order_id?: string
+  order_notes?: string
+  notes_count?: number
+  latest_note_date?: string
 }
 
 interface Shipment {
@@ -188,6 +191,48 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
         </div>
       </div>
     </motion.div>
+  )
+}
+
+const OrderNotes: React.FC<{ shipment: Shipment }> = ({ shipment }) => {
+  // Get all unique order notes from the shipment items
+  const allNotes = shipment.items
+    .filter(item => item.order_notes && item.order_notes.trim())
+    .map(item => ({
+      notes: item.order_notes,
+      latest_date: item.latest_note_date,
+      order_id: item.order_id
+    }))
+
+  // Remove duplicates based on order_id
+  const uniqueNotes = allNotes.filter((note, index, self) => 
+    index === self.findIndex(n => n.order_id === note.order_id)
+  )
+
+  if (uniqueNotes.length === 0) return null
+
+  return (
+    <div className="mt-4 pt-3 border-t border-gray-200/50">
+      <div className="space-y-2">
+        <div className="text-sm font-medium text-gray-700">Notas de pedidos:</div>
+        {uniqueNotes.map((noteData, idx) => (
+          <div key={noteData.order_id || idx} className="text-sm text-gray-600">
+            <div className="mb-1">{noteData.notes}</div>
+            {noteData.latest_date && (
+              <div className="text-xs text-gray-500">
+                {new Date(noteData.latest_date).toLocaleString('es-ES', {
+                  day: '2-digit',
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -467,6 +512,9 @@ function ResultsPageContent() {
                       />
                     ))}
                   </div>
+                  
+                  {/* Order Notes */}
+                  <OrderNotes shipment={shipment} />
                       </motion.div>
                     ))}
                   </div>
