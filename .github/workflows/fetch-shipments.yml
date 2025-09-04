@@ -2,7 +2,7 @@ name: Fetch Shipments
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Run every 6 hours
+    - cron: '5 * * * *'  # Run 5 minutes after each hour
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
