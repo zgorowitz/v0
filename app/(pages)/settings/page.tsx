@@ -2,9 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Trash2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { getMeliAccounts, getCurrentMeliUserId } from '@/lib/meli_tokens_client'
 import { createClient, getCurrentUserOrganizationId } from '@/lib/supabase/client'
@@ -58,10 +65,13 @@ export default function SettingsPage() {
   })
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null)
   const [loadingUser, setLoadingUser] = useState(false)
+  const [allMeliAccounts, setAllMeliAccounts] = useState<UserInfo[]>([])
+  const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [urlError, setUrlError] = useState<{type: string, details: string | null} | null>(null)
   // Add new state for disconnect operation
   const [disconnectLoading, setDisconnectLoading] = useState(false)
   const [disconnectError, setDisconnectError] = useState<string | null>(null)
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false)
   // Organization user management state
   const [orgUsers, setOrgUsers] = useState<OrgUser[]>([])
   const [orgLoading, setOrgLoading] = useState(false)
@@ -106,9 +116,10 @@ export default function SettingsPage() {
         error: null
       })
 
-      // If authenticated, fetch user info
+      // If authenticated, fetch user info and all accounts
       if (data.authenticated) {
         fetchUserInfo()
+        fetchAllMeliAccounts()
       }
     } catch (error) {
       console.error('Error checking auth status:', error)
@@ -117,6 +128,49 @@ export default function SettingsPage() {
         loading: false,
         error: 'Failed to check authentication status'
       })
+    }
+  }
+
+  const fetchAllMeliAccounts = async () => {
+    setLoadingAccounts(true)
+    try {
+      const allAccounts = await getMeliAccounts()
+      
+      // Format all accounts to match UserInfo structure
+      const formattedAccounts = allAccounts.map((account: any) => ({
+        id: account.meli_user_id,
+        nickname: account.nickname,
+        permalink: account.permalink,
+        thumbnail: account.thumbnail_url ? {
+          picture_url: account.thumbnail_url
+        } : null,
+        first_name: account.first_name,
+        last_name: account.last_name,
+        country_id: account.country_id,
+        site_id: account.site_id,
+        user_type: account.user_type,
+        seller_reputation: (account.seller_level_id || account.power_seller_status) ? {
+          level_id: account.seller_level_id,
+          power_seller_status: account.power_seller_status
+        } : null,
+        _source: 'database'
+      }))
+      
+      setAllMeliAccounts(formattedAccounts)
+      
+      // Set the current account as userInfo for backward compatibility
+      const currentMeliUserId = await getCurrentMeliUserId()
+      if (currentMeliUserId) {
+        const currentAccount = formattedAccounts.find(account => account.id === currentMeliUserId)
+        if (currentAccount) {
+          setUserInfo(currentAccount)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching MercadoLibre accounts:', error)
+      setAllMeliAccounts([])
+    } finally {
+      setLoadingAccounts(false)
     }
   }
 
@@ -189,6 +243,7 @@ export default function SettingsPage() {
         return
       }
       await fetchUserInfo()
+      await fetchAllMeliAccounts()
     } catch (error: any) {
       console.error('Error refreshing token:', error)
       setUserInfo(null)
@@ -390,314 +445,400 @@ export default function SettingsPage() {
 
   return (
     <LayoutWrapper>
-      <main className="flex min-h-[calc(100vh-5rem)] flex-col items-center justify-center p-4 gap-6">
+      <main className="min-h-[calc(100vh-5rem)] p-4">
         
-        {/* Error Display */}
+        {/* Error Displays */}
         {urlError && (
-          <Card className="w-full max-w-md mx-auto border-red-200 bg-red-50">
-            <CardHeader>
-              <CardTitle className="text-xl text-red-800">
-                Autenticación fallida
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="bg-white border border-red-200 rounded p-3">
-                  <p className="text-sm text-red-700 whitespace-pre-line">
-                    {getErrorMessage(urlError.type, urlError.details)}
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Button 
-                    onClick={initiateAuth}
-                    className="w-full bg-red-600 hover:bg-red-700"
-                  >
-                    Intentar de nuevo
-                  </Button>
-                  
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-red-600 hover:text-red-800">
-                      Detalles técnicos
-                    </summary>
-                    <div className="mt-2 p-2 bg-gray-100 rounded text-gray-700">
-                      <div><strong>Tipo de error:</strong> {urlError.type}</div>
-                      {urlError.details && (
-                        <div className="mt-1">
-                          <strong>Detalles:</strong> 
-                          <pre className="mt-1 text-xs whitespace-pre-wrap">{urlError.details}</pre>
-                        </div>
-                      )}
-                    </div>
-                  </details>
-                </div>
+          <div className="w-full max-w-4xl mx-auto mb-6 border border-red-200 bg-red-50 rounded-lg p-6">
+            <h2 className="text-xl text-red-800 font-semibold mb-4">
+              Autenticación fallida
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-white border border-red-200 rounded p-3">
+                <p className="text-sm text-red-700 whitespace-pre-line">
+                  {getErrorMessage(urlError.type, urlError.details)}
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Disconnect Error Display */}
-        {disconnectError && (
-          <Card className="w-full max-w-md mx-auto border-red-200 bg-red-50">
-            <CardHeader>
-              <CardTitle className="text-xl text-red-800">
-                Error al desconectar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="bg-white border border-red-200 rounded p-3">
-                  <p className="text-sm text-red-700">
-                    {disconnectError}
-                  </p>
-                </div>
-                
-                <div className="space-y-2">
-                  <Button 
-                    onClick={handleDisconnect}
-                    disabled={disconnectLoading}
-                    className="w-full bg-red-600 hover:bg-red-700"
-                  >
-                    {disconnectLoading ? 'Desconectando...' : 'Intentar de nuevo'}
-                  </Button>
-                  
-                  <Button 
-                    onClick={() => setDisconnectError(null)}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Cerrar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* MercadoLibre Connection Card */}
-        <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-          <CardHeader>
-            <CardTitle className="text-xl">
-              Conexión con MercadoLibre
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {authStatus.loading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-sm text-gray-600">Verificando conexión...</p>
-              </div>
-            ) : authStatus.error ? (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {authStatus.error}
-              </div>
-            ) : !authStatus.authenticated ? (
-              <div className="text-center py-4">
+              
+              <div className="space-y-2">
                 <Button 
                   onClick={initiateAuth}
-                  className="w-full"
+                  className="w-full bg-black hover:bg-gray-800"
                 >
-                  Conectar con MercadoLibre
+                  Intentar de nuevo
+                </Button>
+                
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-red-600 hover:text-red-800">
+                    Detalles técnicos
+                  </summary>
+                  <div className="mt-2 p-2 bg-gray-100 rounded text-gray-700">
+                    <div><strong>Tipo de error:</strong> {urlError.type}</div>
+                    {urlError.details && (
+                      <div className="mt-1">
+                        <strong>Detalles:</strong> 
+                        <pre className="mt-1 text-xs whitespace-pre-wrap">{urlError.details}</pre>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {disconnectError && (
+          <div className="w-full max-w-4xl mx-auto mb-6 border border-red-200 bg-red-50 rounded-lg p-6">
+            <h2 className="text-xl text-red-800 font-semibold mb-4">
+              Error al desconectar
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-white border border-red-200 rounded p-3">
+                <p className="text-sm text-red-700">
+                  {disconnectError}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Button 
+                  onClick={handleDisconnect}
+                  disabled={disconnectLoading}
+                  className="w-full bg-black hover:bg-gray-800"
+                >
+                  {disconnectLoading ? 'Desconectando...' : 'Intentar de nuevo'}
+                </Button>
+                
+                <Button 
+                  onClick={() => setDisconnectError(null)}
+                  className="w-full bg-black hover:bg-gray-800"
+                >
+                  Cerrar
                 </Button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-green-600">✓ Conectado</span>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={refreshUserInfo}
-                    disabled={loadingUser}
-                  >
-                    {loadingUser ? 'Cargando...' : 'Actualizar'}
-                  </Button>
-                </div>
-                
-                {loadingUser ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  </div>
-                ) : userInfo ? (
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      {userInfo.thumbnail?.picture_url && (
-                        <img 
-                          src={userInfo.thumbnail.picture_url} 
-                          alt={userInfo.nickname}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-sm">{userInfo.nickname}</h3>
-                        <p className="text-xs text-gray-600">ID: {userInfo.id}</p>
-                        {userInfo._source && (
-                          <p className="text-xs text-blue-600">Source: {userInfo._source}</p>
-                        )}
-                      </div>
-                    </div>
-                    {userInfo.seller_reputation && (
-                      <div className="mt-2 text-xs text-gray-700">
-                        <div>
-                          <span className="font-semibold">Reputación del vendedor:</span>
-                        </div>
-                        <div>
-                          Nivel: <span className="font-mono">{userInfo.seller_reputation.level_id || 'N/A'}</span>
-                        </div>
-                        <div>
-                          Estado de Power Seller: <span className="font-mono">{userInfo.seller_reputation.power_seller_status || 'N/A'}</span>
-                        </div>
-                      </div>
-                    )}
-                    {userInfo.permalink && (
-                      <a 
-                        href={userInfo.permalink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                      >
-                        Ver perfil →
-                      </a>
-                    )}
-                    <div className="flex flex-col gap-2 mt-3">
-                      <Button 
-                        onClick={initiateAuth}
-                        className="w-full mt-3"
-                      >
-                        Conectar una cuenta diferente
-                      </Button>
-                      <Button
-                        onClick={handleDisconnect}
-                        disabled={disconnectLoading}
-                        className="w-full"
-                        variant={disconnectLoading ? "outline" : "default"}
-                      >
-                        {disconnectLoading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                            Desconectando...
-                          </>
-                        ) : (
-                          'Desconectar'
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-2">
-                    <p className="text-sm text-gray-600">No se pudo cargar la información del usuario</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        )}
 
-        {/* Organization Users Management */}
-        {authStatus.authenticated && (
-          <Card className="w-full max-w-md mx-auto backdrop-blur-sm bg-white/95 shadow-2xl border-0">
-            <CardHeader>
-              <CardTitle className="text-xl">
-                Usuarios de la Organización
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {orgLoading ? (
-                <div className="text-center py-4">
+        {/* Main Content - Two Sections */}
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-gray-200">
+          
+          {/* Section 1: MercadoLibre Connection */}
+          <section className="bg-white p-6">
+            <h2 className="text-xl font-semibold mb-6">
+              Conexión con MercadoLibre
+            </h2>
+            
+            <div className="space-y-4">
+              {authStatus.loading ? (
+                <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-sm text-gray-600">Cargando usuarios...</p>
+                  <p className="mt-2 text-sm text-gray-600">Verificando conexión...</p>
+                </div>
+              ) : authStatus.error ? (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                  {authStatus.error}
+                </div>
+              ) : !authStatus.authenticated ? (
+                <div className="text-center py-8">
+                  <Button 
+                    onClick={initiateAuth}
+                    className="w-full bg-black hover:bg-gray-800"
+                  >
+                    Conectar con MercadoLibre
+                  </Button>
                 </div>
               ) : (
-                <div className="space-y-0">
-                  {orgUsers.length === 0 ? (
-                    <div className="text-gray-500 text-sm py-4">No hay usuarios en la organización</div>
-                  ) : (
-                    orgUsers.map((user, index) => (
-                      <div key={user.id}>
-                        <div className="flex justify-between items-center py-3">
-                          <div className="text-sm flex-1">
-                            <div className="font-medium">{user.user_email || 'Email no disponible'}</div>
-                            <div className="text-gray-500 text-xs mt-1">
-                              Rol: {user.role} • Invitado: {new Date(user.invited_at).toLocaleDateString()}
-                              {user.joined_at && ` • Unido: ${new Date(user.joined_at).toLocaleDateString()}`}
+                <>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-green-600">✓ Conectado ({allMeliAccounts.length} cuenta{allMeliAccounts.length !== 1 ? 's' : ''})</span>
+                    <Button 
+                      size="sm"
+                      onClick={refreshUserInfo}
+                      disabled={loadingUser || loadingAccounts}
+                      className="bg-black hover:bg-gray-800"
+                    >
+                      {loadingUser || loadingAccounts ? 'Cargando...' : 'Actualizar'}
+                    </Button>
+                  </div>
+                  
+                  {loadingAccounts ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-sm text-gray-600">Cargando cuentas...</p>
+                    </div>
+                  ) : allMeliAccounts.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        {allMeliAccounts.map((account) => (
+                          <div key={account.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                              {account.thumbnail?.picture_url ? (
+                                <img 
+                                  src={account.thumbnail.picture_url} 
+                                  alt={account.nickname}
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                  {account.nickname?.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-sm">{account.nickname}</h3>
+                                <p className="text-xs text-gray-600">ID: {account.id}</p>
+                                {userInfo?.id === account.id && (
+                                  <p className="text-xs text-blue-600">• Cuenta actual</p>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <Button 
+                                  size="sm"
+                                  onClick={refreshUserInfo}
+                                  disabled={loadingUser || loadingAccounts}
+                                  className="bg-black hover:bg-gray-800"
+                                >
+                                  {loadingUser || loadingAccounts ? 'Cargando...' : 'Actualizar'}
+                                </Button>
+                                <Button
+                                  onClick={() => setShowDisconnectDialog(true)}
+                                  disabled={disconnectLoading}
+                                  size="sm"
+                                  className="bg-black hover:bg-gray-800"
+                                >
+                                  {disconnectLoading ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></div>
+                                      Desconectando...
+                                    </>
+                                  ) : (
+                                    'Desconectar'
+                                  )}
+                                </Button>
+                              </div>
                             </div>
+                            {account.seller_reputation && (
+                              <div className="mt-2 text-xs text-gray-700">
+                                <div>
+                                  <span className="font-semibold">Reputación del vendedor:</span>
+                                </div>
+                                <div>
+                                  Nivel: <span className="font-mono">{account.seller_reputation.level_id || 'N/A'}</span>
+                                </div>
+                                <div>
+                                  Estado de Power Seller: <span className="font-mono">{account.seller_reputation.power_seller_status || 'N/A'}</span>
+                                </div>
+                              </div>
+                            )}
+                            {account.permalink && (
+                              <a 
+                                href={account.permalink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                Ver perfil →
+                              </a>
+                            )}
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteOrgUser(user.id)}
-                            disabled={deletingUser === user.id}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        {index < orgUsers.length - 1 && <div className="border-b border-gray-200" />}
+                        ))}
                       </div>
-                    ))
+                      
+                      <div className="text-center">
+                        <Button 
+                          onClick={initiateAuth}
+                          className="w-full bg-black hover:bg-gray-800"
+                        >
+                          Conectar una cuenta diferente
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <p className="text-sm text-yellow-700">No se encontraron cuentas de MercadoLibre</p>
+                      <Button 
+                        onClick={refreshUserInfo}
+                        size="sm"
+                        className="mt-2 bg-black hover:bg-gray-800"
+                      >
+                        Reintentar
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Section 2: Organization Users Management */}
+          <section className="bg-white p-6 border-t lg:border-t-0 border-gray-200">
+            <h2 className="text-xl font-semibold mb-6">
+              Usuarios de la Organización
+            </h2>
+            
+            {!authStatus.authenticated ? (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-sm">Conéctate con MercadoLibre para gestionar usuarios</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Usuarios Actuales</h3>
+                  {orgLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-sm text-gray-600">Cargando usuarios...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0 border rounded-lg">
+                      {orgUsers.length === 0 ? (
+                        <div className="text-gray-500 text-sm py-4 px-4">No hay usuarios en la organización</div>
+                      ) : (
+                        orgUsers.map((user, index) => (
+                          <div key={user.id}>
+                            <div className="flex justify-between items-center py-3 px-4">
+                              <div className="text-sm flex-1">
+                                <div className="font-medium">{user.user_email || 'Email no disponible'}</div>
+                                <div className="text-gray-500 text-xs mt-1">
+                                  Rol: {user.role} • Invitado: {new Date(user.invited_at).toLocaleDateString()}
+                                  {user.joined_at && ` • Unido: ${new Date(user.joined_at).toLocaleDateString()}`}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteOrgUser(user.id)}
+                                disabled={deletingUser === user.id}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                {deletingUser === user.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border border-current"></div>
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            {index < orgUsers.length - 1 && <div className="border-b border-gray-200" />}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-              
-              <div className="border-t pt-4">
-                <div className="text-sm font-medium mb-2">Agregar nuevo usuario</div>
-                <div className="flex gap-2">
-                  <Input
-                    type="email"
-                    placeholder="Ingrese email del usuario"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={addEmailToOrg}
-                    disabled={addingEmail || !newEmail.trim()}
-                    size="sm"
-                  >
-                    {addingEmail ? 'Agregando...' : 'Agregar'}
-                  </Button>
+                
+                <div className="border-t pt-4">
+                  <div className="text-sm font-medium mb-2">Agregar nuevo usuario</div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="Ingrese email del usuario"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button 
+                      onClick={addEmailToOrg}
+                      disabled={addingEmail || !newEmail.trim()}
+                      size="sm"
+                      className="bg-black hover:bg-gray-800"
+                    >
+                      {addingEmail ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          Agregando...
+                        </>
+                      ) : (
+                        'Agregar'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="text-sm font-medium mb-3">Usuarios Pendientes</div>
+                  {allowedEmailsLoading ? (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="mt-2 text-sm text-gray-600">Cargando emails pendientes...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0 border rounded-lg">
+                      {allowedEmails.length === 0 ? (
+                        <div className="text-gray-500 text-sm py-4 px-4">No hay emails pendientes</div>
+                      ) : (
+                        allowedEmails.map((email, index) => (
+                          <div key={email.id}>
+                            <div className="flex justify-between items-center py-3 px-4">
+                              <div className="text-sm flex-1">
+                                <div className="font-medium text-orange-700">{email.email}</div>
+                                <div className="text-gray-500 text-xs mt-1">
+                                  Rol: {email.role} • Agregado: {new Date(email.added_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteAllowedEmail(email.id)}
+                                disabled={deletingAllowed === email.id}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                {deletingAllowed === email.id ? (
+                                  <div className="animate-spin rounded-full h-3 w-3 border border-current"></div>
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                            {index < allowedEmails.length - 1 && <div className="border-b border-gray-200" />}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="border-t pt-4">
-                <div className="text-sm font-medium mb-2">Usuarios Pendientes</div>
-                {allowedEmailsLoading ? (
-                  <div className="text-center py-2">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                  </div>
-                ) : allowedEmails.length === 0 ? (
-                  <div className="text-gray-500 text-sm">No hay emails pendientes</div>
-                ) : (
-                  <div className="space-y-0">
-                    {allowedEmails.map((email, index) => (
-                      <div key={email.id}>
-                        <div className="flex justify-between items-center py-3">
-                          <div className="text-sm flex-1">
-                            <div className="font-medium text-orange-700">{email.email}</div>
-                            <div className="text-gray-500 text-xs mt-1">
-                              Rol: {email.role} • Agregado: {new Date(email.added_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteAllowedEmail(email.id)}
-                            disabled={deletingAllowed === email.id}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        {index < allowedEmails.length - 1 && <div className="border-b border-gray-200" />}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </section>
+        </div>
       </main>
+
+      {/* Disconnect Confirmation Dialog */}
+      <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Confirmar desconexión</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que quieres desconectar tu cuenta de MercadoLibre? 
+              Esta acción eliminará el acceso a todas las funcionalidades relacionadas con MercadoLibre.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowDisconnectDialog(false)}
+              disabled={disconnectLoading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={async () => {
+                await handleDisconnect()
+                setShowDisconnectDialog(false)
+              }}
+              disabled={disconnectLoading}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {disconnectLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Desconectando...
+                </>
+              ) : (
+                'Sí, desconectar'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </LayoutWrapper>
   )
 }
