@@ -10,7 +10,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.17",
+    "@headlessui/react": "^2.2.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "latest",
     "@radix-ui/react-alert-dialog": "latest",
@@ -58,7 +58,7 @@
     "next": "^15.2.4",
     "next-themes": "latest",
     "react": "^19.1.0",
-    "react-day-picker": "^8.9.1",
+    "react-day-picker": "^9.3.4",
     "react-dom": "^19.1.0",
     "react-hook-form": "latest",
     "react-resizable-panels": "latest",
