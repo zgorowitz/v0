@@ -2,11 +2,8 @@
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Trash2 } from "lucide-react"
 import { useState, useEffect, useCallback } from 'react'
-import { createClient, getCurrentUserOrganizationId } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 
 interface UserMetric {
   packed_by_name: string
@@ -17,38 +14,12 @@ interface UserMetric {
   last_shipment_time: string
 }
 
-interface OrgUser {
-  id: string
-  user_id: string
-  role: string
-  invited_at: string
-  joined_at: string | null
-  user_email?: string
-}
-
-interface AllowedEmail {
-  id: string
-  organization_id: string
-  email: string
-  role: string
-  added_by: string
-  added_at: string
-}
-
 
 export default function MetricsPage() {
   const [users, setUsers] = useState<string[]>([])
   const [selectedUser, setSelectedUser] = useState<string>('all')
   const [metrics, setMetrics] = useState<UserMetric[]>([])
   const [loading, setLoading] = useState(false)
-  const [orgUsers, setOrgUsers] = useState<OrgUser[]>([])
-  const [orgLoading, setOrgLoading] = useState(false)
-  const [newEmail, setNewEmail] = useState('')
-  const [addingEmail, setAddingEmail] = useState(false)
-  const [deletingUser, setDeletingUser] = useState<string | null>(null)
-  const [allowedEmails, setAllowedEmails] = useState<AllowedEmail[]>([])
-  const [allowedEmailsLoading, setAllowedEmailsLoading] = useState(false)
-  const [deletingAllowed, setDeletingAllowed] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'totales' | 'comparacion'>('totales')
   const supabase = createClient()
 
@@ -104,128 +75,7 @@ export default function MetricsPage() {
     fetchMetrics()
   }, [fetchMetrics])
 
-  const fetchOrgUsers = useCallback(async () => {
-    setOrgLoading(true)
-    try {
-      const organizationId = await getCurrentUserOrganizationId()
-      if (!organizationId) {
-        console.warn('No organization found for current user')
-        setOrgUsers([])
-        return
-      }
 
-      const { data, error } = await supabase
-        .from('organization_users_with_emails')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('invited_at', { ascending: false })
-      
-      if (error) throw error
-      setOrgUsers(data || [])
-    } catch (error) {
-      console.error('Error fetching organization users:', error)
-    } finally {
-      setOrgLoading(false)
-    }
-  }, [supabase])
-
-  const addEmailToOrg = async () => {
-    if (!newEmail.trim()) return
-    
-    setAddingEmail(true)
-    try {
-      const { data: currentUser } = await supabase.auth.getUser()
-      if (!currentUser.user) throw new Error('No authenticated user')
-
-      const organizationId = await getCurrentUserOrganizationId()
-      if (!organizationId) throw new Error('No organization found for current user')
-
-      const { error } = await supabase
-        .from('allowed_emails')
-        .insert({
-          organization_id: organizationId,
-          email: newEmail.trim().toLowerCase(),
-          role: 'manager',
-          added_by: currentUser.user.id
-        })
-      
-      if (error) throw error
-      
-      setNewEmail('')
-      fetchOrgUsers()
-      fetchAllowedEmails()
-    } catch (error) {
-      console.error('Error adding email:', error)
-    } finally {
-      setAddingEmail(false)
-    }
-  }
-
-  const deleteOrgUser = async (userId: string) => {
-    setDeletingUser(userId)
-    try {
-      const { error } = await supabase
-        .from('organization_users')
-        .delete()
-        .eq('id', userId)
-      
-      if (error) throw error
-      
-      fetchOrgUsers()
-    } catch (error) {
-      console.error('Error deleting user:', error)
-    } finally {
-      setDeletingUser(null)
-    }
-  }
-
-  const fetchAllowedEmails = useCallback(async () => {
-    setAllowedEmailsLoading(true)
-    try {
-      const organizationId = await getCurrentUserOrganizationId()
-      if (!organizationId) {
-        setAllowedEmails([])
-        return
-      }
-
-      const { data, error } = await supabase
-        .from('allowed_emails')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('added_at', { ascending: false })
-      
-      if (error) throw error
-      setAllowedEmails(data || [])
-    } catch (error) {
-      console.error('Error fetching allowed emails:', error)
-    } finally {
-      setAllowedEmailsLoading(false)
-    }
-  }, [supabase])
-
-  const deleteAllowedEmail = async (emailId: string) => {
-    setDeletingAllowed(emailId)
-    try {
-      const { error } = await supabase
-        .from('allowed_emails')
-        .delete()
-        .eq('id', emailId)
-      
-      if (error) throw error
-      
-      fetchAllowedEmails()
-    } catch (error) {
-      console.error('Error deleting allowed email:', error)
-    } finally {
-      setDeletingAllowed(null)
-    }
-  }
-
-
-  useEffect(() => {
-    fetchOrgUsers()
-    fetchAllowedEmails()
-  }, [fetchOrgUsers, fetchAllowedEmails])
 
   const calculateMetrics = () => {
     const today = new Date().toISOString().split('T')[0]
@@ -304,14 +154,22 @@ export default function MetricsPage() {
   const getDailyData = () => {
     const dailyMap = new Map()
     
+    // Initialize all days from today back to 29 days ago (30 days total including today)
+    for (let i = 0; i < 30; i++) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const dateString = date.toISOString().split('T')[0]
+      dailyMap.set(dateString, { date: dateString, total: 0, users: new Set() })
+    }
+    
+    // Fill in actual data
     metrics.forEach(metric => {
       const date = metric.packing_date
-      if (!dailyMap.has(date)) {
-        dailyMap.set(date, { date, total: 0, users: new Set() })
+      if (dailyMap.has(date)) {
+        const day = dailyMap.get(date)
+        day.total += metric.shipments_packed
+        day.users.add(metric.packed_by_name)
       }
-      const day = dailyMap.get(date)
-      day.total += metric.shipments_packed
-      day.users.add(metric.packed_by_name)
     })
     
     return Array.from(dailyMap.values())
@@ -410,14 +268,36 @@ export default function MetricsPage() {
                     {/* Y-axis */}
                     <div className="flex flex-col justify-between h-20 mr-2 text-xs text-gray-500 py-1">
                       {(() => {
-                        const maxValue = Math.max(...dailyData.slice(0, 30).map(d => d.total))
-                        const yAxisLabels = []
-                        for (let i = 4; i >= 0; i--) {
-                          yAxisLabels.push(Math.round((maxValue * i) / 4))
+                        const dailyDataSlice = dailyData.slice(0, 30)
+                        const maxValue = dailyDataSlice.length > 0 ? Math.max(...dailyDataSlice.map(d => d.total)) : 0
+                        
+                        // Create nice round numbers for Y-axis
+                        const getYAxisLabels = (max) => {
+                          if (max === 0) return [0, 0, 0, 0, 0]
+                          
+                          // Find a nice round number that's >= max but not too much higher
+                          const magnitude = Math.pow(10, Math.floor(Math.log10(max)))
+                          let niceMax
+                          
+                          if (max <= magnitude) niceMax = magnitude
+                          else if (max <= 2 * magnitude) niceMax = 2 * magnitude
+                          else if (max <= 5 * magnitude) niceMax = 5 * magnitude
+                          else niceMax = 10 * magnitude
+                          
+                          // Don't let niceMax be more than 50% higher than actual max
+                          if (niceMax > max * 1.5) {
+                            niceMax = Math.ceil(max / 10) * 10
+                            if (niceMax < max) niceMax = Math.ceil(max / 5) * 5
+                            if (niceMax < max) niceMax = max
+                          }
+                          
+                          return [niceMax, Math.round(niceMax * 0.75), Math.round(niceMax * 0.5), Math.round(niceMax * 0.25), 0]
                         }
+                        
+                        const yAxisLabels = getYAxisLabels(maxValue)
                         return yAxisLabels.map((value, index) => (
                           <div key={index} className="text-right pr-1">
-                            {value}
+                            {Math.round(value)}
                           </div>
                         ))
                       })()}
@@ -435,22 +315,67 @@ export default function MetricsPage() {
                         
                         {/* Bars */}
                         {dailyData.slice(0, 30).reverse().map((day) => {
-                          const maxValue = Math.max(...dailyData.slice(0, 30).map(d => d.total))
-                          const height = maxValue > 0 ? (day.total / maxValue) * 60 : 0
+                          const dailyDataSlice = dailyData.slice(0, 30)
+                          const actualMaxValue = dailyDataSlice.length > 0 ? Math.max(...dailyDataSlice.map(d => d.total)) : 0
+                          
+                          // Use the same logic as Y-axis for consistent scaling
+                          const getChartMax = (max) => {
+                            if (max === 0) return 1
+                            const magnitude = Math.pow(10, Math.floor(Math.log10(max)))
+                            let niceMax
+                            if (max <= magnitude) niceMax = magnitude
+                            else if (max <= 2 * magnitude) niceMax = 2 * magnitude
+                            else if (max <= 5 * magnitude) niceMax = 5 * magnitude
+                            else niceMax = 10 * magnitude
+                            
+                            // Don't let niceMax be more than 50% higher than actual max
+                            if (niceMax > max * 1.5) {
+                              niceMax = Math.ceil(max / 10) * 10
+                              if (niceMax < max) niceMax = Math.ceil(max / 5) * 5
+                              if (niceMax < max) niceMax = max
+                            }
+                            return niceMax
+                          }
+                          
+                          const chartMaxValue = getChartMax(actualMaxValue)
+                          const height = chartMaxValue > 0 ? (day.total / chartMaxValue) * 60 : 0
                           
                           return (
-                            <div key={day.date} className="flex flex-col items-center flex-1 px-0.5 relative z-10">
+                            <div key={day.date} className="flex flex-col items-center flex-1 px-0.5 relative z-10 group">
                               <div 
-                                className="bg-blue-500 w-full rounded-t transition-all duration-300 hover:bg-blue-600"
-                                style={{ height: `${height}px` }}
+                                className="bg-blue-500 w-full rounded-t transition-all duration-300 hover:bg-blue-600 relative"
+                                style={{ height: `${isNaN(height) ? 0 : height}px` }}
                                 title={`${new Date(day.date).toLocaleDateString('es-ES')}: ${day.total} paquetes`}
                               />
+                              {/* Show number on hover */}
+                              <div className="absolute -top-6 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+                                {day.total}
+                              </div>
                             </div>
                           )
                         })}
                       </div>
 
-
+                      {/* X-axis with day labels */}
+                      <div className="flex justify-between mt-1">
+                        {dailyData.slice(0, 30).reverse().map((day, index) => {
+                          const date = new Date(day.date + 'T12:00:00') // Add time to avoid timezone issues
+                          const dayOfWeek = date.getDay() // 0=Sunday, 1=Monday, ..., 6=Saturday
+                          const spanishDays = ['D', 'L', 'M', 'M', 'J', 'V', 'S'] // Sunday=0, Monday=1, etc.
+                          const isToday = day.date === new Date().toISOString().split('T')[0]
+                          return (
+                            <div 
+                              key={`label-${day.date}`} 
+                              className={`flex-1 text-center text-xs ${isToday ? 'text-blue-600 font-bold' : 'text-gray-400'}`}
+                              title={`${spanishDays[dayOfWeek]} - ${day.date}`}
+                            >
+                              {spanishDays[dayOfWeek]}
+                              {/* Show date for debugging - remove this line later */}
+                              <div className="text-[8px] mt-0.5">{day.date.slice(-2)}</div>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div className="text-center text-xs text-gray-500 mt-4">
@@ -511,95 +436,6 @@ export default function MetricsPage() {
             </Card>
           )}
 
-        </div>
-
-        <div className="border-t my-8"></div>
-
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-xl font-semibold mb-4">Usuarios de la Organización</h2>
-          <Card className="bg-white">
-            <CardContent className="space-y-4 p-6">
-                {orgLoading ? (
-                  <div>Cargando usuarios...</div>
-                ) : (
-                  <div className="space-y-2">
-                    {orgUsers.length === 0 ? (
-                      <div className="text-gray-500">No hay usuarios en la organización</div>
-                    ) : (
-                      orgUsers.map((user) => (
-                        <div key={user.id} className="flex justify-between items-center p-2 border rounded">
-                          <div className="text-sm">
-                            <div>{user.user_email || 'Email no disponible'}</div>
-                            <div className="text-gray-500 text-xs">
-                              Rol: {user.role} | Invitado: {new Date(user.invited_at).toLocaleDateString()}
-                              {user.joined_at && ` | Unido: ${new Date(user.joined_at).toLocaleDateString()}`}
-                            </div>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => deleteOrgUser(user.id)}
-                            disabled={deletingUser === user.id}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-                
-                <div className="border-t pt-4">
-                  <div className="text-sm font-medium mb-2">Agregar nuevo usuario</div>
-                  <div className="flex gap-2">
-                    <Input
-                      type="email"
-                      placeholder="Ingrese email del usuario"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button 
-                      onClick={addEmailToOrg}
-                      disabled={addingEmail || !newEmail.trim()}
-                    >
-                      {addingEmail ? 'Agregando...' : 'Agregar'}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="text-sm font-medium mb-2">Usuarios Pendientes</div>
-                  {allowedEmailsLoading ? (
-                    <div className="text-gray-500 text-sm">Cargando emails pendientes...</div>
-                  ) : allowedEmails.length === 0 ? (
-                    <div className="text-gray-500 text-sm">No hay emails pendientes</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {allowedEmails.map((email) => (
-                        <div key={email.id} className="flex justify-between items-center p-2 border rounded bg-yellow-50">
-                          <div className="text-sm">
-                            <div>{email.email}</div>
-                            <div className="text-gray-500 text-xs">
-                              Rol: {email.role} | Agregado: {new Date(email.added_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            onClick={() => deleteAllowedEmail(email.id)}
-                            disabled={deletingAllowed === email.id}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </LayoutWrapper>
