@@ -39,6 +39,10 @@ export async function middleware(request) {
   // Define public routes that don't require authentication
   const publicRoutes = ['/']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
+  
+  // Define admin-only routes
+  const adminOnlyRoutes = ['/settings', '/metrics', '/dashboard', '/analytics']
+  const isAdminRoute = adminOnlyRoutes.some(route => pathname.startsWith(route))
 
   try {
     // Step 1: Check if user exists (Google sign-in with Supabase auth)
@@ -51,14 +55,15 @@ export async function middleware(request) {
         }
     }
 
-    // Step 2: Check if user has organization (only for authenticated users)
+    // Step 2: Check if user has organization and get role (only for authenticated users)
     const { data: orgData } = await supabase
       .from('organization_users')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('user_id', user.id)
       .single()
 
     const hasOrganization = orgData && orgData.organization_id
+    const userRole = orgData?.role
     const isOnboarding = pathname === '/onboarding'
 
     if (!hasOrganization && !isOnboarding) {
@@ -69,6 +74,14 @@ export async function middleware(request) {
     if (hasOrganization && isOnboarding) {
       // Has organization but on onboarding page, redirect to home
       return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // Step 3: Check admin role for admin-only routes
+    if (isAdminRoute && userRole !== 'admin') {
+      // Non-admin user trying to access admin route, redirect to home with error
+      const url = new URL('/', request.url)
+      url.searchParams.set('error', 'unauthorized')
+      return NextResponse.redirect(url)
     }
 
   } catch (error) {

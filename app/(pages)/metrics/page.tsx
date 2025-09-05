@@ -3,8 +3,8 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-
+import { createClient, getCurrentUserOrganizationId } from '@/lib/supabase/client'
+ 
 interface UserMetric {
   packed_by_name: string
   packed_by_email: string
@@ -21,13 +21,17 @@ export default function MetricsPage() {
   const [metrics, setMetrics] = useState<UserMetric[]>([])
   const [loading, setLoading] = useState(false)
   const [activeView, setActiveView] = useState<'totales' | 'comparacion'>('totales')
+  const [organizationId, setOrganizationId] = useState<string | null>(null)
   const supabase = createClient()
 
   const fetchUsers = useCallback(async () => {
+    if (!organizationId) return
+    
     try {
       const { data, error } = await supabase
         .from('daily_packing_metrics')
         .select('packed_by_name, packed_by_email')
+        .eq('organization_id', organizationId)
         .order('packed_by_name')
       
       if (error) throw error
@@ -40,14 +44,17 @@ export default function MetricsPage() {
     } catch (error) {
       console.error('Error fetching users:', error)
     }
-  }, [supabase])
+  }, [supabase, organizationId])
 
   const fetchMetrics = useCallback(async () => {
+    if (!organizationId) return
+    
     setLoading(true)
     try {
       let query = supabase
         .from('daily_packing_metrics')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('packing_date', { ascending: false })
         .limit(30)
       
@@ -65,7 +72,15 @@ export default function MetricsPage() {
     } finally {
       setLoading(false)
     }
-  }, [supabase, selectedUser])
+  }, [supabase, selectedUser, organizationId])
+
+  useEffect(() => {
+    const loadOrganizationId = async () => {
+      const orgId = await getCurrentUserOrganizationId()
+      setOrganizationId(orgId)
+    }
+    loadOrganizationId()
+  }, [])
 
   useEffect(() => {
     fetchUsers()

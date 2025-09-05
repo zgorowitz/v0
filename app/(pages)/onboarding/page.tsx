@@ -17,12 +17,6 @@ export default function OnboardingPage() {
   const checkUserStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      
       setUser(user)
       
       // Check if user already has organization access
@@ -58,7 +52,7 @@ export default function OnboardingPage() {
       const result = await response.json()
       
       if (result.success) {
-        router.push('/')
+        router.push('/settings')
       } else {
         setError(result.error || 'Failed to create organization')
         setStep('choose')
