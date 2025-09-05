@@ -11,14 +11,14 @@ interface DesktopLayoutProps {
 }
 
 const navigationItems = [
-  { name: 'Home', href: '/' },
-  { name: 'Scan', href: '/scan' },
+  { name: 'Home', href: '/dashboard' },
+  { name: 'Scan', href: '/scan2' },
   // { name: 'Categorias', href: '/categories' },
 ];
 
 const reportsItems = [
-  { name: 'Productos', href: '/products' },
-  { name: 'Ordenes', href: '/orders' },
+  // { name: 'Productos', href: '/products' },
+  // { name: 'Ordenes', href: '/orders' },
   { name: 'Envios', href: '/shipments' },
 ];
 

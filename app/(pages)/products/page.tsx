@@ -404,7 +404,7 @@ const ProductsPage = () => {
             enablePagination={true}
             pageSize={50}
             filterColumns={filterOptions}
-            height="700px"
+            autoHeight={true} // Enable dynamic height
             expandedByDefault={false}
             onRefresh={fetchProducts}
             onRowClick={(row) => {

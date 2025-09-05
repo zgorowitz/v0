@@ -15,6 +15,7 @@ import { ChevronDown, ChevronRight, ChevronUp, X, RotateCcw, Settings, Search } 
 const TABLE_STYLES = `
   .enhanced-table-container {
     overflow: hidden;
+    width: 100%;
   }
   
   .enhanced-table {
@@ -83,15 +84,6 @@ const TABLE_STYLES = `
     background-color: #f9fafb;
   }
   
-  .enhanced-table-row.child-row {
-    background-color: #f8fafc;
-    border-left: 3px solid #e5e7eb;
-  }
-  
-  .enhanced-table-row.child-row:hover {
-    background-color: #f1f5f9;
-  }
-  
   .enhanced-table-cell {
     padding: 4px 12px;
     color: #374151;
@@ -100,16 +92,10 @@ const TABLE_STYLES = `
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #cdd0d5ff;
   }
   
-  .enhanced-table-cell.child-cell {
-    padding-left: 20px;
-  }
-  
-  .enhanced-table-cell.child-cell:first-child {
-    padding-left: 28px;
-  }
+
   
   .expand-button {
     display: inline-flex;
@@ -177,9 +163,9 @@ const TABLE_STYLES = `
   }
   
   .control-button {
-    background-color: black;
-    color: white;
-    border: none;
+    background-color: white;
+    color: black;
+    border: none !important;
     border-radius: 8px;
     padding: 6px 20px;
     font-size: 14px;
@@ -494,11 +480,13 @@ export const EnhancedTableWrapper = ({
   pageSize = 50,
   filterColumns = [],
   height = '600px',
+  autoHeight = false, // New prop for dynamic height
   className = '',
   expandedByDefault = false,
   onRowClick,
   onRefresh, // New prop for refresh functionality
   onColumnsChange, // New prop for column changes
+  customControls, // New prop for custom controls
   ...props
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
@@ -652,11 +640,28 @@ export const EnhancedTableWrapper = ({
 
   const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
 
+  // Calculate dynamic height when autoHeight is enabled
+  const calculatedHeight = useMemo(() => {
+    if (!autoHeight) return height;
+    
+    const ROW_HEIGHT = 32; // Height per table row
+    const HEADER_HEIGHT = 40; // Table header height
+    const FILTER_HEIGHT = enableFiltering ? 80 : 0; // Filter controls height
+    const PAGINATION_HEIGHT = enablePagination ? 60 : 0; // Pagination controls height
+    
+    const currentPageRows = 100;
+    const tableContentHeight = HEADER_HEIGHT + (currentPageRows * ROW_HEIGHT);
+    const totalHeight = tableContentHeight + FILTER_HEIGHT + PAGINATION_HEIGHT;
+    
+    return `${totalHeight}px`;
+  }, [autoHeight, height, enableFiltering, enablePagination, table]);
+
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: TABLE_STYLES }} />
       
-      <div className={`enhanced-table-container ${className}`} style={{ height }}>
+      <div className={`enhanced-table-container ${className}`} style={{ height: calculatedHeight }}>
         {/* Filter Controls */}
         {enableFiltering && (
           <div className="filter-container">
@@ -705,8 +710,9 @@ export const EnhancedTableWrapper = ({
               </div>
 
               {/* Controls */}
-              {(enableExpanding || onRefresh || enableColumnSelector) && (
+              {(enableExpanding || onRefresh || enableColumnSelector || customControls) && (
                 <div className="flex gap-2">
+                  {customControls && customControls}
                   {enableColumnSelector && (
                     <button
                       onClick={() => setShowColumnSelector(true)}
@@ -722,7 +728,7 @@ export const EnhancedTableWrapper = ({
                       onClick={toggleAllExpanded}
                       className="control-button px-3 py-1 text-xs"
                     >
-                      {allExpanded ? 'Collapse All' : 'Expand All'}
+                      {allExpanded ? '-' : '+'}
                     </button>
                   )}
                   {onRefresh && (
@@ -732,7 +738,6 @@ export const EnhancedTableWrapper = ({
                       title="Refresh data"
                     >
                       <RotateCcw size={14} />
-                      Refresh
                     </button>
                   )}
                 </div>
@@ -742,7 +747,11 @@ export const EnhancedTableWrapper = ({
         )}
 
         {/* Table */}
-        <div style={{ height: enablePagination ? 'calc(100% - 120px)' : '100%', overflow: 'auto' }}>
+        <div style={{ 
+          height: autoHeight ? 'auto' : (enablePagination ? 'calc(100% - 120px)' : '100%'), 
+          overflow: autoHeight ? 'visible' : 'auto',
+          width: '100%' 
+        }}>
           <table className="enhanced-table">
             <thead className="enhanced-table-header">
               {table.getHeaderGroups().map(headerGroup => (
@@ -789,14 +798,14 @@ export const EnhancedTableWrapper = ({
               {table.getRowModel().rows.map(row => (
                 <tr
                   key={row.id}
-                  className={`enhanced-table-row ${row.depth > 0 ? 'child-row' : 'parent-row'}`}
+                  className="enhanced-table-row"
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                   style={{ cursor: onRowClick ? 'pointer' : 'default' }}
                 >
                   {row.getVisibleCells().map(cell => (
                     <td
                       key={cell.id}
-                      className={`enhanced-table-cell ${row.depth > 0 ? 'child-cell' : ''}`}
+                      className="enhanced-table-cell"
                       style={{ paddingLeft: row.depth > 0 ? `${32 + (row.depth - 1) * 20}px` : undefined }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1028,10 +1037,10 @@ export const TableColumnTypes = {
         <img 
           src={value} 
           alt={options.alt || 'Image'}
-          className={options.className || "w-10 h-10 object-cover rounded border border-gray-200"}
+          className={options.className || "w-10 h-10 object-cover rounded"}
         />
       ) : (
-        <div className={options.placeholderClassName || "w-10 h-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center"}>
+        <div className={options.placeholderClassName || "w-10 h-10 bg-gray-100 rounded flex items-center justify-center"}>
           <span className="text-xs text-gray-400">No img</span>
         </div>
       );

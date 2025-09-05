@@ -3,7 +3,7 @@
 import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Package, Calendar, Scan, Settings, Folder, BarChart3 } from "lucide-react"
+import { Package, Calendar, Scan, Settings, Zap, BarChart3 } from "lucide-react"
 
 import {
   Sidebar,
@@ -28,18 +28,18 @@ const navItems = [
   {
     title: "Scanner 2.0",
     url: "/scan2",
-    icon: Scan,
+    icon: Zap,
   },
+  // {
+  //   title: "Dashboard",
+  //   url: "/dashboard",
+  //   icon: BarChart3,
+  // },
   {
     title: "Admin",
     url: "/metrics",
     icon: BarChart3,
   },
-  // {
-  //   title: "Analytics",
-  //   url: "/orders",
-  //   icon: BarChart3,
-  // },
   // {
   //   title: "All SKUs",
   //   url: "/skus",

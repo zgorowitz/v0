@@ -1,271 +1,633 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
-import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
+import { EnhancedTableWrapper, TableColumnTypes } from '@/components/ui/enhanced-table-wrapper';
+import { Calendar, ChevronDown } from 'lucide-react';
+import { MetricCards } from '@/components/ui/metric-cards';
+
+interface DashboardRow {
+  // Metric fields
+  total_orders: number;
+  total_order_items: number;
+  total_quantity_sold: number;
+  total_sales: number;
+  total_full_price_sales: number;
+  total_discount_amount: number;
+  total_sale_fees: number;
+  net_revenue: number;
+  total_sales_base_currency: number;
+  total_fees_base_currency: number;
+  min_unit_price: number;
+  max_unit_price: number;
+  min_full_unit_price: number;
+  max_full_unit_price: number;
+  
+  // Item identification
+  item_id: string;
+  family_name: string;
+  title: string;
+  meli_user_id: string;
+  current_price: number;
+  condition: string;
+  available_quantity: number;
+  sold_quantity: number;
+  thumbnail: string;
+  permalink: string;
+  listing_type: string;
+  status: string;
+  
+  // Variation fields
+  variation_id: string;
+  user_product_id: string;
+  variation_price: number;
+  variation_available_quantity: number;
+  variation_sold_quantity: number;
+  variation_thumbnail: string;
+  variation_attributes: any;
+  seller_sku: string;
+  
+  // Category and account
+  category_name: string;
+  nickname: string;
+  organization_id: string;
+  
+  // Grouping and hierarchy fields
+  isVariation?: boolean;
+  subRows?: DashboardRow[];
+  variations_count?: number;
+  group_size?: number;
+}
+
+interface DateRangeOption {
+  label: string;
+  value: string;
+  getDateRange: () => { startDate: string; endDate: string };
+}
+
+interface DateRange {
+  startDate: string;
+  endDate: string;
+  label: string;
+}
 
 const DashboardPage = () => {
-  const [categoryData, setCategoryData] = useState([]);
-  const [itemData, setItemData] = useState([]);
+  const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
+  const [error, setError] = useState<string | null>(null);
+  
+  // Set default date range to yesterday
+  const getYesterdayRange = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return {
+      startDate: yesterday.toISOString().split('T')[0],
+      endDate: yesterday.toISOString().split('T')[0],
+      label: 'Yesterday'
+    };
+  };
+  
+  const [dateRange, setDateRange] = useState<DateRange | null>(getYesterdayRange());
+  const [showDateSelector, setShowDateSelector] = useState(false);
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [dateValidationError, setDateValidationError] = useState('');
 
-  // Filter options for the AG Grid
-  const categoryFilterOptions = [
-    { value: 'category_name', label: 'Category' },
-    { value: 'account_name', label: 'Account' },
-    { value: 'revenue_last_30_days', label: 'Revenue (30d)' },
-    { value: 'revenue_this_month', label: 'Revenue (Month)' },
-    { value: 'total_revenue', label: 'Total Revenue' },
+  // Filter options for the table
+  const filterOptions = [
+    { value: 'item_id', label: 'Item ID' }
   ];
 
-  const itemFilterOptions = [
-    { value: 'seller_sku', label: 'SKU' },
-    { value: 'item_title', label: 'Item Title' },
-    { value: 'category_name', label: 'Category' },
-    { value: 'account_name', label: 'Account' },
-    { value: 'revenue_last_30_days', label: 'Revenue (30d)' },
-    { value: 'total_revenue', label: 'Total Revenue' },
+  // Date range options
+  const dateRangeOptions: DateRangeOption[] = [
+    {
+      label: 'Yesterday',
+      value: 'yesterday',
+      getDateRange: () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return {
+          startDate: yesterday.toISOString().split('T')[0],
+          endDate: yesterday.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'Two days ago',
+      value: 'two_days',
+      getDateRange: () => {
+        const twoDaysAgo = new Date();
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        return {
+          startDate: twoDaysAgo.toISOString().split('T')[0],
+          endDate: twoDaysAgo.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'Last 7 days',
+      value: 'seven_days',
+      getDateRange: () => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const today = new Date();
+        return {
+          startDate: sevenDaysAgo.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'Last 14 days',
+      value: 'fourteen_days',
+      getDateRange: () => {
+        const fourteenDaysAgo = new Date();
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        const today = new Date();
+        return {
+          startDate: fourteenDaysAgo.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'Last 30 days',
+      value: 'thirty_days',
+      getDateRange: () => {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const today = new Date();
+        return {
+          startDate: thirtyDaysAgo.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'This month so far',
+      value: 'this_month',
+      getDateRange: () => {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        return {
+          startDate: firstDay.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+    },
+    {
+      label: 'Last month',
+      value: 'last_month',
+      getDateRange: () => {
+        const today = new Date();
+        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          startDate: firstDayLastMonth.toISOString().split('T')[0],
+          endDate: lastDayLastMonth.toISOString().split('T')[0]
+        };
+      }
+    }
   ];
 
   // Fetch dashboard data
   useEffect(() => {
     fetchDashboardData();
-  }, [dateFilter]);
+  }, [dateRange]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get current user's organization ID
       const organizationId = await getCurrentUserOrganizationId();
-      if (!organizationId) {
-        throw new Error('User organization not found');
+      
+      // Fetch raw dashboard data and aggregate on the client side
+      let viewQuery = supabase
+        .from('dashboard')
+        .select('*')
+        .eq('organization_id', organizationId);
+
+      // Apply date filters
+      if (dateRange?.startDate) {
+        viewQuery = viewQuery.gte('order_date', dateRange.startDate);
+      }
+      if (dateRange?.endDate) {
+        viewQuery = viewQuery.lte('order_date', dateRange.endDate);
       }
       
-      // Build queries with date filtering
-      let categoryQuery = supabase
-        // .from('dashboard_category_summary')
-        // .select('*')
-        // .eq('organization_id', organizationId);
-
-      let itemQuery = supabase
-        // .from('dashboard_item_summary')
-        // .select('*')
-        // .eq('organization_id', organizationId);
-
-      // Apply date filtering if dates are set
-      // Note: These views aggregate data, so we filter based on recent activity
-      if (dateFilter.from || dateFilter.to) {
-        // For date filtering on aggregated views, we'd need to modify the views
-        // For now, we'll fetch all data and let the views handle the aggregation
-        console.log('Date filtering on aggregated views - using view defaults');
-      }
-
-      // Execute queries in parallel
-      const [categoryResult, itemResult] = await Promise.all([
-        categoryQuery.order('revenue_last_30_days', { ascending: false }).limit(100),
-        itemQuery.order('revenue_last_30_days', { ascending: false }).limit(200)
-      ]);
-
-      if (categoryResult.error) throw categoryResult.error;
-      if (itemResult.error) throw itemResult.error;
-
-      setCategoryData(categoryResult.data || []);
-      setItemData(itemResult.data || []);
+      const { data: rawData, error } = await viewQuery;
       
-    } catch (err) {
+      if (error) throw error;
+      
+      // Group raw data directly by family_name || item_id (like products page)
+      const familyGroupedData = new Map<string, any[]>();
+      
+      (rawData || []).forEach((item: any) => {
+        const groupKey = item.family_name || item.item_id;
+        
+        if (!familyGroupedData.has(groupKey)) {
+          familyGroupedData.set(groupKey, []);
+        }
+        familyGroupedData.get(groupKey)!.push(item);
+      });
+      
+      // Process each family group
+      const processedData: DashboardRow[] = [];
+      
+      familyGroupedData.forEach((groupItems, groupKey) => {
+        // First, aggregate metrics by user_product_id
+        const variationMap = new Map<string, any>();
+        
+        groupItems.forEach((item: any) => {
+          const variationKey = item.user_product_id;
+          
+          if (!variationMap.has(variationKey)) {
+            variationMap.set(variationKey, {
+              ...item,
+              total_orders: 0,
+              total_order_items: 0,
+              total_quantity_sold: 0,
+              total_sales: 0,
+              total_full_price_sales: 0,
+              total_discount_amount: 0,
+              total_sale_fees: 0,
+              net_revenue: 0,
+              total_sales_base_currency: 0,
+              total_fees_base_currency: 0,
+            });
+          }
+          
+          const existing = variationMap.get(variationKey)!;
+          existing.total_orders += item.total_orders || 0;
+          existing.total_order_items += item.total_order_items || 0;
+          existing.total_quantity_sold += item.total_quantity_sold || 0;
+          existing.total_sales += item.total_sales || 0;
+          existing.total_full_price_sales += item.total_full_price_sales || 0;
+          existing.total_discount_amount += item.total_discount_amount || 0;
+          existing.total_sale_fees += item.total_sale_fees || 0;
+          existing.net_revenue += item.net_revenue || 0;
+          existing.total_sales_base_currency += item.total_sales_base_currency || 0;
+          existing.total_fees_base_currency += item.total_fees_base_currency || 0;
+        });
+        
+        // Convert to array and sort by total orders descending to find the main item
+        const aggregatedVariations = Array.from(variationMap.values());
+        aggregatedVariations.sort((a, b) => (b.total_orders || 0) - (a.total_orders || 0));
+        
+        const mainItem = aggregatedVariations[0];
+        const variations: DashboardRow[] = [];
+        
+        // If there are multiple variations in group, others become child rows
+        if (aggregatedVariations.length > 1) {
+          aggregatedVariations.slice(1).forEach((item, index) => {
+            variations.push({
+              ...item,
+              isVariation: true,
+            });
+          });
+        }
+        
+        // Create parent row with aggregated totals from all variations
+        const parentRow: DashboardRow = {
+          // Use main item's representative data
+          item_id: mainItem.item_id,
+          family_name: mainItem.family_name,
+          title: mainItem.title,
+          meli_user_id: mainItem.meli_user_id,
+          current_price: mainItem.current_price,
+          condition: mainItem.condition,
+          available_quantity: mainItem.available_quantity,
+          sold_quantity: mainItem.sold_quantity,
+          thumbnail: mainItem.thumbnail,
+          permalink: mainItem.permalink,
+          listing_type: mainItem.listing_type,
+          status: mainItem.status,
+          variation_id: mainItem.variation_id,
+          user_product_id: mainItem.user_product_id,
+          variation_price: mainItem.variation_price,
+          variation_available_quantity: mainItem.variation_available_quantity,
+          variation_sold_quantity: mainItem.variation_sold_quantity,
+          variation_thumbnail: mainItem.variation_thumbnail,
+          variation_attributes: mainItem.variation_attributes,
+          seller_sku: mainItem.seller_sku,
+          category_name: mainItem.category_name,
+          nickname: mainItem.nickname,
+          organization_id: mainItem.organization_id,
+          
+          // SUMMED metrics from all variations in the group
+          total_orders: aggregatedVariations.reduce((sum, item) => sum + (item.total_orders || 0), 0),
+          total_order_items: aggregatedVariations.reduce((sum, item) => sum + (item.total_order_items || 0), 0),
+          total_quantity_sold: aggregatedVariations.reduce((sum, item) => sum + (item.total_quantity_sold || 0), 0),
+          total_sales: aggregatedVariations.reduce((sum, item) => sum + (item.total_sales || 0), 0),
+          total_full_price_sales: aggregatedVariations.reduce((sum, item) => sum + (item.total_full_price_sales || 0), 0),
+          total_discount_amount: aggregatedVariations.reduce((sum, item) => sum + (item.total_discount_amount || 0), 0),
+          total_sale_fees: aggregatedVariations.reduce((sum, item) => sum + (item.total_sale_fees || 0), 0),
+          net_revenue: aggregatedVariations.reduce((sum, item) => sum + (item.net_revenue || 0), 0),
+          total_sales_base_currency: aggregatedVariations.reduce((sum, item) => sum + (item.total_sales_base_currency || 0), 0),
+          total_fees_base_currency: aggregatedVariations.reduce((sum, item) => sum + (item.total_fees_base_currency || 0), 0),
+          
+          // Min/max prices across all variations
+          min_unit_price: Math.min(...aggregatedVariations.map(item => item.min_unit_price || 0).filter(p => p > 0)),
+          max_unit_price: Math.max(...aggregatedVariations.map(item => item.max_unit_price || 0)),
+          min_full_unit_price: Math.min(...aggregatedVariations.map(item => item.min_full_unit_price || 0).filter(p => p > 0)),
+          max_full_unit_price: Math.max(...aggregatedVariations.map(item => item.max_full_unit_price || 0)),
+          
+          // Grouping metadata
+          variations_count: variations.length,
+          group_size: aggregatedVariations.length,
+          subRows: variations,
+        };
+        
+        processedData.push(parentRow);
+      });
+      
+      // Sort parent rows by total orders, then by total sales
+      const aggregatedData = processedData.sort((a, b) => {
+        // Primary sort: total orders (descending)
+        const orderDiff = (b.total_orders || 0) - (a.total_orders || 0);
+        if (orderDiff !== 0) return orderDiff;
+        
+        // Secondary sort: total sales (descending)
+        return (b.total_sales || 0) - (a.total_sales || 0);
+      });
+      
+      console.log('Fetched and processed dashboard records:', aggregatedData.length);
+      console.log('Family groups:', familyGroupedData.size);
+      setDashboardData(aggregatedData);
+      
+    } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
-      setError(err.message);
+      setError(err?.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
+  }, [dateRange]);
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    if (!amount) return '$0';
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0
+    }).format(amount);
   };
 
-  // Handle date filter changes
-  const handleDateChange = (dates) => {
-    setDateFilter(dates);
-  };
+  // Table column definitions using TanStack Table
+  const columns = useMemo(() => [
+    {
+      header: 'Image',
+      accessorKey: 'thumbnail',
+      size: 80,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const data = row.original;
+        // For child variations, use variation_thumbnail, for parents use thumbnail
+        const imageUrl = data.isVariation 
+          ? (data.variation_thumbnail || data.thumbnail)
+          : data.thumbnail;
+        
+        return imageUrl ? (
+          <img 
+            src={imageUrl} 
+            alt="Product" 
+            className="w-12 h-12 object-cover rounded"
+          />
+        ) : (
+          <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+            <span className="text-xs text-gray-400">No Image</span>
+          </div>
+        );
+      }
+    },
+    
+    {
+      header: 'Product Info',
+      accessorKey: 'title',
+      size: 300,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const data = row.original;
+        
+        if (data.isVariation) {
+          // Child variation row
+          return (
+            <div className="pl-6">
+              <div className="text-sm text-gray-700">
+                {data.seller_sku || 'No SKU'}
+              </div>
+              <div className="text-xs text-gray-500">
+                <span className="font-mono">{data.user_product_id || data.item_id}</span>
+                {data.variation_attributes && (
+                  <span className="ml-2">• Variant</span>
+                )}
+              </div>
+            </div>
+          );
+        }
+        
+        // Parent product row
+        return (
+          <div>
+            <div className="font-medium text-sm">
+              <span className="text-gray-700 font-semibold">{getValue()}</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              {data.permalink ? (
+                <a 
+                  href={data.permalink} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-mono hover:text-gray-900 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {data.item_id}
+                </a>
+              ) : (
+                <span className="font-mono">{data.item_id}</span>
+              )}
+              {data.family_name && (
+                <span className="ml-2">• Family: {data.family_name}</span>
+              )}
+              {data.variations_count > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 ">
+                  {data.variations_count} variations
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }
+    },
 
-  // Category column definitions
-  const categoryColumnDefs = useMemo(() => [
-    {
-      headerName: 'Category',
-      field: 'category_name',
-      width: 200,
-      filter: true,
-      cellRenderer: (params) => (
-        <span className="font-medium text-gray-900">{params.value || 'Unknown'}</span>
-      )
-    },
-    {
-      headerName: 'Account',
-      field: 'account_name',
-      width: 120,
-      filter: true
-    },
-    AGGridColumnTypes.numeric('Revenue (30d)', 'revenue_last_30_days', {
-      width: 140,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
-      }
-    }),
-    AGGridColumnTypes.numeric('Quantity (30d)', 'quantity_last_30_days', {
-      width: 120,
-      filter: true
-    }),
-    AGGridColumnTypes.numeric('This Week', 'revenue_this_week', {
-      width: 120,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
-      }
-    }),
-    AGGridColumnTypes.numeric('This Month', 'revenue_this_month', {
-      width: 130,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
-      }
-    }),
-    AGGridColumnTypes.numeric('Total Revenue', 'total_revenue', {
-      width: 140,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
-      }
-    }),
-    AGGridColumnTypes.numeric('Avg Fee %', 'avg_fee_percentage', {
-      width: 100,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '0%';
-        return `${params.value.toFixed(1)}%`;
-      }
-    }),
-    AGGridColumnTypes.numeric('Active Days', 'active_days', {
-      width: 110,
-      filter: true
-    })
-  ], []);
 
-  // Item column definitions
-  const itemColumnDefs = useMemo(() => [
     {
-      headerName: 'SKU',
-      field: 'seller_sku',
-      width: 120,
-      filter: true,
-      cellRenderer: (params) => (
-        <span className="font-mono text-sm">{params.value || 'N/A'}</span>
-      )
+      header: 'Orders',
+      accessorKey: 'total_orders',
+      size: 80,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        return (
+          <span className={data.isVariation ? 'text-gray-600' : 'font-semibold text-gray-900'}>
+            {value || 0}
+          </span>
+        );
+      }
     },
+
     {
-      headerName: 'Item Title',
-      field: 'item_title',
-      width: 250,
-      filter: true,
-      cellRenderer: (params) => (
-        <span className="text-sm truncate" title={params.value}>{params.value || 'Unknown Item'}</span>
-      )
+      header: 'Items',
+      accessorKey: 'total_order_items',
+      size: 80,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        return (
+          <span className={data.isVariation ? 'text-gray-600' : 'font-semibold text-gray-900'}>
+            {value || 0}
+          </span>
+        );
+      }
     },
+
     {
-      headerName: 'Category',
-      field: 'category_name',
-      width: 140,
-      filter: true
+      header: 'Qty Sold',
+      accessorKey: 'total_quantity_sold',
+      size: 90,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        return (
+          <span className={data.isVariation ? 'text-gray-600' : 'font-semibold text-gray-900'}>
+            {value || 0}
+          </span>
+        );
+      }
     },
+
     {
-      headerName: 'Account',
-      field: 'account_name',
-      width: 100,
-      filter: true
+      header: 'Total Sales',
+      accessorKey: 'total_sales',
+      size: 120,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        const className = data.isVariation 
+          ? 'text-gray-600' 
+          : 'font-semibold text-gray-900';
+        return (
+          <span className={className}>
+            {formatCurrency(value)}
+          </span>
+        );
+      }
     },
-    AGGridColumnTypes.numeric('Revenue (30d)', 'revenue_last_30_days', {
-      width: 130,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
+
+    {
+      header: 'Net Revenue',
+      accessorKey: 'net_revenue',
+      size: 120,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        const isNegative = value < 0;
+        const baseColor = isNegative ? 'text-gray-600' : 'text-gray-600';
+        const className = data.isVariation 
+          ? `${baseColor} opacity-75` 
+          : `${baseColor} font-semibold`;
+        return (
+          <span className={className}>
+            {formatCurrency(value)}
+          </span>
+        );
       }
-    }),
-    AGGridColumnTypes.numeric('Qty (30d)', 'quantity_last_30_days', {
-      width: 90,
-      filter: true
-    }),
-    AGGridColumnTypes.numeric('This Week', 'revenue_this_week', {
-      width: 110,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
+    },
+
+    {
+      header: 'Discount',
+      accessorKey: 'total_discount_amount',
+      size: 110,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        if (!value || value <= 0) return '-';
+        
+        const className = data.isVariation 
+          ? 'text-gray-500 opacity-75' 
+          : 'text-gray-600 font-semibold';
+        return (
+          <span className={className}>
+            {formatCurrency(value)}
+          </span>
+        );
       }
-    }),
-    AGGridColumnTypes.numeric('Total Revenue', 'total_revenue', {
-      width: 130,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS',
-          minimumFractionDigits: 0
-        }).format(params.value);
+    },
+
+    {
+      header: 'Fees',
+      accessorKey: 'total_sale_fees',
+      size: 100,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        if (!value || value <= 0) return '-';
+        
+        const className = data.isVariation 
+          ? 'text-gray-500 opacity-75' 
+          : 'text-grays-600 font-semibold';
+        return (
+          <span className={className}>
+            {formatCurrency(value)}
+          </span>
+        );
       }
-    }),
-    AGGridColumnTypes.numeric('Avg Price', 'avg_unit_price', {
-      width: 100,
-      filter: true,
-      formatter: (params) => {
-        if (!params.value) return '$0';
-        return new Intl.NumberFormat('es-AR', {
-          style: 'currency',
-          currency: 'ARS'
-        }).format(params.value);
+    },
+
+    {
+      header: 'Category',
+      accessorKey: 'category_name',
+      size: 120,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        if (data.isVariation) return null; // Don't show for variations
+        return (
+          <span className="text-gray-700">{value}</span>
+        );
       }
-    }),
-    AGGridColumnTypes.numeric('Active Days', 'active_days', {
-      width: 100,
-      filter: true
-    })
+    },
+
+    {
+      header: 'Account',
+      accessorKey: 'nickname',
+      size: 100,
+      cell: ({ getValue, row }: { getValue: () => any; row: any }) => {
+        const value = getValue();
+        const data = row.original;
+        if (data.isVariation) return null; // Don't show for variations
+        return (
+          <span className="text-gray-700">{value}</span>
+        );
+      }
+    },
+
+    {
+      header: 'Price',
+      accessorKey: 'current_price',
+      size: 100,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        return value ? formatCurrency(value) : '-';
+      }
+    },
   ], []);
 
   if (error) {
     return (
       <LayoutWrapper>
         <div className="p-6 bg-stone-50 min-h-screen">
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          <div className="bg-gray-50 border border-gray-200 text-gray-800 px-4 py-3 rounded-lg">
             <strong className="font-bold">Error: </strong>
             <span>{error}</span>
           </div>
@@ -274,111 +636,272 @@ const DashboardPage = () => {
     );
   }
 
+  // Function to get sub-rows (variations) for TanStack Table
+  const getSubRows = (row: DashboardRow) => {
+    return row.subRows || [];
+  };
+
+  // Handle date range selection
+  const handleDateRangeSelect = (option: DateRangeOption) => {
+    const range = option.getDateRange();
+    setDateRange({
+      startDate: range.startDate,
+      endDate: range.endDate,
+      label: option.label
+    });
+    setShowDateSelector(false);
+    setShowCustomDatePicker(false);
+  };
+
+  // Clear date range
+  const clearDateRange = () => {
+    setDateRange(null);
+    setShowDateSelector(false);
+    setShowCustomDatePicker(false);
+    setCustomStartDate('');
+    setCustomEndDate('');
+    setDateValidationError('');
+  };
+
+  // Validate custom date range
+  const validateCustomDateRange = (startDate: string, endDate: string): string => {
+    if (!startDate || !endDate) {
+      return 'Both start and end dates are required';
+    }
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    if (start > end) {
+      return 'Start date must be before or equal to end date';
+    }
+    
+    if (start > today || end > today) {
+      return 'Dates cannot be in the future';
+    }
+    
+    return '';
+  };
+
+  // Handle custom date range application
+  const applyCustomDateRange = () => {
+    const error = validateCustomDateRange(customStartDate, customEndDate);
+    
+    if (error) {
+      setDateValidationError(error);
+      return;
+    }
+    
+    const startDate = new Date(customStartDate);
+    const endDate = new Date(customEndDate);
+    
+    // Format label
+    const formatDate = (date: Date) => date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: startDate.getFullYear() !== endDate.getFullYear() ? 'numeric' : undefined 
+    });
+    
+    const label = startDate.getTime() === endDate.getTime() 
+      ? formatDate(startDate)
+      : `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    
+    setDateRange({
+      startDate: customStartDate,
+      endDate: customEndDate,
+      label
+    });
+    
+    setShowDateSelector(false);
+    setShowCustomDatePicker(false);
+    setDateValidationError('');
+  };
+
+  // Cancel custom date picker
+  const cancelCustomDatePicker = () => {
+    setShowCustomDatePicker(false);
+    setCustomStartDate('');
+    setCustomEndDate('');
+    setDateValidationError('');
+  };
+
+  // Handle custom date input changes
+  const handleCustomStartDateChange = (value: string) => {
+    setCustomStartDate(value);
+    if (dateValidationError) {
+      setDateValidationError('');
+    }
+  };
+
+  const handleCustomEndDateChange = (value: string) => {
+    setCustomEndDate(value);
+    if (dateValidationError) {
+      setDateValidationError('');
+    }
+  };
+
   return (
     <LayoutWrapper>
       <div className="p-6 space-y-6 bg-stone-50 min-h-screen">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Revenue Dashboard</h1>
-          <p className="text-gray-600 mt-1">Track performance across categories and items</p>
-        </div>
+        {/* Metric Cards */}
+        <MetricCards
+          totalSales={dashboardData.reduce((sum, row) => sum + (row.total_sales || 0), 0)}
+          totalOrders={dashboardData.reduce((sum, row) => sum + (row.total_orders || 0), 0)}
+          netRevenue={dashboardData.reduce((sum, row) => sum + (row.net_revenue || 0), 0)}
+        />
+        
+        {/* Dashboard Table */}
+        <div className="relative">
+          <EnhancedTableWrapper
+            data={dashboardData}
+            columns={columns}
+            getSubRows={getSubRows}
+            enableExpanding={true}
+            enableSorting={true}
+            enableFiltering={true}
+            enablePagination={true}
+            pageSize={50}
+            filterColumns={filterOptions}
+            autoHeight={true}
+            expandedByDefault={false}
+            onRefresh={fetchDashboardData}
+            onRowClick={(row: any) => {
+              if (row.permalink) {
+                window.open(row.permalink, '_blank');
+              }
+            }} 
+            customControls={
+              <div className="relative">
+                <button
+                  onClick={() => setShowDateSelector(!showDateSelector)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>{dateRange ? dateRange.label : 'Date Range'}</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                
+                {showDateSelector && (
+                  <div className="flex">
+                    {/* Preset Date Options */}
+                    <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                      <div className="p-2">
+                        <div className="space-y-1">
+                          {dateRangeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => handleDateRangeSelect(option)}
+                              className="control-button w-full text-left mb-1"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                          <hr className="my-1" />
+                          <button
+                            onClick={() => setShowCustomDatePicker(!showCustomDatePicker)}
+                            className={`control-button w-full text-left mb-1 text-blue-600 font-medium ${showCustomDatePicker ? 'bg-blue-50' : ''}`}
+                          >
+                            Custom Range...
+                          </button>
+                          {dateRange && (
+                            <>
+                              <hr className="my-1" />
+                              <button
+                                onClick={clearDateRange}
+                                className="control-button w-full text-left text-gray-500"
+                              >
+                                Clear filter
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Categories</h3>
-            <p className="text-2xl font-bold text-gray-900">{categoryData.length}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Items</h3>
-            <p className="text-2xl font-bold text-gray-900">{itemData.length}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Total Revenue (30d)</h3>
-            <p className="text-2xl font-bold text-gray-900">
-              {new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: 'ARS',
-                minimumFractionDigits: 0
-              }).format(
-                categoryData.reduce((sum, cat) => sum + (cat.revenue_last_30_days || 0), 0)
-              )}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-semibold text-gray-700 mb-1">Total Revenue (All Time)</h3>
-            <p className="text-2xl font-bold text-gray-600">
-              {new Intl.NumberFormat('es-AR', {
-                style: 'currency',
-                currency: 'ARS',
-                minimumFractionDigits: 0
-              }).format(
-                categoryData.reduce((sum, cat) => sum + (cat.total_revenue || 0), 0)
-              )}
-            </p>
-          </div>
-        </div>
+                    {/* Custom Date Picker Panel */}
+                    {showCustomDatePicker && (
+                      <div className="absolute top-full left-64 mt-1 ml-2 w-80 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                        <div className="p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-medium text-gray-900">Custom Date Range</h4>
+                              <button
+                                onClick={cancelCustomDatePicker}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  Start Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={customStartDate}
+                                  onChange={(e) => handleCustomStartDateChange(e.target.value)}
+                                  max={new Date().toISOString().split('T')[0]}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  End Date
+                                </label>
+                                <input
+                                  type="date"
+                                  value={customEndDate}
+                                  onChange={(e) => handleCustomEndDateChange(e.target.value)}
+                                  max={new Date().toISOString().split('T')[0]}
+                                  min={customStartDate}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                              </div>
 
-        {/* Category Revenue Table */}
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Revenue by Category</h2>
-            <div className="relative">
-              <AGGridWrapper
-                columnDefs={categoryColumnDefs}
-                rowData={categoryData}
-                filters={categoryFilterOptions}
-                height="400px"
-                showDateSelector={true}
-                onDateChange={handleDateChange}
-                defaultColDef={{
-                  resizable: true,
-                  sortable: true,
-                }}
-                gridOptions={{
-                  pagination: true,
-                  paginationPageSize: 20,
-                  rowSelection: 'single',
-                }}
-              />
-              {loading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
-                  <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                  <div className="text-lg text-gray-700">Loading categories...</div>
-                </div>
-              )}
+                              {dateValidationError && (
+                                <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded">
+                                  {dateValidationError}
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex gap-2 pt-2 border-t border-gray-100">
+                              <button
+                                onClick={applyCustomDateRange}
+                                className="flex-1 px-3 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                              >
+                                Apply
+                              </button>
+                              <button
+                                onClick={cancelCustomDatePicker}
+                                className="flex-1 px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-1"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            }
+          />
+          {/* Loader inside table */}
+          {loading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-50 pointer-events-none">
+              <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center">
+                <span className="w-8 h-8 mb-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></span>
+                <div className="text-sm text-gray-600">Loading dashboard data...</div>
+              </div>
             </div>
-          </div>
-
-          {/* Item Revenue Table */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Revenue by Item</h2>
-            <div className="relative">
-              <AGGridWrapper
-                columnDefs={itemColumnDefs}
-                rowData={itemData}
-                filters={itemFilterOptions}
-                height="500px"
-                showDateSelector={true}
-                onDateChange={handleDateChange}
-                defaultColDef={{
-                  resizable: true,
-                  sortable: true,
-                }}
-                gridOptions={{
-                  pagination: true,
-                  paginationPageSize: 25,
-                  rowSelection: 'single',
-                }}
-              />
-              {loading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
-                  <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                  <div className="text-lg text-gray-700">Loading items...</div>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </LayoutWrapper>
