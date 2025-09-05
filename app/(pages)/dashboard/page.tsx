@@ -72,10 +72,27 @@ interface DateRange {
   label: string;
 }
 
+interface DashboardTotals {
+  total_orders: number;
+  total_sales: number;
+  net_revenue: number;
+}
+
 const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [metricTotals, setMetricTotals] = useState<{
+    yesterday: DashboardTotals;
+    sevenDay: DashboardTotals;
+    fourteenDay: DashboardTotals;
+    thirtyDay: DashboardTotals;
+  }>({
+    yesterday: { total_orders: 0, total_sales: 0, net_revenue: 0 },
+    sevenDay: { total_orders: 0, total_sales: 0, net_revenue: 0 },
+    fourteenDay: { total_orders: 0, total_sales: 0, net_revenue: 0 },
+    thirtyDay: { total_orders: 0, total_sales: 0, net_revenue: 0 }
+  });
   
   // Set default date range to yesterday
   const getYesterdayRange = () => {
@@ -364,6 +381,67 @@ const DashboardPage = () => {
       setLoading(false);
     }
   }, [dateRange]);
+
+  // Fetch metric totals
+  const fetchMetricTotals = useCallback(async () => {
+    try {
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+
+      // Fetch totals for different periods
+      const periods = {
+        yesterday: {
+          start: yesterday.toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        },
+        sevenDay: {
+          start: new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        },
+        fourteenDay: {
+          start: new Date(today.setDate(today.getDate() - 14)).toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        },
+        thirtyDay: {
+          start: new Date(today.setDate(today.getDate() - 30)).toISOString().split('T')[0],
+          end: yesterday.toISOString().split('T')[0]
+        }
+      };
+
+      const results = await Promise.all(
+        Object.entries(periods).map(async ([key, { start, end }]) => {
+          const { data, error } = await supabase
+            .from('dashboard_totals')
+            .select('total_orders, total_sales, net_revenue')
+            .gte('order_date', start)
+            .lte('order_date', end);
+
+          if (error) throw error;
+
+          const totals = data.reduce(
+            (acc, row) => ({
+              total_orders: acc.total_orders + (row.total_orders || 0),
+              total_sales: acc.total_sales + (row.total_sales || 0),
+              net_revenue: acc.net_revenue + (row.net_revenue || 0)
+            }),
+            { total_orders: 0, total_sales: 0, net_revenue: 0 }
+          );
+
+          return [key, totals];
+        })
+      );
+
+      setMetricTotals(Object.fromEntries(results));
+    } catch (error) {
+      console.error('Error fetching metric totals:', error);
+    }
+  }, []);
+
+  // Add fetchMetricTotals to useEffect
+  useEffect(() => {
+    fetchMetricTotals();
+  }, [fetchMetricTotals]);
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -745,11 +823,15 @@ const DashboardPage = () => {
   return (
     <LayoutWrapper>
       <div className="p-6 space-y-6 bg-stone-50 min-h-screen">
-        {/* Metric Cards */}
         <MetricCards
-          totalSales={dashboardData.reduce((sum, row) => sum + (row.total_sales || 0), 0)}
-          totalOrders={dashboardData.reduce((sum, row) => sum + (row.total_orders || 0), 0)}
-          netRevenue={dashboardData.reduce((sum, row) => sum + (row.net_revenue || 0), 0)}
+          yesterdayRevenue={metricTotals.yesterday.total_sales}
+          sevenDayRevenue={metricTotals.sevenDay.total_sales}
+          fourteenDayRevenue={metricTotals.fourteenDay.total_sales}
+          thirtyDayRevenue={metricTotals.thirtyDay.total_sales}
+          yesterdayOrders={metricTotals.yesterday.total_orders}
+          sevenDayOrders={metricTotals.sevenDay.total_orders}
+          fourteenDayOrders={metricTotals.fourteenDay.total_orders}
+          thirtyDayOrders={metricTotals.thirtyDay.total_orders}
         />
         
         {/* Dashboard Table */}
