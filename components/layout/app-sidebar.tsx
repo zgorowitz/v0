@@ -4,6 +4,7 @@ import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Package, Calendar, Scan, Settings, Zap, BarChart3 } from "lucide-react"
+import { useUserRole } from "@/hooks/use-user-role"
 
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
     title: "Admin",
     url: "/metrics",
     icon: BarChart3,
+    adminOnly: true,
   },
   // {
   //   title: "All SKUs",
@@ -49,6 +51,7 @@ const navItems = [
     title: "Ajustes",
     url: "/settings",
     icon: Settings,
+    adminOnly: true,
   },
   // {
   //   title: "Categorias",
@@ -59,6 +62,11 @@ const navItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const { isAdmin, loading } = useUserRole()
+  
+  const filteredNavItems = navItems.filter(item => 
+    !item.adminOnly || isAdmin
+  )
 
   return (
     <Sidebar variant="sidebar" collapsible="offcanvas" {...props}>
@@ -81,7 +89,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           {/* <SidebarGroupLabel>Navigation</SidebarGroupLabel> */}
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname === item.url}>
                     <Link href={item.url}>
