@@ -137,6 +137,7 @@ const useShipmentProcessor = () => {
 
 const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) => {
   const itemTitle = item.title || item.item_title || 'Unknown Item'
+  const displayTitle = itemTitle.length > 25 ? itemTitle.substring(0, 25) + '...' : itemTitle
   const itemSku = item.seller_sku || item.sku || 'N/A'
   const itemThumbnail = item.thumbnail || item.item_thumbnail
 
@@ -168,7 +169,7 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
           {/* Product Info */}
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-gray-900 text-sm leading-tight truncate mb-1">
-              {itemTitle}
+              {displayTitle}
             </h3>
             
             <div className="space-y-1">
