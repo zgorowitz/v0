@@ -142,10 +142,10 @@ const ProductCard: React.FC<{ item: Item; index: number }> = ({ item, index }) =
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="group relative overflow-hidden rounded-lg bg-white border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300"
+      // initial={{ opacity: 0, y: 20 }}
+      // animate={{ opacity: 1, y: 0 }}
+      // transition={{ delay: index * 0.1 }}
+      // className="group relative overflow-hidden rounded-lg bg-white border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-300"
     >
       <div className="relative p-2">
         <div className="flex gap-2">
@@ -503,8 +503,8 @@ function ResultsPageContent() {
                     </div>
                   </div>
                   
-                  {/* Product Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Product List */}
+                  <div className="divide-y divide-gray-200">
                     {shipment.items.map((item, idx) => (
                       <ProductCard 
                         key={`${shipment.shipmentId}-${item.user_product_id || item.item_id || item.id || idx}`} 
