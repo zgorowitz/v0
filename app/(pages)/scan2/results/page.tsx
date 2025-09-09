@@ -420,6 +420,7 @@ function ResultsPageContent() {
   const displayShipments = hasMultipleShipments ? shipments : (currentShipment ? [currentShipment] : [])
 
   return (
+    <LayoutWrapper>
     <main className="min-h-screen bg-gradient-to-br">
       {/* Header */}
 
@@ -608,6 +609,7 @@ function ResultsPageContent() {
         )}
       </div>
     </main>
+    </LayoutWrapper>
   )
 }
 

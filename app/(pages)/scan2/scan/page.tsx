@@ -141,7 +141,7 @@ function ScanPage() {
   }, [scanner])
 
   const handleMultipleScan = useCallback((code: string) => {
-    console.log('🔢 handleMultipleScan called:', code, '| current codes:', scannedCodes)
+    console.log('handleMultipleScan called:', code, '| current codes:', scannedCodes)
     
     if (scannedCodes.includes(code)) {
       console.log('❌ Duplicate code detected')
@@ -151,7 +151,7 @@ function ScanPage() {
       return
     }
 
-    console.log('✅ Adding code to array')
+    console.log('Adding code to array')
     setScannedCodes(prev => {
       const newCodes = [...new Set([...prev, code])]
       console.log('📝 Updated scannedCodes:', newCodes)
@@ -161,7 +161,7 @@ function ScanPage() {
     triggerVibration('success')
     
     setTimeout(() => {
-      console.log('🔄 Attempting to restart scanner...', { isScanning, multipleMode })
+      console.log('Attempting to restart scanner...', { isScanning, multipleMode })
       setJustScanned(false)
       if (isScanning) {
         startBarcodeDetection()
@@ -219,10 +219,10 @@ function ScanPage() {
 
   const handleScannedCode = useCallback(async (code: string) => {
     const currentMultipleMode = multipleModeRef.current
-    console.log('📱 Code scanned:', code, '| multipleMode:', currentMultipleMode, '| scannedCodes:', scannedCodes.length)
+    console.log('Code scanned:', code, '| multipleMode:', currentMultipleMode, '| scannedCodes:', scannedCodes.length)
     
     if (currentMultipleMode) {
-      console.log('➡️ Routing to handleMultipleScan')
+      console.log('Routing to handleMultipleScan')
       handleMultipleScan(code)
     } else {
       console.log('➡️ Routing to handleSingleScan')
@@ -261,7 +261,7 @@ function ScanPage() {
                   size="sm"
                   className={`rounded-full transition-all active:scale-95 ${
                     multipleMode 
-                      ? "bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-md" 
+                      ? " text-white border-black-500 shadow-md" 
                       : "border-gray-200 hover:bg-gray-50"
                   }`}
                   onClick={toggleMultipleMode}
@@ -316,7 +316,7 @@ function ScanPage() {
             <Button 
               onClick={handleManualSubmit} 
               disabled={!manualInput.trim() || isProcessing} 
-              className="flex-1 h-12 text-base font-medium rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 active:scale-98 transition-all"
+              className="flex-1 h-12 text-base font-medium rounded-xl active:scale-98 transition-all"
             >
               {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : "Search"}
             </Button>
