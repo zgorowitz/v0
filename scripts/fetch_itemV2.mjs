@@ -12,6 +12,7 @@ async function getTokens() {
 function parseItem(item, meliUserId) {
   return {
     item_id: item.id,
+    user_product_id: item.user_product_id,
     site_id: item.site_id,
     title: item.title,
     subtitle: item.subtitle,
@@ -82,15 +83,27 @@ async function fetchItems() {
   for (const { meli_user_id, access_token } of tokens) {
     const itemIds = await paginate(`https://api.mercadolibre.com/users/${meli_user_id}/items/search`, access_token)
     console.log(`Fetching items for user ${meli_user_id}, total items: ${itemIds.length}`)
-    for (let i = 0; i < itemIds.length; i += 20) {
-      const batch = itemIds.slice(i, i + 20).join('&ids=')
-      const items = await apiRequest(`https://api.mercadolibre.com/items?ids=${batch}&include_attributes=all`, access_token)
-      
-      for (const { body: item } of items) {
+    const itemsToInsert = []
+    for (let i = 0; i < itemIds.length; i++) {
+      const itemId = itemIds[i]      
+        const item = await apiRequest(`https://api.mercadolibre.com/items/${itemId}?include_attributes=all`, access_token)
         if (item?.id) {
-          await supabase.from('ml_items_v2').upsert(parseItem(item, meli_user_id))
+          itemsToInsert.push(parseItem(item, meli_user_id))
         }
+        
+        // Process in batches of 50 for database insertion
+      if (itemsToInsert.length >= 50 || i === itemIds.length - 1) {
+        await supabase.from('ml_items_v2').upsert(itemsToInsert)
+        itemsToInsert.length = 0
       }
+        // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 20))
+    }
+    
+    // Insert remaining items
+    if (itemsToInsert.length > 0) {
+      await supabase.from('ml_items_v2').upsert(itemsToInsert)
+      console.log(`Inserted final ${itemsToInsert.length} items for user ${meli_user_id}`)
     }
   }
 }

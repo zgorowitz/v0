@@ -181,7 +181,6 @@ export async function fetchAllItems() {
       for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
         const batch = itemIds.slice(i, i + BATCH_SIZE)
         const itemsQuery = batch.join('&ids=')
-        console.log(itemsQuery)
         // Fetch multiple items at once
         const itemsDetail = await apiRequest(
           `https://api.mercadolibre.com/items?ids=${itemsQuery}&include_attributes=all`,
