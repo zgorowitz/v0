@@ -121,12 +121,11 @@ export async function fetchOrders(options = {}) {
   let totalOrderItems = 0
   
   for (const user of meliUsers) {
-    console.log(`Processing orders for user: ${user.meli_user_id}`)
+    console.log(`User: ${user.meli_user_id}`)
     
     try {
       const apiUrl = `https://api.mercadolibre.com/orders/search?seller=${user.meli_user_id}&order.date_last_updated.from=${fromDate}&order.date_last_updated.to=${toDate}`
       const orders = await paginateV2(apiUrl, user.access_token)
-      console.log(apiUrl)
       console.log(`Found ${orders.length} orders for user ${user.meli_user_id}`)
       
       // Collect all orders and items for batch processing
@@ -147,14 +146,22 @@ export async function fetchOrders(options = {}) {
       
       // Batch upsert all orders
       if (batchOrders.length > 0) {
+        // Dedupe keeping latest date
+        const deduped = new Map()
+        batchOrders.forEach(o => {
+          if (!deduped.has(o.id) || new Date(o.last_updated) > new Date(deduped.get(o.id).last_updated)) {
+            deduped.set(o.id, o)
+          }
+        })
+        
         const { error: ordersError } = await supabase
           .from('ml_orders_v2')
-          .upsert(batchOrders, { onConflict: ['id'] })
+          .upsert([...deduped.values()], { onConflict: ['id'] })
         
         if (ordersError) {
           console.error(`Error batch inserting orders:`, ordersError.message)
         } else {
-          totalOrders += batchOrders.length
+          totalOrders += deduped.size
         }
       }
       
@@ -193,8 +200,7 @@ export async function fetchOrders(options = {}) {
   console.log(`Summary:`)
   console.log(`Total orders processed: ${totalOrders}`)
   console.log(`Total order items processed: ${totalOrderItems}`)
-  console.log(`Users processed: ${meliUsers.length}`)
-  console.log(`Date filter Since ${fromDate}`)
+  
 }
 
 export async function fetchDailyOrders() {
@@ -203,7 +209,7 @@ export async function fetchDailyOrders() {
 }
 
 export async function fetchOrdersFromDate(fromDate, toDate = null) {
-  console.log(`Starting orders sync from ${fromDate}${toDate ? ` to ${toDate}` : ''}...`)
+  console.log(`--------------- ${fromDate}${toDate ? ` to ${toDate}` : ''}...`)
   
   let options = { fromDate, toDate }
   
@@ -219,7 +225,7 @@ async function fetchOrdersByChunks(startDate, endDate) {
 
   while (currentStart < end) {
     let currentEnd = new Date(currentStart)
-    currentEnd.setDate(currentEnd.getDate() + 15) // 30 days chunk (0-29)
+    currentEnd.setDate(currentEnd.getDate() + 1) // 30 days chunk (0-29)
 
     if (currentEnd > end) {
       currentEnd = end

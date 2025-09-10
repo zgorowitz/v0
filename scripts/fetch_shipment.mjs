@@ -66,7 +66,7 @@ function parseShipment(shipment, meliUserId) {
 
 // Get shipment IDs with meli_user_id that need to be fetched
 async function getShipmentsToFetch(supabase) {
-  const sixHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const sixHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
   
   // Get shipment IDs with meli_user_id from meli_orders where fulfilled = false and updated in last 6 hours
   const { data: orderShipments, error: orderError } = await supabase
@@ -110,10 +110,9 @@ async function getShipmentsToFetch(supabase) {
 
 // Main function
 export async function fetchShipments(options = {}) {
-  const { refreshTokens = true } = options
   
   const supabase = createClient()
-  const BATCH_SIZE = 20 // Batch size for API calls
+  const BATCH_SIZE = 50 // Batch size for API calls
   
   // Get all meli users with their tokens
   const { data: meliUsers, error } = await supabase
@@ -124,11 +123,6 @@ export async function fetchShipments(options = {}) {
   
   // Get shipments that need to be fetched with their meli_user_id
   const shipmentsMap = await getShipmentsToFetch(supabase)
-  
-  if (shipmentsMap.size === 0) {
-    console.log('No shipments to fetch')
-    return
-  }
   
   console.log(`Fetching ${shipmentsMap.size} shipments`)
   
@@ -161,15 +155,10 @@ export async function fetchShipments(options = {}) {
   // Process shipments grouped by user
   for (const [meliUserId, shipmentIds] of shipmentsByUser) {
     const user = meliUsers.find(u => u.meli_user_id === meliUserId)
-    if (!user) {
-      console.warn(`Token not found for user ${meliUserId}, skipping ${shipmentIds.length} shipments`)
-      errorCount += shipmentIds.length
-      continue
-    }
     
     console.log(`Processing ${shipmentIds.length} shipments for user ${meliUserId}`)
     
-    // Process in batches of 20
+    // Process in batches of 50
     for (let i = 0; i < shipmentIds.length; i += BATCH_SIZE) {
       const batch = shipmentIds.slice(i, i + BATCH_SIZE)
       
@@ -182,7 +171,7 @@ export async function fetchShipments(options = {}) {
         )
         
         const results = await Promise.all(shipmentPromises)
-        
+        console.log(`Fetched batch of ${batch.length} shipments for user ${meliUserId}`)
         // Process results
         for (const result of results) {
           if (result.success) {
