@@ -71,6 +71,7 @@ function parseItem(item, meliUserId) {
     catalog_listing: item.catalog_listing,
     item_relations: item.item_relations,
     channels: item.channels,
+    family_name: item.family_name,
     meli_user_id: meliUserId
   }
 }

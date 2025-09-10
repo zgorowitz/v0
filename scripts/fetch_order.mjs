@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 async function apiRequest(url, accessToken) {
+  console.log(`Fetching URL: ${url}`)
   const response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -81,7 +82,7 @@ function parseOrderItems(orderId, orderItems) {
 
 function getLast24HoursFilter() {
   const twentyFourHoursAgo = new Date()
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 12)
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 6)
   return twentyFourHoursAgo.toISOString()
 }
 
