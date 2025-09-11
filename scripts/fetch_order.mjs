@@ -1,4 +1,4 @@
-// scripts/fetch_orders.mjs
+// scripts/fetch_order.mjs
 // Fetch orders for all meli users with daily incremental updates
 
 import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
