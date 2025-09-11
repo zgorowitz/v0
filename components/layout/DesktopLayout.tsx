@@ -13,14 +13,14 @@ interface DesktopLayoutProps {
 
 const navigationItems = [
   { name: 'Home', href: '/' },
-  { name: 'Dashboard', href: '/dashboard', adminOnly: true },
   { name: 'Scan', href: '/scan2' },
   // { name: 'Categorias', href: '/categories' },
 ];
 
 const reportsItems = [
   // { name: 'Productos', href: '/products' },
-  // { name: 'Ordenes', href: '/orders' },
+  { name: 'Dashboard', href: '/dashboard', adminOnly: true },
+  { name: 'Ventas', href: '/dashboard/v2' },
   { name: 'Envios', href: '/shipments' },
 ];
 

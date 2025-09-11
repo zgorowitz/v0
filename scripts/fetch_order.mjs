@@ -7,7 +7,6 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 async function apiRequest(url, accessToken) {
-  console.log(`Fetching URL: ${url}`)
   const response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
@@ -126,7 +125,6 @@ export async function fetchOrders(options = {}) {
         
         if (!fullSync && fromDate) {
           apiUrl += `&order.date_last_updated.from=${fromDate}`
-          console.log(`Fetching orders updated since: ${fromDate}`)
         }
         
         const ordersResponse = await apiRequest(apiUrl, user.access_token)
@@ -212,9 +210,7 @@ export async function fetchOrders(options = {}) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
       }
-      
-      console.log(`Completed user ${user.meli_user_id}`)
-      
+            
     } catch (error) {
       console.error(`Error processing user ${user.meli_user_id}:`, error.message)
       continue
@@ -223,8 +219,6 @@ export async function fetchOrders(options = {}) {
   
   console.log(`Summary:`)
   console.log(`Total orders processed: ${totalOrders}`)
-  console.log(`Total order items processed: ${totalOrderItems}`)
-  console.log(`Users processed: ${meliUsers.length}`)
   console.log(`Date filter: ${fullSync ? 'Full sync (no filter)' : `Since ${fromDate}`}`)
 }
 
