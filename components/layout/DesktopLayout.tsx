@@ -26,7 +26,7 @@ const reportsItems = [
 
 const ajustesItems = [
   { name: 'Admin', href: '/metrics', adminOnly: true },
-  { name: 'ML Account', href: '/settings', adminOnly: true },
+  { name: 'Account', href: '/settings', adminOnly: true },
 ];
 
 export function DesktopLayout({ children }: DesktopLayoutProps) {
