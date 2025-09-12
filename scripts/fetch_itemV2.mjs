@@ -6,6 +6,7 @@ async function getTokens() {
   const { data } = await supabase
     .from('meli_tokens')
     .select('meli_user_id, access_token')
+    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
   return data || []
 }
 

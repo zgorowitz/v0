@@ -65,7 +65,9 @@ function parseOrderItems(orderItems, orderId, meli_user_id) {
     
     // Order item level fields
     quantity: orderItem.quantity || 0,
-    picked_quantity: orderItem.picked_quantity || null,
+    picked_quantity: typeof orderItem.picked_quantity === 'object' && orderItem.picked_quantity?.value  
+    ? orderItem.picked_quantity.value                                                                                                                                                                 
+    : orderItem.picked_quantity || null, 
     unit_price: orderItem.unit_price || 0,
     full_unit_price: orderItem.full_unit_price || 0,
     full_unit_price_currency_id: orderItem.full_unit_price_currency_id || null,
@@ -98,23 +100,17 @@ export async function fetchOrders(options = {}) {
   const { 
     fromDate = getLast24HoursFilter(),
     toDate = new Date().toISOString(),
-    refreshTokens = true
+    // refreshTokens = true
   } = options
   
   const supabase = createClient()
   
   // Refresh tokens before fetching orders
-  if (refreshTokens) {
-    try {
-      await refreshAllTokens()
-    } catch (error) {
-      console.warn(error.message)
-    }
-  }
   
   const { data: meliUsers, error } = await supabase
     .from('meli_tokens')
     .select('meli_user_id, access_token')
+    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
   if (error) throw error
   
   let totalOrders = 0
@@ -218,6 +214,14 @@ export async function fetchOrdersFromDate(fromDate, toDate = null) {
 
 async function fetchOrdersByChunks(startDate, endDate) {
   // const allOrders = []
+
+  // if (refreshTokens) {
+    try {
+      await refreshAllTokens()
+    } catch (error) {
+      console.warn(error.message)
+    }
+  // }
   const start = new Date(startDate)
   const end = new Date(endDate)
 
@@ -246,7 +250,7 @@ async function fetchOrdersByChunks(startDate, endDate) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-09-05T00:00:00.000Z', new Date().toISOString())
+  fetchOrdersByChunks('2025-04-20T00:00:00.000Z', new Date().toISOString())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
