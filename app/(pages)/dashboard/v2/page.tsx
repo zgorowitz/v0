@@ -38,32 +38,28 @@ const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { metricCards, loading: metricsLoading } = useMetricCards();
+  const { metricCards, loading: metricsLoading, updateCardDate } = useMetricCards();
 
   const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-  const [startDate, setStartDate] = useState(yesterday);
-  const [endDate, setEndDate] = useState(yesterday);
+  const [dateRange, setDateRange] = useState([yesterday, yesterday]);
   // Fetch dashboard data
   useEffect(() => {
     fetchDashboardData();
-  }, [startDate, endDate]);
+  }, [dateRange]);
 
   
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     const organizationId = await getCurrentUserOrganizationId();
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    const [start, end] = dateRange;
+    const startStr = start?.toISOString().split('T')[0];
+    const endStr = end?.toISOString().split('T')[0];
     console.log("Fetching data for org:", organizationId, "from", startStr, "to", endStr);
-    const child_data = await itemSalesData(
-      organizationId,
-      startStr,
-      endStr
-    );
+    const child_data = await itemSalesData(organizationId, startStr, endStr);
     console.log("Fetched data:", child_data.length);
     setDashboardData(child_data);
     setLoading(false);
-  }, [startDate, endDate]);
+  }, [dateRange]);
 
 
   const formatMoney = ({getValue}) => `$${getValue()?.toLocaleString()}`;
@@ -80,17 +76,18 @@ const DashboardPage = () => {
     { accessorKey: 'item_discount', header: 'Discount', cell: formatMoney }
   ];
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <LayoutWrapper>
-      <div>
-        <MetricCards data={metricCards} loading={metricsLoading} />
-        <div>
-          <DatePicker selected={startDate} onChange={(date) => date && setStartDate(date)} selectsStart startDate={startDate} endDate={endDate} dateFormat="yyyy-MM-dd" />
-          <DatePicker selected={endDate} onChange={(date) => date && setEndDate(date)} selectsEnd startDate={startDate} endDate={endDate} minDate={startDate} dateFormat="yyyy-MM-dd" />
-        </div>
-        <SimpleTable data={dashboardData} columns={columns} />
+      <div className="p-4">
+        <MetricCards data={metricCards} loading={metricsLoading} onDateChange={updateCardDate} />
+        <SimpleTable 
+          data={dashboardData} 
+          columns={columns} 
+          loading={loading}
+          customControls={
+            <DatePicker selected={null} onChange={(dates) => setDateRange(dates)} startDate={dateRange[0]} endDate={dateRange[1]} selectsRange dateFormat="yyyy-MM-dd" />
+          }
+        />
       </div>
     </LayoutWrapper>
   );

@@ -19,8 +19,8 @@ const navigationItems = [
 
 const reportsItems = [
   // { name: 'Productos', href: '/products' },
-  { name: 'Dashboard', href: '/dashboard', adminOnly: true },
-  { name: 'Ventas', href: '/dashboard/v2' },
+  // { name: 'Dashboard', href: '/dashboard', adminOnly: true },
+  { name: 'Ventas', href: '/dashboard/v2', adminOnly: true },
   { name: 'Envios', href: '/shipments' },
 ];
 

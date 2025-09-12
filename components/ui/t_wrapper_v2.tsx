@@ -15,6 +15,8 @@ export const SimpleTable = ({
   enableSorting = true,
   enablePagination = true,
   enableSearch = true,
+  customControls = null,
+  loading = false,
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
 
@@ -62,29 +64,34 @@ export const SimpleTable = ({
 
   return (
     <div>
-      {/* Search */}
-      {enableSearch && (
-        <div style={{ marginBottom: '12px' }}>
-          <input
-            type="text"
-            placeholder="Search..."
-            value={globalFilter ?? ''}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            style={{
-              padding: '8px',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              width: '300px'
-            }}
-          />
-          {globalFilter && (
-            <button
-              onClick={() => setGlobalFilter('')}
-              style={{ marginLeft: '8px', padding: '8px', cursor: 'pointer' }}
-            >
-              Clear
-            </button>
+      {/* Controls Row */}
+      {(enableSearch || customControls) && (
+        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {enableSearch && (
+            <div>
+              <input
+                type="text"
+                placeholder="Search..."
+                value={globalFilter ?? ''}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                style={{
+                  padding: '8px',
+                  border: '1px solid #ccc',
+                  borderRadius: '4px',
+                  width: '300px'
+                }}
+              />
+              {globalFilter && (
+                <button
+                  onClick={() => setGlobalFilter('')}
+                  style={{ marginLeft: '8px', padding: '8px', cursor: 'pointer' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           )}
+          {customControls && <div>{customControls}</div>}
         </div>
       )}
 

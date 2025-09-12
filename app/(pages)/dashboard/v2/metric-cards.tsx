@@ -1,9 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DatePicker from 'react-datepicker';
-import { totalSalesData } from '@/lib/dashboard/data';
-import { getCurrentUserOrganizationId } from '@/lib/supabase/client';
 
 interface MetricCardData {
   period?: string;
@@ -17,13 +15,15 @@ interface MetricCardData {
 interface MetricCardsProps {
   data: MetricCardData[];
   loading?: boolean;
+  onDateChange?: (index: number, startDate: Date, endDate: Date) => void;
 }
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency: 'ARS',
-    minimumFractionDigits: 0
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(amount);
 };
 
@@ -31,33 +31,21 @@ const formatNumber = (num: number) => {
   return num.toLocaleString();
 };
 
-const MetricCard: React.FC<{ initialData: MetricCardData }> = ({ initialData }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Date, endDate: Date) => void }> = ({ data, onDateChange }) => {
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [data, setData] = useState(initialData);
-  const [loading, setLoading] = useState(false);
-  
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const r = await totalSalesData(await getCurrentUserOrganizationId(), dateStr, dateStr);
-      setData(r?.[0] || initialData);
-      setLoading(false);
-    };
-    fetchData();
-  }, [selectedDate, initialData]);
   
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <h3 className="text-sm font-medium text-gray-700 mb-3 cursor-pointer" onClick={() => setShowPicker(!showPicker)}>
-        {loading ? 'Loading...' : data.period}
+        {data.period}
       </h3>
       {showPicker && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
           <div className="absolute z-50 bg-white border shadow-lg">
-            <DatePicker selected={selectedDate} onChange={(date) => { date && setSelectedDate(date); setShowPicker(false); }} inline />
+            <DatePicker selected={startDate} onChange={(dates) => { const [start, end] = dates; setStartDate(start); setEndDate(end); if (start && end) { onDateChange?.(start, end); setShowPicker(false); } }} startDate={startDate} endDate={endDate} selectsRange inline />
           </div>
         </>
       )}
@@ -92,12 +80,14 @@ const MetricCard: React.FC<{ initialData: MetricCardData }> = ({ initialData }) 
   );
 };
 
-export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading }) => {
+export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, onDateChange }) => {
   if (loading) {
     return (
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-gray-100 rounded-lg h-40 animate-pulse"></div>
+          <div key={i} className="bg-gray-100 rounded-lg h-40 flex items-center justify-center">
+            <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          </div>
         ))}
       </div>
     );
@@ -106,7 +96,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading }) => {
   return (
     <div className="grid grid-cols-4 gap-4 mb-6">
       {data.map((cardData, index) => (
-        <MetricCard key={index} initialData={cardData} />
+        <MetricCard key={index} data={cardData} onDateChange={(start, end) => onDateChange?.(index, start, end)} />
       ))}
     </div>
   );
