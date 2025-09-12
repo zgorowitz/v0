@@ -6,6 +6,10 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 import { SimpleTable } from '@/components/ui/t_wrapper_v2';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { itemSalesData } from '@/lib/dashboard/data';
+import { useMetricCards } from '@/lib/dashboard/useMetricCards';
+import { MetricCards } from './metric-cards';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 interface DashboardRow {
   // family_name: string;
@@ -34,34 +38,33 @@ const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { metricCards, loading: metricsLoading } = useMetricCards();
 
-  const [dateRange, setDateRange] = useState({
-    startDate: '2025-09-08',
-    endDate: '2025-09-10'
-  })
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const [startDate, setStartDate] = useState(yesterday);
+  const [endDate, setEndDate] = useState(yesterday);
   // Fetch dashboard data
   useEffect(() => {
     fetchDashboardData();
-  }, [dateRange]);
+  }, [startDate, endDate]);
 
   
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     const organizationId = await getCurrentUserOrganizationId();
-    console.log("Fetching data for org:", organizationId, "from", dateRange.startDate, "to", dateRange.endDate);
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    console.log("Fetching data for org:", organizationId, "from", startStr, "to", endStr);
     const child_data = await itemSalesData(
       organizationId,
-      dateRange.startDate,
-      dateRange.endDate
+      startStr,
+      endStr
     );
     console.log("Fetched data:", child_data.length);
     setDashboardData(child_data);
     setLoading(false);
-  }, [dateRange]);
+  }, [startDate, endDate]);
 
-  const updateDateRange = (start, end) => {
-    setDateRange({startDate: start, endDate: end});
-  };
 
   const formatMoney = ({getValue}) => `$${getValue()?.toLocaleString()}`;
   const formatImage = ({getValue}) => <img src={getValue()} alt="Product" style={{ width: '50px', height: '50px', objectFit: 'cover' }} />
@@ -82,16 +85,11 @@ const DashboardPage = () => {
   return (
     <LayoutWrapper>
       <div>
-        <input 
-          type="date" 
-          value={dateRange.startDate} 
-          onChange={(e) => updateDateRange(e.target.value, dateRange.endDate)} 
-        />
-        <input 
-          type="date" 
-          value={dateRange.endDate} 
-          onChange={(e) => updateDateRange(dateRange.startDate, e.target.value)} 
-        />
+        <MetricCards data={metricCards} loading={metricsLoading} />
+        <div>
+          <DatePicker selected={startDate} onChange={(date) => date && setStartDate(date)} selectsStart startDate={startDate} endDate={endDate} dateFormat="yyyy-MM-dd" />
+          <DatePicker selected={endDate} onChange={(date) => date && setEndDate(date)} selectsEnd startDate={startDate} endDate={endDate} minDate={startDate} dateFormat="yyyy-MM-dd" />
+        </div>
         <SimpleTable data={dashboardData} columns={columns} />
       </div>
     </LayoutWrapper>
