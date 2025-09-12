@@ -110,7 +110,7 @@ export async function fetchOrders(options = {}) {
   const { data: meliUsers, error } = await supabase
     .from('meli_tokens')
     .select('meli_user_id, access_token')
-    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
+    .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
   if (error) throw error
   
   let totalOrders = 0
@@ -243,14 +243,13 @@ async function fetchOrdersByChunks(startDate, endDate) {
     // allOrders.push(...orders)
 
     currentStart = new Date(currentEnd)
-    currentStart.setDate(currentStart.getDate() + 1)
   }
 
   // return allOrders
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-04-20T00:00:00.000Z', new Date().toISOString())
+  fetchOrdersByChunks('2025-09-09T00:00:00.000Z', new Date().toISOString())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
