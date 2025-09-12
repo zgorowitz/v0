@@ -3,7 +3,7 @@
 import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Package, Calendar, Scan, Settings, Zap, BarChart3 } from "lucide-react"
+import { Monitor, LayoutDashboard, Calendar, Scan, Settings, Zap, BarChart3 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 
 import {
@@ -26,27 +26,23 @@ const navItems = [
     url: "/scan",
     icon: Scan,
   },
-  {
-    title: "Scanner 2.0",
-    url: "/scan2",
-    icon: Zap,
-  },
   // {
-  //   title: "Dashboard",
-  //   url: "/dashboard",
-  //   icon: BarChart3,
+  //   title: "Scanner 2.0",
+  //   url: "/scan2",
+  //   icon: Zap,
   // },
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: LayoutDashboard,
+    adminOnly: true,
+  },
   {
     title: "Admin",
     url: "/metrics",
     icon: BarChart3,
     adminOnly: true,
   },
-  // {
-  //   title: "All SKUs",
-  //   url: "/skus",
-  //   icon: Package,
-  // },
   {
     title: "Ajustes",
     url: "/settings",

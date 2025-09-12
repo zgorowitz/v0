@@ -12,15 +12,15 @@ interface DesktopLayoutProps {
 }
 
 const navigationItems = [
-  { name: 'Home', href: '/' },
-  { name: 'Scan', href: '/scan2' },
+  { name: 'Home', href: '/dashboard', adminOnly: true  },
+  { name: 'Scan', href: '/scanner' },
   // { name: 'Categorias', href: '/categories' },
 ];
 
 const reportsItems = [
   // { name: 'Productos', href: '/products' },
   // { name: 'Dashboard', href: '/dashboard', adminOnly: true },
-  { name: 'Ventas', href: '/dashboard/v2', adminOnly: true },
+  // { name: 'Ventas', href: '/dashboard/v2', adminOnly: true },
   { name: 'Envios', href: '/shipments' },
 ];
 

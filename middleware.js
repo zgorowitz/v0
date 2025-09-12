@@ -37,7 +37,7 @@ export async function middleware(request) {
   }
 
   // Define public routes that don't require authentication
-  const publicRoutes = ['/']
+  const publicRoutes = ['/login']
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route))
   
   // Define admin-only routes
@@ -49,10 +49,11 @@ export async function middleware(request) {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
-        // Only redirect if user is not already on the home page
-        if (pathname !== '/') {
-            return NextResponse.redirect(new URL('/', request.url))
+        // Only redirect if user is not already on login page
+        if (pathname !== '/login') {
+            return NextResponse.redirect(new URL('/login', request.url))
         }
+        return response
     }
 
     // Step 2: Check if user has organization and get role (only for authenticated users)
@@ -61,9 +62,22 @@ export async function middleware(request) {
       .select('organization_id, role')
       .eq('user_id', user.id)
       .single()
+    
+    const userRole = orgData?.role
+    
+    // Check if desktop and redirect admin users to dashboard from home page
+    const userAgent = request.headers.get('user-agent') || ''
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+    
+    if (pathname === '/' && !isMobile && userRole === 'admin') {
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+    
+    if (pathname === '/' && isMobile) {
+        return NextResponse.redirect(new URL('/scanner', request.url))
+    }
 
     const hasOrganization = orgData && orgData.organization_id
-    const userRole = orgData?.role
     const isOnboarding = pathname === '/onboarding'
 
     if (!hasOrganization && !isOnboarding) {
@@ -85,10 +99,10 @@ export async function middleware(request) {
     }
 
   } catch (error) {
-    // If there's an error, redirect to home if not on a public route
+    // If there's an error, redirect to login if not on a public route
     console.warn('Middleware auth check failed:', error.message)
     if (!isPublicRoute) {
-      return NextResponse.redirect(new URL('/', request.url))
+      return NextResponse.redirect(new URL('/login', request.url))
     }
   }
 
