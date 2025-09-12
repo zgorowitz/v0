@@ -246,7 +246,7 @@ async function fetchOrdersByChunks(startDate, endDate) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-01-01T00:00:00.000Z', new Date().toISOString())
+  fetchOrdersByChunks('2025-09-05T00:00:00.000Z', new Date().toISOString())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)

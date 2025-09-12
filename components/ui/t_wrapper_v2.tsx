@@ -91,7 +91,7 @@ export const SimpleTable = ({
               )}
             </div>
           )}
-          {customControls && <div>{customControls}</div>}
+          {customControls && (enableSearch ? <div>{customControls}</div> : customControls)}
         </div>
       )}
 
