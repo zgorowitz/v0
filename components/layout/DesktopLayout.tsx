@@ -13,6 +13,7 @@ interface DesktopLayoutProps {
 
 const navigationItems = [
   { name: 'Home', href: '/dashboard', adminOnly: true  },
+  { name: 'Products', href: '/cogs', adminOnly: true  },
   { name: 'Scan', href: '/scanner' },
   // { name: 'Categorias', href: '/categories' },
 ];

@@ -17,6 +17,7 @@ export const SimpleTable = ({
   enableSearch = true,
   customControls = null,
   loading = false,
+  getRowId = undefined,
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
 
@@ -48,6 +49,7 @@ export const SimpleTable = ({
   const table = useReactTable({
     data,
     columns: enhancedColumns,
+    getRowId,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
     getFilteredRowModel: enableSearch ? getFilteredRowModel() : undefined,

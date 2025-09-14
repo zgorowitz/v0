@@ -10,6 +10,8 @@ interface MetricCardData {
   total_sales?: number;
   total_discount?: number;
   total_fee?: number;
+  total_cogs?: number;
+  total_profit?: number;
 }
 
 interface MetricCardsProps {
@@ -69,14 +71,14 @@ const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Da
       {/* White body section */}
       <div className="px-4 py-3 space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Orders</span>
-          <span className="text-sm font-medium text-gray-800">{formatNumber(data.total_orders || 0)}</span>
+          <span className="text-xs text-gray-500">Orders/Units</span>
+          <span className="text-sm font-medium text-gray-800">{formatNumber(data.total_orders || 0)}/{formatNumber(data.total_units || 0)}</span>
         </div>
         
-        <div className="flex justify-between items-center">
+        {/* <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Units</span>
           <span className="text-sm font-medium text-gray-800">{formatNumber(data.total_units || 0)}</span>
-        </div>
+        </div> */}
         
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Discount</span>
@@ -86,6 +88,16 @@ const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Da
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Fee</span>
           <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_fee || 0)}</span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500">COGS</span>
+          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_cogs || 0)}</span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500">Profit</span>
+          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_profit || 0)}</span>
         </div>
       </div>
     </div>

@@ -57,6 +57,7 @@
     "lucide-react": "^0.454.0",
     "next": "^15.2.4",
     "next-themes": "latest",
+    "papaparse": "^5.5.3",
     "react": "^19.1.0",
     "react-datepicker": "^8.7.0",
     "react-day-picker": "^9.3.4",
@@ -68,6 +69,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {
