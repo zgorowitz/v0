@@ -80,14 +80,14 @@ const DashboardPage = () => {
     {accessorKey: 'thumbnail', header: 'Image', cell: formatImage},
     { accessorKey: 'item_id', header: 'Item ID' },
     { accessorKey: 'title', header: 'Title' },
-    { accessorKey: 'item_orders', header: 'Total Orders' },
-    { accessorKey: 'item_units', header: 'Item Units' },
-    { accessorKey: 'item_sales', header: 'Item Sales', cell: formatMoney },
-    { accessorKey: 'item_profit', header: 'Item Sales', cell: formatMoney },
-    { accessorKey: 'status', header: 'Status' },
+    // { accessorKey: 'item_orders', header: 'Orders' },
+    { accessorKey: 'item_units', header: 'Units' },
+    { accessorKey: 'item_sales', header: 'Sales', cell: formatMoney },
+    { accessorKey: 'item_profit', header: 'Profit', cell: formatMoney },
     { accessorKey: 'item_fee', header: 'Fee', cell: formatMoney },
     { accessorKey: 'item_discount', header: 'Discount', cell: formatMoney },
-    { accessorKey: 'item_cogs', header: 'COGS', cell: formatMoney }
+    { accessorKey: 'item_cogs', header: 'COGS', cell: formatMoney },
+    { accessorKey: 'status', header: 'Status' }
   ];
 
   return (

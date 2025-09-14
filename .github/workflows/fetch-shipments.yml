@@ -26,10 +26,10 @@ jobs:
       env:
         NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: node scripts/fetch_shipment.mjs
+      run: node backend/scripts/fetch_shipment.mjs
       
     - name: Run fetch order notes script
       env:
         NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
         SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      run: node scripts/fetch_order_notes.mjs
+      run: node backend/scripts/fetch_order_notes.mjs

@@ -269,7 +269,7 @@ const CogsManagementPage = () => {
         value={displayTags?.join(', ') || ''}
         onChange={(e) => handleTagsChange(row.original.item_id, e.target.value)}
         className="px-2 py-1 border rounded w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="tag1, tag2, tag3"
+        placeholder="tag, tag"
         key={`tags-${row.original.item_id}`}
       />
     );
