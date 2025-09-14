@@ -32,10 +32,10 @@ const formatNumber = (num: number) => {
 };
 
 const colorSchemes = [
-  { header: 'bg-stone-200', text: 'text-stone-800' },    // Fuller brownish
   { header: 'bg-emerald-200', text: 'text-emerald-800' }, // Fuller greenish
   { header: 'bg-teal-200', text: 'text-teal-800' },      // Fuller teal/greenish-blue
-  { header: 'bg-sky-200', text: 'text-sky-800' }          // Fuller blueish
+  { header: 'bg-cyan-200', text: 'text-cyan-800' },    // Fuller brownish
+  { header: 'bg-sky-200', text: 'text-sky-800' },          // Fuller blueish
 ];
 
 const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Date, endDate: Date) => void; colorIndex: number }> = ({ data, onDateChange, colorIndex }) => {

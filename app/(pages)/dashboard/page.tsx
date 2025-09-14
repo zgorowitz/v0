@@ -9,7 +9,7 @@ import { itemSalesData } from '@/lib/dashboard/data';
 import { useMetricCards } from '@/lib/dashboard/useMetricCards';
 import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
 import { ItemsFilter } from '@/components/dashboard/ItemsFilter';
-import { MetricCards } from './metric-cards';
+import { MetricCards } from '@/components/dashboard/metric-cards';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
