@@ -29,16 +29,12 @@ async function getValidAccessToken() {
     }
 
     // 4. TOKEN IS EXPIRED - TRY TO REFRESH
-    console.log('Access token expired, attempting refresh...');
-    
     if (!storedTokens.refresh_token) {
       throw new Error('Access token expired and no refresh token available - please re-authenticate');
     }
 
     // 5. REFRESH TOKEN
-    const newTokens = await refreshTokensInternal(storedTokens.refresh_token);
-    console.log('Token refresh successful');
-    
+    const newTokens = await refreshTokensInternal(storedTokens.refresh_token);    
     return newTokens.access_token;
 
   } catch (error) {
@@ -286,7 +282,7 @@ export async function GET(request, { params }) {
     }
     
     if (error.message.includes('status: 401') || error.message.includes('status: 403')) {
-      return NextResponse.json({ error: 'Autenticación fallida: El token puede estar expirado, el ID de envío puede ser incorrecto o el envío puede pertenecer a una cuenta de Mercado Libre diferente a la actualmente autenticada.' }, { status: 401 })
+      return NextResponse.json({ error: 'Autenticación fallida: El envío puede pertenecer a una cuenta de Mercado Libre diferente a la actual. Intenta cambiar the cuenta' }, { status: 401 })
     }
     
     if (error.message.includes('status: 429')) {

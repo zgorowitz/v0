@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react'
-import { triggerVibration } from '@/lib/scan2/scan-utils'
 
 interface UseMultipleModeReturn {
   multipleMode: boolean
@@ -40,10 +39,7 @@ export function useMultipleMode(options: UseMultipleModeOptions = {}): UseMultip
     }
     setMultipleModeState(enabled)
     clearScannedCodes?.()
-    if (enableVibration) {
-      triggerVibration('click')
-    }
-  }, [clearScannedCodes, enableVibration, enableLogging])
+  }, [clearScannedCodes, enableLogging])
 
   const toggleMultipleMode = useCallback(() => {
     if (enableLogging) {

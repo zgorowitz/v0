@@ -20,7 +20,6 @@ import {
   track_scan_session,
   track_multiple_scan_sessions
 } from "@/lib/scan2/packing"
-import { triggerVibration } from "@/lib/scan2/scan-utils"
 import { useRouter, useSearchParams } from "next/navigation"
 
 // Type definitions
@@ -316,7 +315,6 @@ function ResultsPageContent() {
         }
       } catch (err: any) {
         setError(err.message || "Failed to process shipments")
-        triggerVibration('error')
       } finally {
         setIsLoading(false)
       }
@@ -337,10 +335,8 @@ function ResultsPageContent() {
       setPackingInfoMap(prev => ({ ...prev, [targetShipmentId]: data }))
       setLastScannedCode(targetShipmentId)
       setPackedShipments(prev => new Set(prev).add(targetShipmentId))
-      triggerVibration('success')
     } catch (err: any) {
       setError(err.message || "Packing failed")
-      triggerVibration('error')
     } finally {
       setPackingLoading(false)
     }
@@ -371,10 +367,8 @@ function ResultsPageContent() {
       
       setPackingInfoMap(newPackingMap)
       setPackedShipments(newPackedShipments)
-      triggerVibration('success')
     } catch (err: any) {
       setError(err.message || "Bulk packing failed")
-      triggerVibration('error')
     } finally {
       setPackingLoading(false)
     }
