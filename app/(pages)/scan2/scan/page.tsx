@@ -42,7 +42,6 @@ function ScanPage() {
   const cameraManagerRef = useRef<CameraManager | null>(null)
   const scannerRef = useRef<EnhancedBarcodeScanner | null>(null)
   const cleanupRef = useRef<() => void>(() => {})
-  const handleScannedCodeRef = useRef<((code: string) => void) | null>(null)
 
   // Multiple mode hook
   const { multipleMode, toggleMultipleMode } = useMultipleMode({
@@ -56,13 +55,84 @@ function ScanPage() {
     setState(prev => ({ ...prev, ...updates }))
   }, [])
 
+  // Scan handlers (defined early to avoid temporal dead zone)
+  const handleSingleScan = useCallback(async (code: string) => {
+    updateState({ isProcessing: true })
+
+    // Stop camera inline
+    try {
+      scannerRef.current?.stopScanning()
+      cameraManagerRef.current?.stopCamera()
+      updateState({ isScanning: false })
+    } catch (err) {
+      console.error("Stop camera error:", err)
+    }
+
+    try {
+      router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
+    } catch (err: any) {
+      updateState({
+        error: err.message || "Error al procesar el envío",
+        isProcessing: false
+      })
+
+      setTimeout(() => {
+        updateState({ error: '' })
+        if (state.mode === 'camera') {
+          // Restart camera inline
+          const cameraManager = cameraManagerRef.current
+          const scanner = scannerRef.current
+
+          if (cameraManager && scanner && videoRef.current) {
+            // Just restart the camera, scanning will be handled by startCamera function
+            cameraManager.startCamera(videoRef.current).catch(console.error)
+          }
+        }
+      }, 3000)
+    }
+  }, [router, state.mode])
+
+  const handleScannedCode = useCallback(async (code: string) => {
+    if (!code?.trim()) return
+
+    try {
+      if (multipleMode) {
+        // In multiple mode, add to array and let scanner continue running
+        if (state.scannedCodes.includes(code)) {
+          updateState({ error: "Código ya escaneado" })
+          setTimeout(() => updateState({ error: '' }), 2000)
+          return
+        }
+
+        const newCodes = [...state.scannedCodes, code]
+        updateState({ scannedCodes: newCodes, justScanned: true })
+
+        // Add haptic feedback
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100])
+        }
+
+        // Reset just scanned state after delay (scanner keeps running)
+        setTimeout(() => {
+          updateState({ justScanned: false })
+        }, 2000)
+      } else {
+        // In single mode, process immediately and navigate
+        await handleSingleScan(code)
+      }
+    } catch (err) {
+      console.error('Scan handling error:', err)
+      updateState({ error: 'Error processing scan' })
+    }
+  }, [multipleMode, state.scannedCodes, handleSingleScan])
+
   // Initialize camera and scanner instances
   useEffect(() => {
     const initializeInstances = () => {
       try {
         const cameraManager = new CameraManager()
         const scanner = new EnhancedBarcodeScanner()
-        
+
         cameraManagerRef.current = cameraManager
         scannerRef.current = scanner
 
@@ -95,7 +165,7 @@ function ScanPage() {
     return () => {
       cleanupRef.current()
     }
-  }, []) // Only run once on mount
+  }, [handleScannedCode]) // Re-run when handleScannedCode changes
 
   // Camera operations
   const startCamera = useCallback(async () => {
@@ -113,7 +183,7 @@ function ScanPage() {
       await cameraManager.startCamera(videoRef.current)
       updateState({ permissionState: cameraManager.getPermissionState() })
       
-      await scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
+      await scanner.startScanning(videoRef.current, handleScannedCode)
     } catch (err: any) {
       const errorMessage = err.message || "Failed to start camera"
       updateState({ 
@@ -134,70 +204,6 @@ function ScanPage() {
       console.error("Stop camera error:", err)
     }
   }, [])
-
-  // Scan handlers
-  const handleScannedCode = useCallback(async (code: string) => {
-    if (!code?.trim()) return
-
-    try {
-      if (multipleMode) {
-        // In multiple mode, add to array and keep scanning
-        if (state.scannedCodes.includes(code)) {
-          updateState({ error: "Código ya escaneado" })
-          setTimeout(() => updateState({ error: '' }), 2000)
-          return
-        }
-
-        const newCodes = [...state.scannedCodes, code]
-        updateState({ scannedCodes: newCodes, justScanned: true })
-
-        // Add haptic feedback
-        if (navigator.vibrate) {
-          navigator.vibrate([100, 50, 100])
-        }
-
-        // Reset just scanned state and restart scanner
-        setTimeout(() => {
-          updateState({ justScanned: false })
-          if (state.isScanning && scannerRef.current && videoRef.current) {
-            const scanner = scannerRef.current
-            // Restart scanning with the same callback
-            scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
-          }
-        }, 2000)
-      } else {
-        // In single mode, process immediately and navigate
-        await handleSingleScan(code)
-      }
-    } catch (err) {
-      console.error('Scan handling error:', err)
-      updateState({ error: 'Error processing scan' })
-    }
-  }, [multipleMode, state.scannedCodes, state.isScanning, handleSingleScan])
-
-  // Update the ref whenever handleScannedCode changes
-  useEffect(() => {
-    handleScannedCodeRef.current = handleScannedCode
-  }, [handleScannedCode])
-
-  const handleSingleScan = useCallback(async (code: string) => {
-    updateState({ isProcessing: true })
-    stopCamera()
-
-    try {
-      router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
-    } catch (err: any) {
-      updateState({ 
-        error: err.message || "Error al procesar el envío",
-        isProcessing: false 
-      })
-      
-      setTimeout(() => {
-        updateState({ error: '' })
-        if (state.mode === 'camera') startCamera()
-      }, 3000)
-    }
-  }, [router, state.mode])
 
   // Manual input handlers
   const handleManualSubmit = useCallback(() => {
