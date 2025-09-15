@@ -42,6 +42,7 @@ function ScanPage() {
   const cameraManagerRef = useRef<CameraManager | null>(null)
   const scannerRef = useRef<EnhancedBarcodeScanner | null>(null)
   const cleanupRef = useRef<() => void>(() => {})
+  const handleScannedCodeRef = useRef<((code: string) => void) | null>(null)
 
   // Multiple mode hook
   const { multipleMode, toggleMultipleMode } = useMultipleMode({
@@ -112,7 +113,7 @@ function ScanPage() {
       await cameraManager.startCamera(videoRef.current)
       updateState({ permissionState: cameraManager.getPermissionState() })
       
-      await scanner.startScanning(videoRef.current, handleScannedCode)
+      await scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
     } catch (err: any) {
       const errorMessage = err.message || "Failed to start camera"
       updateState({ 
@@ -150,11 +151,16 @@ function ScanPage() {
       navigator.vibrate([100, 50, 100])
     }
 
-    // Reset just scanned state - scanner continues running
+    // Reset just scanned state and restart scanner
     setTimeout(() => {
       updateState({ justScanned: false })
+      if (state.isScanning && scannerRef.current && videoRef.current) {
+        const scanner = scannerRef.current
+        // Restart scanning with the same callback
+        scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
+      }
     }, 2000)
-  }, [state.scannedCodes])
+  }, [state.scannedCodes, state.isScanning])
 
   const handleScannedCode = useCallback(async (code: string) => {
     if (!code?.trim()) return
@@ -171,7 +177,12 @@ function ScanPage() {
       console.error('Scan handling error:', err)
       updateState({ error: 'Error processing scan' })
     }
-  }, [multipleMode, handleMultipleScan])
+  }, [multipleMode, handleMultipleScan, handleSingleScan])
+
+  // Update the ref whenever handleScannedCode changes
+  useEffect(() => {
+    handleScannedCodeRef.current = handleScannedCode
+  }, [handleScannedCode])
 
   const handleSingleScan = useCallback(async (code: string) => {
     updateState({ isProcessing: true })
@@ -234,7 +245,7 @@ function ScanPage() {
   const renderHeader = () => (
     <div className="px-6 pt-6 pb-2">
       {state.error && (
-        <div className="mb-4 text-sm font-medium text-center text-red-600">
+        <div className="mb-4 text-sm font-medium text-center text-black-600">
           {state.error}
         </div>
       )}
@@ -245,7 +256,7 @@ function ScanPage() {
             {state.mode === 'camera' && (
               <button
                 className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-1 ${
-                  multipleMode ? 'bg-black text-white' : 'bg-white text-black border-black'
+                  multipleMode ? 'bg-black text-white' : 'bg-white text-black border-gray-300'
                 }`}
                 onClick={toggleMultipleMode}
               >
@@ -254,7 +265,7 @@ function ScanPage() {
               </button>
             )}
             
-            <div className="flex border border-black rounded-lg overflow-hidden">
+            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
               <input
                 type="text"
                 value={state.manualInput}
