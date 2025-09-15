@@ -42,8 +42,21 @@ const DashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { metricCards, loading: metricsLoading, updateCardDate } = useMetricCards();
   const itemsFilter = useItemsFilter();
+
+  // Debug: Log when itemsFilter changes
+  useEffect(() => {
+    console.log('[Dashboard] itemsFilter.appliedItemIds changed:', itemsFilter.appliedItemIds);
+  }, [itemsFilter.appliedItemIds]);
+
+  // Fix: Properly memoize the appliedItemIds array
+  const appliedItemIds = useMemo(() => {
+    console.log('[Dashboard] Memoizing appliedItemIds:', itemsFilter.appliedItemIds);
+    return itemsFilter.appliedItemIds;
+  }, [JSON.stringify(itemsFilter.appliedItemIds)]); // Use JSON.stringify for deep comparison
+
+  // Pass the memoized array to useMetricCards
+  const { metricCards, loading: metricsLoading, updateCardDate } = useMetricCards(appliedItemIds);
 
   const [dateRange, setDateRange] = useState(() => {
     const yesterday = new Date();
@@ -51,27 +64,24 @@ const DashboardPage = () => {
     return [yesterday, yesterday];
   });
 
-  // Create stable reference for selected item IDs
-  const selectedItemIds = useMemo(() => itemsFilter.selectedItemIds, [itemsFilter.selectedItemIds.join(',')]);
-  
   // Fetch dashboard data
   useEffect(() => {
+    console.log('[Dashboard] fetchDashboardData triggered by dateRange or appliedItemIds change');
     fetchDashboardData();
-  }, [dateRange, selectedItemIds]);
+  }, [dateRange, appliedItemIds]);
 
   
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    const organizationId = await getCurrentUserOrganizationId();
     const [start, end] = dateRange;
     const startStr = start?.toISOString().split('T')[0];
     const endStr = end?.toISOString().split('T')[0];
-    console.log("Fetching data for org:", organizationId, "from", startStr, "to", endStr);
-    const child_data = await itemSalesData(organizationId, startStr, endStr, selectedItemIds);
+    console.log("Fetching data from", startStr, "to", endStr, "with items:", appliedItemIds);
+    const child_data = await itemSalesData(startStr, endStr, appliedItemIds);
     console.log("Fetched data:", child_data?.length || 0);
     setDashboardData(child_data || []);
     setLoading(false);
-  }, [dateRange, selectedItemIds]);
+  }, [dateRange, appliedItemIds]);
 
 
   const formatMoney = ({getValue}) => `$${getValue()?.toLocaleString()}`;

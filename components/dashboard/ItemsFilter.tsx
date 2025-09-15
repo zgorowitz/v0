@@ -19,6 +19,8 @@ interface ItemsFilterProps {
   addItem: (item: Item) => void;
   removeItem: (itemId: string) => void;
   clearAll: () => void;
+  applyFilter: () => void;
+  hasPendingChanges: boolean;
 }
 
 export function ItemsFilter({
@@ -29,7 +31,9 @@ export function ItemsFilter({
   selectedItems,
   addItem,
   removeItem,
-  clearAll
+  clearAll,
+  applyFilter,
+  hasPendingChanges
 }: ItemsFilterProps) {
   const [showSelectedDropdown, setShowSelectedDropdown] = useState(false);
 
@@ -56,6 +60,16 @@ export function ItemsFilter({
                 {selectedItems.length}
               </span>
               <ChevronDown size={14} className={`transition-transform ${showSelectedDropdown ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+
+          {/* Filter Button */}
+          {hasPendingChanges && (
+            <button
+              onClick={applyFilter}
+              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium text-sm"
+            >
+              Filter
             </button>
           )}
         </div>

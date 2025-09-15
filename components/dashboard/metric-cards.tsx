@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 
 interface MetricCardData {
@@ -105,7 +105,27 @@ const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Da
 };
 
 export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, onDateChange }) => {
+  // Debug: Log component renders
+  useEffect(() => {
+    console.log('[MetricCards] Component rendered with:', {
+      dataLength: data?.length,
+      loading,
+      hasOnDateChange: !!onDateChange
+    });
+  });
+
+  // Debug: Log data changes
+  useEffect(() => {
+    console.log('[MetricCards] Data changed:', data);
+  }, [data]);
+
+  // Debug: Log loading changes
+  useEffect(() => {
+    console.log('[MetricCards] Loading state changed:', loading);
+  }, [loading]);
+
   if (loading) {
+    console.log('[MetricCards] Rendering loading state');
     return (
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
@@ -117,6 +137,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, onDateC
     );
   }
 
+  console.log('[MetricCards] Rendering metric cards:', data?.length);
   return (
     <div className="grid grid-cols-4 gap-4 mb-6">
       {data.map((cardData, index) => (

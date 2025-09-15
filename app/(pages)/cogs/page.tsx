@@ -76,8 +76,10 @@ const CogsManagementPage = () => {
     addItem,
     removeItem,
     clearAll,
+    applyFilter: itemsFilter.applyFilter,
+    hasPendingChanges: itemsFilter.hasPendingChanges,
     filteredItems
-  }), [searchTerm, searchResults, isSearching, selectedItems, addItem, removeItem, clearAll, filteredItems]);
+  }), [searchTerm, searchResults, isSearching, selectedItems, addItem, removeItem, clearAll, itemsFilter.applyFilter, itemsFilter.hasPendingChanges, filteredItems]);
 
   useEffect(() => {
     fetchData();
