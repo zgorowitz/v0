@@ -135,21 +135,6 @@ function ScanPage() {
   }, [])
 
   // Scan handlers
-  const handleScannedCode = useCallback(async (code: string) => {
-    if (!code?.trim()) return
-
-    try {
-      if (multipleMode) {
-        handleMultipleScan(code)
-      } else {
-        await handleSingleScan(code)
-      }
-    } catch (err) {
-      console.error('Scan handling error:', err)
-      updateState({ error: 'Error processing scan' })
-    }
-  }, [multipleMode, state.scannedCodes])
-
   const handleMultipleScan = useCallback((code: string) => {
     if (state.scannedCodes.includes(code)) {
       updateState({ error: "Código ya escaneado" })
@@ -165,15 +150,28 @@ function ScanPage() {
       navigator.vibrate([100, 50, 100])
     }
 
-    // Reset just scanned state and restart scanner
+    // Reset just scanned state - scanner continues running
     setTimeout(() => {
       updateState({ justScanned: false })
-      if (state.isScanning) {
-        const scanner = scannerRef.current
-        scanner?.startScanning(videoRef.current!, handleScannedCode)
-      }
     }, 2000)
-  }, [state.scannedCodes, state.isScanning])
+  }, [state.scannedCodes])
+
+  const handleScannedCode = useCallback(async (code: string) => {
+    if (!code?.trim()) return
+
+    try {
+      if (multipleMode) {
+        // In multiple mode, just add to array and keep scanning
+        handleMultipleScan(code)
+      } else {
+        // In single mode, process immediately and navigate
+        await handleSingleScan(code)
+      }
+    } catch (err) {
+      console.error('Scan handling error:', err)
+      updateState({ error: 'Error processing scan' })
+    }
+  }, [multipleMode, handleMultipleScan])
 
   const handleSingleScan = useCallback(async (code: string) => {
     updateState({ isProcessing: true })
@@ -236,7 +234,7 @@ function ScanPage() {
   const renderHeader = () => (
     <div className="px-6 pt-6 pb-2">
       {state.error && (
-        <div className="mb-4 text-sm font-medium text-center text-black-600">
+        <div className="mb-4 text-sm font-medium text-center text-red-600">
           {state.error}
         </div>
       )}
@@ -247,7 +245,7 @@ function ScanPage() {
             {state.mode === 'camera' && (
               <button
                 className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-1 ${
-                  multipleMode ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-300'
+                  multipleMode ? 'bg-black text-white' : 'bg-white text-black border-black'
                 }`}
                 onClick={toggleMultipleMode}
               >
@@ -256,7 +254,7 @@ function ScanPage() {
               </button>
             )}
             
-            <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+            <div className="flex border border-black rounded-lg overflow-hidden">
               <input
                 type="text"
                 value={state.manualInput}
