@@ -136,39 +136,35 @@ function ScanPage() {
   }, [])
 
   // Scan handlers
-  const handleMultipleScan = useCallback((code: string) => {
-    if (state.scannedCodes.includes(code)) {
-      updateState({ error: "Código ya escaneado" })
-      setTimeout(() => updateState({ error: '' }), 2000)
-      return
-    }
-
-    const newCodes = [...state.scannedCodes, code]
-    updateState({ scannedCodes: newCodes, justScanned: true })
-
-    // Add haptic feedback
-    if (navigator.vibrate) {
-      navigator.vibrate([100, 50, 100])
-    }
-
-    // Reset just scanned state and restart scanner
-    setTimeout(() => {
-      updateState({ justScanned: false })
-      if (state.isScanning && scannerRef.current && videoRef.current) {
-        const scanner = scannerRef.current
-        // Restart scanning with the same callback
-        scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
-      }
-    }, 2000)
-  }, [state.scannedCodes, state.isScanning])
-
   const handleScannedCode = useCallback(async (code: string) => {
     if (!code?.trim()) return
 
     try {
       if (multipleMode) {
-        // In multiple mode, just add to array and keep scanning
-        handleMultipleScan(code)
+        // In multiple mode, add to array and keep scanning
+        if (state.scannedCodes.includes(code)) {
+          updateState({ error: "Código ya escaneado" })
+          setTimeout(() => updateState({ error: '' }), 2000)
+          return
+        }
+
+        const newCodes = [...state.scannedCodes, code]
+        updateState({ scannedCodes: newCodes, justScanned: true })
+
+        // Add haptic feedback
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100])
+        }
+
+        // Reset just scanned state and restart scanner
+        setTimeout(() => {
+          updateState({ justScanned: false })
+          if (state.isScanning && scannerRef.current && videoRef.current) {
+            const scanner = scannerRef.current
+            // Restart scanning with the same callback
+            scanner.startScanning(videoRef.current, handleScannedCodeRef.current!)
+          }
+        }, 2000)
       } else {
         // In single mode, process immediately and navigate
         await handleSingleScan(code)
@@ -177,7 +173,7 @@ function ScanPage() {
       console.error('Scan handling error:', err)
       updateState({ error: 'Error processing scan' })
     }
-  }, [multipleMode, handleMultipleScan, handleSingleScan])
+  }, [multipleMode, state.scannedCodes, state.isScanning, handleSingleScan])
 
   // Update the ref whenever handleScannedCode changes
   useEffect(() => {

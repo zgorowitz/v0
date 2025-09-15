@@ -2,7 +2,7 @@
 // Fetch orders for all meli users with daily incremental updates
 
 import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
-import { paginateV2 } from '../lib/scripts/utils.js'
+import { paginateV2 } from '../lib/utils.js'
 
 
 
@@ -26,15 +26,15 @@ function parseOrder(order, meliUserId) {
     
     // JSONB fields (complex objects and arrays)
     mediations: order.mediations || [],
-    order_items: order.order_items || [],
-    payments: order.payments || [],
-    shipping: order.shipping || {},
+    // order_items: order.order_items || [],
+    // payments: order.payments || [],
+    shipping: order.shipping?.id || null,
     tags: order.tags || [],
     internal_tags: order.internal_tags || [],
     static_tags: order.static_tags || [],
     feedback: order.feedback || {},
     context: order.context || {},
-    seller: order.seller || {},
+    // seller: order.seller || {},
     buyer: order.buyer || {},
     taxes: order.taxes || {},
     cancel_detail: order.cancel_detail || null,
@@ -90,6 +90,47 @@ function parseOrderItems(orderItems, orderId, meli_user_id) {
   }))
 }
 
+function parseOrderPayments(paymentsArray, orderId, meli_user_id) {
+  if (!paymentsArray || !Array.isArray(paymentsArray)) return []
+  return paymentsArray.map(payment => ({
+      id: payment.id,
+      order_id: orderId,
+      meli_user_id: meli_user_id,
+      reason: payment.reason,
+      status: payment.status,
+      card_id: payment.card_id,
+      site_id: payment.site_id,
+      payer_id: payment.payer_id,
+      collector_id: payment.collector?.id,
+      coupon_id: payment.coupon_id,
+      issuer_id: payment.issuer_id,
+      currency_id: payment.currency_id,
+      status_code: payment.status_code,
+      date_created: payment.date_created,
+      installments: payment.installments,
+      payment_type: payment.payment_type,
+      taxes_amount: payment.taxes_amount / 100, // Convert from cents
+      coupon_amount: payment.coupon_amount / 100,
+      date_approved: payment.date_approved,
+      shipping_cost: payment.shipping_cost / 100,
+      status_detail: payment.status_detail,
+      activation_uri: payment.activation_uri,
+      operation_type: payment.operation_type,
+      deferred_period: payment.deferred_period,
+      overpaid_amount: payment.overpaid_amount / 100,
+      available_actions: JSON.stringify(payment.available_actions),
+      payment_method_id: payment.payment_method_id,
+      total_paid_amount: payment.total_paid_amount / 100,
+      authorization_code: payment.authorization_code,
+      date_last_modified: payment.date_last_modified,
+      installment_amount: payment.installment_amount ? payment.installment_amount / 100 : null,
+      transaction_amount: payment.transaction_amount / 100,
+      transaction_order_id: payment.transaction_order_id,
+      atm_transfer_reference: JSON.stringify(payment.atm_transfer_reference),
+      transaction_amount_refunded: payment.transaction_amount_refunded / 100
+  }));
+}
+
 function getLast24HoursFilter() {
   const twentyFourHoursAgo = new Date()
   twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 12)
@@ -110,11 +151,12 @@ export async function fetchOrders(options = {}) {
   const { data: meliUsers, error } = await supabase
     .from('meli_tokens')
     .select('meli_user_id, access_token')
-    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
+    .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
   if (error) throw error
   
   let totalOrders = 0
   let totalOrderItems = 0
+  let totalOrderPayments = 0
   
   for (const user of meliUsers) {
     console.log(`User: ${user.meli_user_id}`)
@@ -123,20 +165,25 @@ export async function fetchOrders(options = {}) {
       const apiUrl = `https://api.mercadolibre.com/orders/search?seller=${user.meli_user_id}&order.date_last_updated.from=${fromDate}&order.date_last_updated.to=${toDate}`
       const orders = await paginateV2(apiUrl, user.access_token)
       console.log(`Found ${orders.length} orders for user ${user.meli_user_id}`)
-      
+      // console.log(orders.map(o => o.id).join(', '))
       // Collect all orders and items for batch processing
       const batchOrders = []
       const batchOrderItems = []
+      const batchOrderpayments = []
       const orderIds = []
-      
       for (const order of orders) {
         const orderData = parseOrder(order, user.meli_user_id)
         batchOrders.push(orderData)
         orderIds.push(order.id)
-        
+
         if (order.order_items && order.order_items.length > 0) {
           const orderItems = parseOrderItems(order.order_items, order.id, user.meli_user_id)
           batchOrderItems.push(...orderItems)
+        }
+        
+        if (order.payments && order.payments.length > 0) {
+          const orderpayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
+          batchOrderpayments.push(...orderpayments)
         }
       }
       
@@ -184,7 +231,29 @@ export async function fetchOrders(options = {}) {
           totalOrderItems += batchOrderItems.length
         }
       }
-      
+
+      if (batchOrderpayments.length > 0) {
+        // Delete existing items for all orders in this batch
+        const { error: deleteError } = await supabase
+          .from('ml_order_payments_v2')
+          .delete()
+          .in('order_id', orderIds)
+        
+        if (deleteError) {
+          console.error(`Error deleting existing order payments:`, deleteError.message)
+        }
+        
+        // Insert all new items
+        const { error: itemsError } = await supabase
+          .from('ml_order_payments_v2')
+          .insert(batchOrderpayments)
+        
+        if (itemsError) {
+          console.error(`Error inserting payments:`, itemsError.message)
+        } else {
+          totalOrderPayments += batchOrderpayments.length
+        }
+      }
       console.log(`Completed user ${user.meli_user_id}`)
       
     } catch (error) {
@@ -196,6 +265,7 @@ export async function fetchOrders(options = {}) {
   console.log(`Summary:`)
   console.log(`Total orders processed: ${totalOrders}`)
   console.log(`Total order items processed: ${totalOrderItems}`)
+  console.log(`Total order payments processed: ${totalOrderPayments}`)
   
 }
 
@@ -249,7 +319,7 @@ async function fetchOrdersByChunks(startDate, endDate) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-09-09T00:00:00.000Z', new Date().toISOString())
+  fetchOrdersByChunks('2025-05-01T00:00:00.000Z', new Date().toISOString())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
