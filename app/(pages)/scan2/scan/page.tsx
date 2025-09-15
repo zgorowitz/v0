@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
-import { 
-  Loader2, 
-  X, 
-  Package, 
-  Sparkles, 
-  Camera, 
-  Edit3 
+import React, { useState, useEffect, useRef, useCallback, useReducer } from "react"
+import {
+  Loader2,
+  X,
+  Package,
+  Sparkles,
+  Camera,
+  Edit3
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { LayoutWrapper } from "@/components/layout-wrapper"
@@ -17,6 +17,77 @@ import { useMultipleMode } from "@/hooks/use-multiple-mode"
 import { useRouter } from "next/navigation"
 
 type ScanMode = 'camera' | 'manual'
+
+type ScanState = {
+  scanMode: ScanMode
+  error: string
+  permissionState: string
+  isScanning: boolean
+  isProcessing: boolean
+  scannedCodes: string[]
+  justScanned: boolean
+  manualInput: string
+}
+
+type ScanAction =
+  | { type: 'SET_MODE'; payload: ScanMode }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_PERMISSION'; payload: string }
+  | { type: 'START_SCANNING' }
+  | { type: 'STOP_SCANNING' }
+  | { type: 'START_PROCESSING' }
+  | { type: 'STOP_PROCESSING' }
+  | { type: 'ADD_CODE'; payload: string }
+  | { type: 'CLEAR_CODES' }
+  | { type: 'SET_JUST_SCANNED'; payload: boolean }
+  | { type: 'SET_MANUAL_INPUT'; payload: string }
+  | { type: 'SCAN_ERROR'; payload: string }
+  | { type: 'RESET_ERROR' }
+
+const initialScanState: ScanState = {
+  scanMode: 'camera',
+  error: '',
+  permissionState: 'unknown',
+  isScanning: false,
+  isProcessing: false,
+  scannedCodes: [],
+  justScanned: false,
+  manualInput: ''
+}
+
+const scanReducer = (state: ScanState, action: ScanAction): ScanState => {
+  switch (action.type) {
+    case 'SET_MODE':
+      return { ...state, scanMode: action.payload }
+    case 'SET_ERROR':
+      return { ...state, error: action.payload }
+    case 'SET_PERMISSION':
+      return { ...state, permissionState: action.payload }
+    case 'START_SCANNING':
+      return { ...state, isScanning: true, error: '' }
+    case 'STOP_SCANNING':
+      return { ...state, isScanning: false }
+    case 'START_PROCESSING':
+      return { ...state, isProcessing: true, isScanning: false }
+    case 'STOP_PROCESSING':
+      return { ...state, isProcessing: false }
+    case 'ADD_CODE':
+      const newCodes = [...new Set([...state.scannedCodes, action.payload])]
+      return { ...state, scannedCodes: newCodes, justScanned: true }
+    case 'CLEAR_CODES':
+      return { ...state, scannedCodes: [] }
+    case 'SET_JUST_SCANNED':
+      return { ...state, justScanned: action.payload }
+    case 'SET_MANUAL_INPUT':
+      return { ...state, manualInput: action.payload }
+    case 'SCAN_ERROR':
+      return { ...state, error: action.payload, isScanning: false }
+    case 'RESET_ERROR':
+      return { ...state, error: '' }
+    default:
+      return state
+  }
+}
 
 const useCameraManager = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -45,33 +116,32 @@ const useCameraManager = () => {
 
 function ScanPage() {
   const router = useRouter()
-  
-  // Core state
-  const [scanMode, setScanMode] = useState<ScanMode>('camera')
-  const [error, setError] = useState("")
-  const [permissionState, setPermissionState] = useState('unknown')
-  
-  // Scanning state
-  const [isScanning, setIsScanning] = useState(false)
-  const [scannedCodes, setScannedCodes] = useState<string[]>([])
-  const [justScanned, setJustScanned] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  
+
+  // Consolidated state management
+  const [state, dispatch] = useReducer(scanReducer, initialScanState)
+  const {
+    scanMode,
+    error,
+    permissionState,
+    isScanning,
+    isProcessing,
+    scannedCodes,
+    justScanned,
+    manualInput
+  } = state
+
   // Multiple mode state with custom hook
   const { multipleMode, toggleMultipleMode } = useMultipleMode({
-    clearScannedCodes: () => setScannedCodes([]),
+    clearScannedCodes: () => dispatch({ type: 'CLEAR_CODES' }),
     enableVibration: true,
     enableLogging: true
   })
-  
+
   // Ref to always have latest multipleMode value (avoid stale closure)
   const multipleModeRef = useRef(multipleMode)
   useEffect(() => {
     multipleModeRef.current = multipleMode
   }, [multipleMode])
-  
-  // Manual input state
-  const [manualInput, setManualInput] = useState("")
   
   // Custom hooks
   const { videoRef, cameraManager, scanner } = useCameraManager()
@@ -79,11 +149,11 @@ function ScanPage() {
   // Set up permission change callback when cameraManager is ready
   useEffect(() => {
     if (cameraManager) {
-      cameraManager.setPermissionChangeCallback((newState) => {
-        setPermissionState(newState)
+      cameraManager.setPermissionChangeCallback((newState: string) => {
+        dispatch({ type: 'SET_PERMISSION', payload: newState })
         if (newState === 'granted' && scanMode === 'camera') {
           setTimeout(() => {
-            setError("")
+            dispatch({ type: 'RESET_ERROR' })
             startCamera()
           }, 100)
         }
@@ -108,23 +178,21 @@ function ScanPage() {
     }
 
     try {
-      setError("")
-      setIsScanning(true)
+      dispatch({ type: 'START_SCANNING' })
       await cameraManager.startCamera(videoRef.current)
-      setPermissionState(cameraManager.getPermissionState())
+      dispatch({ type: 'SET_PERMISSION', payload: cameraManager.getPermissionState() })
       await startBarcodeDetection()
     } catch (err: any) {
-      setError(err.message || "Failed to start camera")
+      dispatch({ type: 'SCAN_ERROR', payload: err.message || "Failed to start camera" })
       console.error("Camera access error:", err)
-      setIsScanning(false)
-      setPermissionState(cameraManager.getPermissionState())
+      dispatch({ type: 'SET_PERMISSION', payload: cameraManager.getPermissionState() })
     }
   }, [cameraManager, scanner])
 
   const stopCamera = useCallback(() => {
     scanner?.stopScanning()
     cameraManager?.stopCamera()
-    setIsScanning(false)
+    dispatch({ type: 'STOP_SCANNING' })
   }, [cameraManager, scanner])
 
   const startBarcodeDetection = useCallback(async () => {
@@ -134,31 +202,26 @@ function ScanPage() {
       await scanner.startScanning(videoRef.current, handleScannedCode)
     } catch (err) {
       console.error("Barcode detection error:", err)
-      setError("Scanner initialization failed")
+      dispatch({ type: 'SET_ERROR', payload: "Scanner initialization failed" })
     }
   }, [scanner])
 
   const handleMultipleScan = useCallback((code: string) => {
     console.log('handleMultipleScan called:', code, '| current codes:', scannedCodes)
-    
+
     if (scannedCodes.includes(code)) {
       console.log('Duplicate code detected')
-      setError("Código ya escaneado")
-      setTimeout(() => setError(""), 2000)
+      dispatch({ type: 'SET_ERROR', payload: "Código ya escaneado" })
+      setTimeout(() => dispatch({ type: 'RESET_ERROR' }), 2000)
       return
     }
 
     console.log('Adding code to array')
-    setScannedCodes(prev => {
-      const newCodes = [...new Set([...prev, code])]
-      console.log('Updated scannedCodes:', newCodes)
-      return newCodes
-    })
-    setJustScanned(true)
-    
+    dispatch({ type: 'ADD_CODE', payload: code })
+
     setTimeout(() => {
       console.log('Attempting to restart scanner...', { isScanning, multipleMode })
-      setJustScanned(false)
+      dispatch({ type: 'SET_JUST_SCANNED', payload: false })
       if (isScanning) {
         startBarcodeDetection()
       }
@@ -166,19 +229,18 @@ function ScanPage() {
   }, [scannedCodes, isScanning, startBarcodeDetection, multipleMode])
 
   const handleSingleScan = useCallback(async (code: string) => {
-    setIsProcessing(true)
-    setIsScanning(false)
+    dispatch({ type: 'START_PROCESSING' })
     scanner?.stopScanning()
 
     try {
       // Navigate to results page with the scanned code
       router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
     } catch (err: any) {
-      setError(err.message || "Error al procesar el envío")
-      setIsProcessing(false)
-      
+      dispatch({ type: 'SET_ERROR', payload: err.message || "Error al procesar el envío" })
+      dispatch({ type: 'STOP_PROCESSING' })
+
       setTimeout(() => {
-        setError("")
+        dispatch({ type: 'RESET_ERROR' })
         if (scanMode === 'camera') {
           startBarcodeDetection()
         }
@@ -191,13 +253,13 @@ function ScanPage() {
     if (!trimmedInput) return
 
     handleSingleScan(trimmedInput)
-    setManualInput("")
+    dispatch({ type: 'SET_MANUAL_INPUT', payload: "" })
   }, [manualInput, handleSingleScan])
 
   const handleProcessMultiple = useCallback(async () => {
     if (scannedCodes.length === 0) return
 
-    setIsProcessing(true)
+    dispatch({ type: 'START_PROCESSING' })
     stopCamera()
 
     try {
@@ -205,8 +267,8 @@ function ScanPage() {
       const codesParam = encodeURIComponent(scannedCodes.join(','))
       router.push(`/scan2/results?codes=${codesParam}`)
     } catch (err: any) {
-      setError(err.message || "Error al procesar los envíos")
-      setIsProcessing(false)
+      dispatch({ type: 'SET_ERROR', payload: err.message || "Error al procesar los envíos" })
+      dispatch({ type: 'STOP_PROCESSING' })
     }
   }, [scannedCodes, router])
 
@@ -225,8 +287,8 @@ function ScanPage() {
 
   const toggleScanMode = useCallback(() => {
     const newMode: ScanMode = scanMode === 'camera' ? 'manual' : 'camera'
-    setScanMode(newMode)
-    
+    dispatch({ type: 'SET_MODE', payload: newMode })
+
     if (newMode === 'manual') {
       stopCamera()
     } else {
@@ -261,7 +323,7 @@ function ScanPage() {
         <input
           type="text"
           value={manualInput}
-          onChange={(e) => setManualInput(e.target.value)}
+          onChange={(e) => dispatch({ type: 'SET_MANUAL_INPUT', payload: e.target.value })}
           onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
           placeholder="Código..."
           className="px-2 py-1.5 text-sm outline-none w-24"
