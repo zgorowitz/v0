@@ -157,7 +157,6 @@ async function fetchAllItemIdsForUser(meliUserId, accessToken) {
 // Main function
 export async function fetchAllItems() {
   const supabase = createClient()
-  const BATCH_SIZE = 30 // MercadoLibre's multiget limit
   
   // Get all meli users
   const { data: meliUsers, error } = await supabase
@@ -177,21 +176,18 @@ export async function fetchAllItems() {
       
       if (itemIds.length === 0) continue
       
-      // Process items in batches
-      for (let i = 0; i < itemIds.length; i += BATCH_SIZE) {
-        const batch = itemIds.slice(i, i + BATCH_SIZE)
-        const itemsQuery = batch.join('&ids=')
-        // Fetch multiple items at once
-        const itemsDetail = await apiRequest(
-          `https://api.mercadolibre.com/items?ids=${itemsQuery}&include_attributes=all`,
-          user.access_token
-        )
-        
-        // Process each item in the batch
-        for (const response of itemsDetail) {
-          if (response.code !== 200 || !response.body?.id) continue
-          
-          const itemDetail = response.body
+      // Process items individually since include_attributes=all doesn't work with batch API
+      for (let i = 0; i < itemIds.length; i++) {
+        const itemId = itemIds[i]
+
+        try {
+          // Fetch individual item with all attributes
+          const itemDetail = await apiRequest(
+            `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
+            user.access_token
+          )
+
+          if (!itemDetail?.id) continue
           const itemData = parseItem(itemDetail, user.meli_user_id)
           
           const { error: itemError } = await supabase.from('meli_items').upsert(itemData)
@@ -246,10 +242,13 @@ export async function fetchAllItems() {
               totalVariations += variationsToStore.length
             }
           }
+
+          // Rate limiting between items
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } catch (error) {
+          console.error(`Error processing item ${itemId}:`, error)
+          continue
         }
-        
-        // Rate limiting between batches
-        await new Promise(resolve => setTimeout(resolve, 300))
       }
       
       console.log(`User ${user.meli_user_id} - Items processed: ${totalItems}`);

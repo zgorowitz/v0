@@ -1,10 +1,7 @@
 // scripts/fetch_shipments.mjs
 // Fetch shipment status for meli orders
 
-import { createClient } from '../lib/supabase/script-client.js'
-import dotenv from 'dotenv'
-
-dotenv.config()
+import { createClient, getMeliUsers } from '../lib/supabase/script-client.js'
 
 // API request with auth and x-format-new header
 async function apiRequest(url, accessToken) {
@@ -18,7 +15,7 @@ async function apiRequest(url, accessToken) {
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status} ${response.statusText}`)
   }
-  
+
   return response.json()
 }
 
@@ -67,7 +64,7 @@ function parseShipment(shipment, meliUserId) {
 // Get shipment IDs with meli_user_id that need to be fetched
 async function getShipmentsToFetch(supabase) {
   const sixHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-  
+
   // Get shipment IDs with meli_user_id from meli_orders where fulfilled = false and updated in last 6 hours
   const { data: orderShipments, error: orderError } = await supabase
     .from('meli_orders')
@@ -75,51 +72,29 @@ async function getShipmentsToFetch(supabase) {
     .eq('fulfilled', false)
     .gte('date_last_updated', sixHoursAgo)
     .not('shipping_id', 'is', null)
-  
+
   if (orderError) throw orderError
-  
-  // Get shipment IDs from meli_shipment_status where status not in [Closed, cancelled]
-  const { data: statusShipments, error: statusError } = await supabase
-    .from('meli_shipment_status')
-    .select('id, meli_user_id')
-    .not('status', 'in', '(Closed,cancelled)')
-  
-  if (statusError && statusError.code !== 'PGRST116') { // PGRST116 = table doesn't exist
-    throw statusError
-  }
-  
-  // Combine shipments with meli_user_id information
+
+  // Convert to Map for shipment ID -> meli_user_id mapping
   const shipments = new Map()
-  
-  // Add from orders (these have definitive meli_user_id)
+
   orderShipments?.forEach(row => {
     if (row.shipping_id) {
       shipments.set(row.shipping_id, row.meli_user_id)
     }
   })
-  
-  // Add from status table (preserve existing meli_user_id if available)
-  statusShipments?.forEach(row => {
-    if (row.id && !shipments.has(row.id)) {
-      shipments.set(row.id, row.meli_user_id)
-    }
-  })
-  
+
   return shipments
 }
 
 // Main function
-export async function fetchShipments(options = {}) {
-  
+export async function fetchShipments() {
+
   const supabase = createClient()
   const BATCH_SIZE = 50 // Batch size for API calls
-  
+
   // Get all meli users with their tokens
-  const { data: meliUsers, error } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-  
-  if (error) throw error
+  const meliUsers = await getMeliUsers()
   
   // Get shipments that need to be fetched with their meli_user_id
   const shipmentsMap = await getShipmentsToFetch(supabase)
@@ -205,7 +180,7 @@ export async function fetchShipments(options = {}) {
       }
       
       // Rate limiting between batches
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
   }
   
