@@ -27,6 +27,8 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
+          MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
         run: node backend/scripts/fetch_order.mjs
         
       - name: Log completion

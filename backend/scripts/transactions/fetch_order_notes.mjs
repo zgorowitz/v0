@@ -1,7 +1,7 @@
 // scripts/fetch_order_notes.mjs
 // Fetch order notes for meli orders
 
-import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
+import { createClient, refreshAllTokens, getMeliUsers } from '../../lib/supabase/script-client.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -93,11 +93,7 @@ export async function fetchOrderNotes(options = {}) {
   }
   
   // Get all meli users with their tokens
-  const { data: meliUsers, error } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-  
-  if (error) throw error
+  const meliUsers = await getMeliUsers()
   
   // Get orders that need notes to be fetched
   const ordersMap = await getOrdersToFetch(supabase)

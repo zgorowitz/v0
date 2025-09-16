@@ -1,13 +1,5 @@
-import { createClient } from '../lib/supabase/script-client.js'
-import { apiRequest } from '../lib/scripts/utils.js'
-
-async function getTokens() {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-  return data || []
-}
+import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
+import { apiRequest } from '../../lib/scripts/utils.js'
 
 async function getItemsForUser(meliUserId) {
   const supabase = createClient()
@@ -51,7 +43,7 @@ async function fetchItemVisits(options = {}) {
   const { days = 7 } = options
 
   const supabase = createClient()
-  const tokens = await getTokens()
+  const tokens = await getMeliUsers()
   const dailyRanges = generateDailyRanges(days)
 
   console.log(`Fetching item visits data for ${days} days (${dailyRanges.length} separate API calls)`)

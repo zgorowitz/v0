@@ -1,7 +1,7 @@
 // scripts/fetch_shipments.mjs
 // Fetch shipment status for meli orders
 
-import { createClient, getMeliUsers } from '../lib/supabase/script-client.js'
+import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
 
 // API request with auth and x-format-new header
 async function apiRequest(url, accessToken) {

@@ -1,17 +1,10 @@
 // scripts/test_single_order.mjs
 // Test script to process a single order and show full API response + formatted data
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
-
-function createClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )
-}
 
 async function apiRequest(url, accessToken) {
   const response = await fetch(url, {
@@ -135,11 +128,7 @@ async function testSingleOrder(orderId = '2000012504382820') {
   console.log(`${'='.repeat(80)}`)
   
   // Get all meli users to find the right one
-  const { data: meliUsers, error } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-  
-  if (error) throw error
+  const meliUsers = await getMeliUsers()
   
   let foundOrder = null
   let orderOwner = null

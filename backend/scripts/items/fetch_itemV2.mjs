@@ -1,14 +1,5 @@
-import { createClient } from '../lib/supabase/script-client.js'
-import { apiRequest, paginate } from '../lib/scripts/utils.js'
-
-async function getTokens() {
-  const supabase = createClient()
-  const { data } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
-  return data || []
-}
+import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
+import { apiRequest, paginate } from '../../lib/scripts/utils.js'
 
 function parseItem(item, meliUserId) {
   return {
@@ -80,7 +71,7 @@ function parseItem(item, meliUserId) {
 
 async function fetchItems() {
   const supabase = createClient()
-  const tokens = await getTokens()
+  const tokens = await getMeliUsers()
   for (const { meli_user_id, access_token } of tokens) {
     const itemIds = await paginate(`https://api.mercadolibre.com/users/${meli_user_id}/items/search`, access_token)
     console.log(`Fetching items for user ${meli_user_id}, total items: ${itemIds.length}`)

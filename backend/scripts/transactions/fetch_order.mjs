@@ -1,7 +1,7 @@
 // scripts/fetch_order.mjs
 // Fetch orders for all meli users with daily incremental updates
 
-import { createClient, refreshAllTokens } from '../lib/supabase/script-client.js'
+import { createClient, refreshAllTokens, getMeliUsers } from '../../lib/supabase/script-client.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -103,11 +103,7 @@ export async function fetchOrders(options = {}) {
     }
   }
   
-  const { data: meliUsers, error } = await supabase
-    .from('meli_tokens')
-    .select('meli_user_id, access_token')
-  
-  if (error) throw error
+  const meliUsers = await getMeliUsers()
   
   let totalOrders = 0
   let totalOrderItems = 0
