@@ -1,0 +1,35 @@
+name: Fetch MercadoLibre Items
+
+on:
+  schedule:
+    # Run daily at 8 AM UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  fetch-items:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch items
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
+          MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+        run: node backend/scripts/items/fetch_item.mjs
+
+      - name: Log completion
+        run: echo "Items fetch completed at $(date)"
