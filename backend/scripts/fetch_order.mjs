@@ -222,11 +222,6 @@ export async function fetchOrders(options = {}) {
   console.log(`Date filter: ${fullSync ? 'Full sync (no filter)' : `Since ${fromDate}`}`)
 }
 
-export async function fetchAllOrders() {
-  console.log('Starting FULL orders sync (all orders)...')
-  return fetchOrders({ fullSync: true })
-}
-
 export async function fetchDailyOrders() {
   console.log('Starting DAILY orders sync (last 24 hours)...')
   return fetchOrders({ fromDate: getLast24HoursFilter() })
