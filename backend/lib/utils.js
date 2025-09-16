@@ -52,10 +52,10 @@ export async function paginateV2(baseUrl, accessToken, options = {}) {
   const results = []
   let offset = 0
   let hasMore = true
-  
+
   while (hasMore) {
     const url = `${baseUrl}&offset=${offset}&limit=${limit}`
-    const response = await apiRequest(url, accessToken)
+    const response = await apiRequestV2(url, accessToken)
     if (!response.results || response.results.length === 0) {
       hasMore = false
       break
@@ -80,4 +80,18 @@ export async function paginateV2(baseUrl, accessToken, options = {}) {
     await new Promise(resolve => setTimeout(resolve, 50))
   }
   return results
+}
+
+export async function apiRequestV2(url, accessToken) {
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'api-version': '2'
+    }
+  })
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+  }
+  return response.json()
 }

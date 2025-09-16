@@ -19,7 +19,8 @@ const MERCADO_LIBRE_CLIENT_SECRET = process.env.MERCADO_LIBRE_CLIENT_SECRET
  * Refresh MercadoLibre access token using refresh token
  * @param {string} refreshToken - The refresh token
  * @returns {Promise<{access_token: string, refresh_token: string, expires_in: number}>}
- */
+*/
+
 async function refreshMeliToken(refreshToken) {
   const response = await fetch('https://api.mercadolibre.com/oauth/token', {
     method: 'POST',
@@ -150,4 +151,20 @@ export async function checkTokensExpiry(hoursThreshold = 24) {
   }
   
   return expiringTokens || []
+}
+
+/**
+ * Get all MercadoLibre users with valid tokens
+ * @returns {Promise<Array>} Array of meli users with access tokens
+ */
+export async function getMeliUsers() {
+  const supabase = createClient()
+
+  const { data: meliUsers, error } = await supabase
+    .from('meli_tokens')
+    .select('meli_user_id, access_token')
+
+  if (error) throw error
+
+  return meliUsers || []
 }

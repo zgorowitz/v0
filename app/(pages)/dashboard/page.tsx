@@ -19,10 +19,12 @@ interface DashboardRow {
   item_orders: number;
   item_units: number;
   item_sales: number;
-  item_profit: number;
+  gross_profit: number;
   item_discount: number;
   item_fee: number;
   item_cogs: number;
+  net_profit: number;
+  ad_cost: number;
   
   title: string;
   available_quantity: number;
@@ -93,7 +95,9 @@ const DashboardPage = () => {
     // { accessorKey: 'item_orders', header: 'Orders' },
     { accessorKey: 'item_units', header: 'Units' },
     { accessorKey: 'item_sales', header: 'Sales', cell: formatMoney },
-    { accessorKey: 'item_profit', header: 'Profit', cell: formatMoney },
+    { accessorKey: 'gross_profit', header: 'Gross Profit', cell: formatMoney },
+    { accessorKey: 'net_profit', header: 'Net Profit', cell: formatMoney },
+    { accessorKey: 'ad_cost', header: 'Ads', cell: formatMoney },
     { accessorKey: 'item_fee', header: 'Fee', cell: formatMoney },
     { accessorKey: 'item_discount', header: 'Discount', cell: formatMoney },
     { accessorKey: 'item_cogs', header: 'COGS', cell: formatMoney },

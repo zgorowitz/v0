@@ -137,21 +137,150 @@ function getLast24HoursFilter() {
   return twentyFourHoursAgo.toISOString()
 }
 
+// export async function fetchOrders(options = {}) {
+//   const { 
+//     fromDate = getLast24HoursFilter(),
+//     toDate = new Date().toISOString(),
+//     // refreshTokens = true
+//   } = options
+  
+//   const supabase = createClient()
+  
+//   // Refresh tokens before fetching orders
+  
+//   const { data: meliUsers, error } = await supabase
+//     .from('meli_tokens')
+//     .select('meli_user_id, access_token')
+//     // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
+//   if (error) throw error
+  
+//   let totalOrders = 0
+//   let totalOrderItems = 0
+//   let totalOrderPayments = 0
+  
+//   for (const user of meliUsers) {
+//     console.log(`User: ${user.meli_user_id}`)
+    
+//     try {
+//       const apiUrl = `https://api.mercadolibre.com/orders/search?seller=${user.meli_user_id}&order.date_last_updated.from=${fromDate}&order.date_last_updated.to=${toDate}`
+//       const orders = await paginateV2(apiUrl, user.access_token)
+//       console.log(`Found ${orders.length} orders for user ${user.meli_user_id}`)
+//       // console.log(orders.map(o => o.id).join(', '))
+//       // Collect all orders and items for batch processing
+//       const batchOrders = []
+//       const batchOrderItems = []
+//       const batchOrderpayments = []
+//       const orderIds = []
+//       for (const order of orders) {
+//         const orderData = parseOrder(order, user.meli_user_id)
+//         batchOrders.push(orderData)
+//         orderIds.push(order.id)
+
+//         if (order.order_items && order.order_items.length > 0) {
+//           const orderItems = parseOrderItems(order.order_items, order.id, user.meli_user_id)
+//           batchOrderItems.push(...orderItems)
+//         }
+        
+//         if (order.payments && order.payments.length > 0) {
+//           const orderpayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
+//           batchOrderpayments.push(...orderpayments)
+//         }
+//       }
+      
+//       // Batch upsert all orders
+//       if (batchOrders.length > 0) {
+//         // Dedupe keeping latest date
+//         const deduped = new Map()
+//         batchOrders.forEach(o => {
+//           if (!deduped.has(o.id) || new Date(o.last_updated) > new Date(deduped.get(o.id).last_updated)) {
+//             deduped.set(o.id, o)
+//           }
+//         })
+        
+//         const { error: ordersError } = await supabase
+//           .from('ml_orders_v2')
+//           .upsert([...deduped.values()], { onConflict: ['id'] })
+        
+//         if (ordersError) {
+//           console.error(`Error batch inserting orders:`, ordersError.message)
+//         } else {
+//           totalOrders += deduped.size
+//         }
+//       }
+      
+//       // Batch handle order items
+//       if (batchOrderItems.length > 0) {
+//         // Delete existing items for all orders in this batch
+//         const { error: deleteError } = await supabase
+//           .from('ml_order_items_v2')
+//           .delete()
+//           .in('order_id', orderIds)
+        
+//         if (deleteError) {
+//           console.error(`Error deleting existing order items:`, deleteError.message)
+//         }
+        
+//         // Insert all new items
+//         const { error: itemsError } = await supabase
+//           .from('ml_order_items_v2')
+//           .insert(batchOrderItems)
+        
+//         if (itemsError) {
+//           console.error(`Error batch inserting order items:`, itemsError.message)
+//         } else {
+//           totalOrderItems += batchOrderItems.length
+//         }
+//       }
+
+//       if (batchOrderpayments.length > 0) {
+//         // Delete existing items for all orders in this batch
+//         const { error: deleteError } = await supabase
+//           .from('ml_order_payments_v2')
+//           .delete()
+//           .in('order_id', orderIds)
+        
+//         if (deleteError) {
+//           console.error(`Error deleting existing order payments:`, deleteError.message)
+//         }
+        
+//         // Insert all new items
+//         const { error: itemsError } = await supabase
+//           .from('ml_order_payments_v2')
+//           .insert(batchOrderpayments)
+        
+//         if (itemsError) {
+//           console.error(`Error inserting payments:`, itemsError.message)
+//         } else {
+//           totalOrderPayments += batchOrderpayments.length
+//         }
+//       }
+//       console.log(`Completed user ${user.meli_user_id}`)
+      
+//     } catch (error) {
+//       console.error(`Error processing user ${user.meli_user_id}:`, error.message)
+//       continue
+//     }
+//   }
+  
+//   console.log(`Summary:`)
+//   console.log(`Total orders processed: ${totalOrders}`)
+//   console.log(`Total order items processed: ${totalOrderItems}`)
+//   console.log(`Total order payments processed: ${totalOrderPayments}`)
+  
+// }
+
 export async function fetchOrders(options = {}) {
   const { 
     fromDate = getLast24HoursFilter(),
     toDate = new Date().toISOString(),
-    // refreshTokens = true
   } = options
   
   const supabase = createClient()
   
-  // Refresh tokens before fetching orders
-  
   const { data: meliUsers, error } = await supabase
     .from('meli_tokens')
     .select('meli_user_id, access_token')
-    // .eq('organization_id', '629103a0-db2d-47d2-96dc-8071ca0027f0')
+  
   if (error) throw error
   
   let totalOrders = 0
@@ -165,13 +294,26 @@ export async function fetchOrders(options = {}) {
       const apiUrl = `https://api.mercadolibre.com/orders/search?seller=${user.meli_user_id}&order.date_last_updated.from=${fromDate}&order.date_last_updated.to=${toDate}`
       const orders = await paginateV2(apiUrl, user.access_token)
       console.log(`Found ${orders.length} orders for user ${user.meli_user_id}`)
-      // console.log(orders.map(o => o.id).join(', '))
-      // Collect all orders and items for batch processing
+      
+      // FIXED: Deduplicate orders FIRST, before processing items
+      const orderMap = new Map()
+      
+      // First pass: deduplicate orders keeping the latest version
+      for (const order of orders) {
+        if (!orderMap.has(order.id) || 
+            new Date(order.last_updated) > new Date(orderMap.get(order.id).last_updated)) {
+          orderMap.set(order.id, order)
+        }
+      }
+      
+      // Now process only the deduplicated orders
       const batchOrders = []
       const batchOrderItems = []
-      const batchOrderpayments = []
+      const batchOrderPayments = []
       const orderIds = []
-      for (const order of orders) {
+      
+      // Process only unique orders
+      for (const order of orderMap.values()) {
         const orderData = parseOrder(order, user.meli_user_id)
         batchOrders.push(orderData)
         orderIds.push(order.id)
@@ -182,29 +324,21 @@ export async function fetchOrders(options = {}) {
         }
         
         if (order.payments && order.payments.length > 0) {
-          const orderpayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
-          batchOrderpayments.push(...orderpayments)
+          const orderPayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
+          batchOrderPayments.push(...orderPayments)
         }
       }
       
       // Batch upsert all orders
       if (batchOrders.length > 0) {
-        // Dedupe keeping latest date
-        const deduped = new Map()
-        batchOrders.forEach(o => {
-          if (!deduped.has(o.id) || new Date(o.last_updated) > new Date(deduped.get(o.id).last_updated)) {
-            deduped.set(o.id, o)
-          }
-        })
-        
         const { error: ordersError } = await supabase
           .from('ml_orders_v2')
-          .upsert([...deduped.values()], { onConflict: ['id'] })
+          .upsert(batchOrders, { onConflict: ['id'] })
         
         if (ordersError) {
           console.error(`Error batch inserting orders:`, ordersError.message)
         } else {
-          totalOrders += deduped.size
+          totalOrders += batchOrders.length
         }
       }
       
@@ -232,8 +366,8 @@ export async function fetchOrders(options = {}) {
         }
       }
 
-      if (batchOrderpayments.length > 0) {
-        // Delete existing items for all orders in this batch
+      if (batchOrderPayments.length > 0) {
+        // Delete existing payments for all orders in this batch
         const { error: deleteError } = await supabase
           .from('ml_order_payments_v2')
           .delete()
@@ -243,17 +377,18 @@ export async function fetchOrders(options = {}) {
           console.error(`Error deleting existing order payments:`, deleteError.message)
         }
         
-        // Insert all new items
-        const { error: itemsError } = await supabase
+        // Insert all new payments
+        const { error: paymentsError } = await supabase
           .from('ml_order_payments_v2')
-          .insert(batchOrderpayments)
+          .insert(batchOrderPayments)
         
-        if (itemsError) {
-          console.error(`Error inserting payments:`, itemsError.message)
+        if (paymentsError) {
+          console.error(`Error inserting payments:`, paymentsError.message)
         } else {
-          totalOrderPayments += batchOrderpayments.length
+          totalOrderPayments += batchOrderPayments.length
         }
       }
+      
       console.log(`Completed user ${user.meli_user_id}`)
       
     } catch (error) {
@@ -266,7 +401,6 @@ export async function fetchOrders(options = {}) {
   console.log(`Total orders processed: ${totalOrders}`)
   console.log(`Total order items processed: ${totalOrderItems}`)
   console.log(`Total order payments processed: ${totalOrderPayments}`)
-  
 }
 
 export async function fetchDailyOrders() {
@@ -319,7 +453,7 @@ async function fetchOrdersByChunks(startDate, endDate) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-05-01T00:00:00.000Z', new Date().toISOString())
+  fetchOrdersByChunks('2025-09-15T00:00:00.000Z', new Date().toISOString())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
