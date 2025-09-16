@@ -54,15 +54,15 @@ function parseOrderNotes(notesData, orderId, meliUserId) {
 }
 
 // Get order IDs that need notes to be fetched
-async function getOrdersToFetch(supabase) {
-  const twentyFourHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
-  
-  // Get order IDs from meli_orders where fulfilled = false and updated in last 24 hours
+async function getOrdersToFetch(supabase, hoursAgo = 6) {
+  const timeAgo = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
+
+  // Get order IDs from meli_orders where fulfilled = false and updated in last N hours
   const { data: orders, error } = await supabase
     .from('meli_orders')
     .select('id, meli_user_id')
     .eq('fulfilled', false)
-    .gte('date_last_updated', twentyFourHoursAgo)
+    .gte('date_last_updated', timeAgo)
   
   if (error) throw error
   
@@ -77,7 +77,7 @@ async function getOrdersToFetch(supabase) {
 
 // Main function
 export async function fetchOrderNotes(options = {}) {
-  const { refreshTokens = true } = options
+  const { refreshTokens = true, hoursAgo = 6 } = options
   
   const supabase = createClient()
   const BATCH_SIZE = 20 // Batch size for API calls
@@ -96,7 +96,7 @@ export async function fetchOrderNotes(options = {}) {
   const meliUsers = await getMeliUsers()
   
   // Get orders that need notes to be fetched
-  const ordersMap = await getOrdersToFetch(supabase)
+  const ordersMap = await getOrdersToFetch(supabase, hoursAgo)
   
   if (ordersMap.size === 0) {
     console.log('No orders to fetch notes for')
@@ -195,7 +195,8 @@ export async function fetchOrderNotes(options = {}) {
 
 // Standalone runner
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrderNotes()
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 6
+  fetchOrderNotes({ hoursAgo })
     .then(() => {
       console.log('Order notes fetch completed successfully')
       process.exit(0)

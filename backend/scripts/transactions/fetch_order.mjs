@@ -79,15 +79,16 @@ function parseOrderItems(orderId, orderItems) {
   }))
 }
 
-function getLast24HoursFilter() {
-  const twentyFourHoursAgo = new Date()
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 6)
-  return twentyFourHoursAgo.toISOString()
+function getTimeFilter() {
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 6
+  const timeAgo = new Date()
+  timeAgo.setHours(timeAgo.getHours() - hoursAgo)
+  return timeAgo.toISOString()
 }
 
 export async function fetchOrders(options = {}) {
-  const { 
-    fromDate = getLast24HoursFilter(),
+  const {
+    fromDate = getTimeFilter(),
     fullSync = false,
     refreshTokens = true
   } = options
@@ -219,8 +220,9 @@ export async function fetchOrders(options = {}) {
 }
 
 export async function fetchDailyOrders() {
-  console.log('Starting DAILY orders sync (last 24 hours)...')
-  return fetchOrders({ fromDate: getLast24HoursFilter() })
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 6
+  console.log(`Starting orders sync (last ${hoursAgo} hours)...`)
+  return fetchOrders({ fromDate: getTimeFilter() })
 }
 
 export async function fetchOrdersFromDate(fromDate, toDate = null) {
