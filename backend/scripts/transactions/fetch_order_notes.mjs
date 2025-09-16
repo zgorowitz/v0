@@ -55,7 +55,7 @@ function parseOrderNotes(notesData, orderId, meliUserId) {
 
 // Get order IDs that need notes to be fetched
 async function getOrdersToFetch(supabase) {
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const twentyFourHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
   
   // Get order IDs from meli_orders where fulfilled = false and updated in last 24 hours
   const { data: orders, error } = await supabase
@@ -184,7 +184,7 @@ export async function fetchOrderNotes(options = {}) {
       }
       
       // Rate limiting between batches
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
   }
   
