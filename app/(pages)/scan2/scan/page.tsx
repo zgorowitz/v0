@@ -291,7 +291,7 @@ function ScanPage() {
             )}
 
             {/* Status Indicators */}
-            {(isScanning || isProcessing || justScanned) && (
+            {(isProcessing || justScanned) && (
               <div className="flex items-center justify-center gap-2 text-sm text-gray-600 py-2">
                 {isProcessing ? (
                   <>
@@ -302,11 +302,6 @@ function ScanPage() {
                   <>
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     <span>Escaneado! Siguiente...</span>
-                  </>
-                ) : isScanning ? (
-                  <>
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                    <span>Escaneando...</span>
                   </>
                 ) : null}
               </div>
@@ -342,6 +337,14 @@ function ScanPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Scanning Status Inside Camera */}
+                {isScanning && (
+                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                    <span className="text-white text-sm">Escaneando...</span>
+                  </div>
+                )}
 
                 {/* Close Button */}
                 <button
