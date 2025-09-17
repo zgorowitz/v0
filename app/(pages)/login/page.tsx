@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
@@ -68,7 +69,7 @@ export default function LoginPage() {
     }
   }, [loading, googleScriptLoaded, handleSignInWithGoogle])
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <LoadingSpinner fullScreen message="Verificando autenticación..." />
 
   return (
     <>

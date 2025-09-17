@@ -2,6 +2,7 @@
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { createClient, getCurrentUserOrganizationId } from '@/lib/supabase/client'
  
@@ -225,6 +226,13 @@ export default function MetricsPage() {
           {/* Totales View */}
           {activeView === 'totales' && (
             <div className="space-y-6">
+              {loading ? (
+                <Card className="bg-white">
+                  <CardContent className="p-12">
+                    <LoadingSpinner message="Cargando métricas..." />
+                  </CardContent>
+                </Card>
+              ) : (
               <Card className="bg-white">
                 <CardContent className="space-y-4 p-6">
                   <div>
@@ -398,6 +406,7 @@ export default function MetricsPage() {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
           )}
 
@@ -405,6 +414,12 @@ export default function MetricsPage() {
           {activeView === 'comparacion' && (
             <Card className="bg-white">
               <CardContent className="p-6">
+                {loading ? (
+                  <div className="py-12">
+                    <LoadingSpinner message="Cargando comparación..." />
+                  </div>
+                ) : (
+                  <>
                 {/* Column Headers */}
                 <div className="flex justify-between items-center p-3 border-b font-medium text-sm text-gray-600">
                   <div className="flex items-center space-x-3">
@@ -447,6 +462,8 @@ export default function MetricsPage() {
                     </div>
                   ))}
                 </div>
+                </>
+                )}
               </CardContent>
             </Card>
           )}

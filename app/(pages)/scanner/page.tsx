@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState, useCallback } from 'react'
@@ -53,7 +54,7 @@ export default function ScannerPage() {
     router.push('/login')
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <LoadingSpinner fullScreen message="Cargando..." />
 
   return (
     <LayoutWrapper>
@@ -70,7 +71,7 @@ export default function ScannerPage() {
                     <CardContent className="p-4">
                       
                       {metricsLoading ? (
-                        <div>Cargando...</div>
+                        <LoadingSpinner size="sm" message="Cargando métricas..." />
                       ) : (
                         <div className="grid grid-cols-3 text-center">
                           <div>

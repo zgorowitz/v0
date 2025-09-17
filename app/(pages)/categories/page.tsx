@@ -243,6 +243,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 import { LayoutWrapper } from '@/components/layout-wrapper'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 
 export default function CategoriesPage() {
@@ -573,16 +574,12 @@ export default function CategoriesPage() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-black">Category Attributes</h2>
                   {attributesLoading && (
-                    <div className="animate-spin w-5 h-5 border-2 border-gray-300 border-t-black rounded-full"></div>
+                    <LoadingSpinner size="sm" message="" className="!gap-0" />
                   )}
                 </div>
                 
                 {attributesLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(3)].map((_, i) => (
-                      <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
-                    ))}
-                  </div>
+                  <LoadingSpinner size="sm" message="Cargando atributos..." />
                 ) : categoryAttributes.length > 0 ? (
                   <div className="space-y-6">
                     {/* Required Attributes */}

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 export default function OnboardingPage() {
   const [step, setStep] = useState('checking') // checking, choose, creating
@@ -65,25 +66,11 @@ export default function OnboardingPage() {
   }
 
   if (step === 'checking') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-black">Verificando autorización...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen message="Verificando autorización..." />
   }
 
   if (step === 'creating') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-black">Creando organización...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen message="Creando organización..." />
   }
 
   return (

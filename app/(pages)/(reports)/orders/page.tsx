@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { AGGridWrapper, AGGridColumnTypes } from '@/components/ui/ag-grid-wrapper';
 
 const OrdersPage = () => {
@@ -465,9 +466,8 @@ const OrdersPage = () => {
             />
 
             {loading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-10 pointer-events-none">
-                <span className="w-10 h-10 mb-3 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
-                <div className="text-lg text-gray-700">Loading...</div>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10 pointer-events-none">
+                <LoadingSpinner size="lg" message="Cargando órdenes..." />
               </div>
             )}
           </div>
