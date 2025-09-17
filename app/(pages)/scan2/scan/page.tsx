@@ -316,7 +316,7 @@ function ScanPage() {
 
         {/* Camera Section - Flexible Height */}
         <div className="flex-1 px-4 pb-4 flex flex-col">
-          <div className="flex-1 max-w-lg w-full mx-auto">
+          <div className="flex-1 max-w-lg w-full mx-auto space-y-3">
             {scanMode === 'camera' && (
               <div className="relative w-full h-full min-h-[400px] max-h-[600px] bg-gray-900 rounded-3xl overflow-hidden">
                 <video
@@ -394,13 +394,9 @@ function ScanPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Bottom Action Section */}
-        {multipleMode && scannedCodes.length > 0 && (
-          <div className="px-4 pb-safe">
-            <div className="max-w-lg mx-auto">
+            {/* Bottom Action Section - Now directly below camera */}
+            {multipleMode && scannedCodes.length > 0 && (
               <button
                 onClick={handleProcessMultiple}
                 disabled={isProcessing}
@@ -415,9 +411,9 @@ function ScanPage() {
                   </>
                 )}
               </button>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Helper Text */}
         {scanMode === 'camera' && isScanning && !multipleMode && !error && (
