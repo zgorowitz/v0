@@ -121,7 +121,7 @@ function printTable(title, data) {
   }
 }
 
-async function testSingleOrder(orderId = '2000012504382820') {
+async function testSingleOrder(orderId = '2000013047409832') {
   const supabase = createClient()
   
   console.log(`🔍 Testing Order ID: ${orderId}`)
@@ -188,13 +188,13 @@ async function testSingleOrder(orderId = '2000012504382820') {
   
   if (orderItems.length > 0) {
     orderItems.forEach((item, index) => {
-      console.log(`\nItem ${index + 1}:`)
-      console.log(`  Item ID: ${item.item_id}`)
-      console.log(`  Original variation_id: ${item.original_variation_id}`)
-      console.log(`  Original user_product_id: ${item.original_user_product_id}`)
-      console.log(`  Final variation_id (used): ${item.variation_id}`)
-      console.log(`  Scenario: ${item.scenario}`)
-      console.log(`  Seller SKU: ${item.seller_sku}`)
+      // console.log(`\nItem ${index + 1}:`)
+      // console.log(`  Item ID: ${item.item_id}`)
+      // console.log(`  Original variation_id: ${item.original_variation_id}`)
+      // console.log(`  Original user_product_id: ${item.original_user_product_id}`)
+      // console.log(`  Final variation_id (used): ${item.variation_id}`)
+      // console.log(`  Scenario: ${item.scenario}`)
+      // console.log(`  Seller SKU: ${item.seller_sku}`)
       
       if (item.variation_attributes && item.variation_attributes.length > 0) {
         console.log(`  Variation Attributes:`)
@@ -207,13 +207,13 @@ async function testSingleOrder(orderId = '2000012504382820') {
     console.log('No order items found')
   }
   
-  // Summary
-  console.log(`\n📊 SUMMARY`)
-  console.log(`${'='.repeat(80)}`)
-  console.log(`Order ID: ${foundOrder.id}`)
-  console.log(`Owner: ${orderOwner.meli_user_id}`)
-  console.log(`Status: ${foundOrder.status}`)
-  console.log(`Total Items: ${orderItems.length}`)
+  // // Summary
+  // console.log(`\n📊 SUMMARY`)
+  // console.log(`${'='.repeat(80)}`)
+  // console.log(`Order ID: ${foundOrder.id}`)
+  // console.log(`Owner: ${orderOwner.meli_user_id}`)
+  // console.log(`Status: ${foundOrder.status}`)
+  // console.log(`Total Items: ${orderItems.length}`)
   
   const scenarioCounts = orderItems.reduce((acc, item) => {
     acc[item.scenario] = (acc[item.scenario] || 0) + 1
@@ -234,7 +234,7 @@ async function testSingleOrder(orderId = '2000012504382820') {
 }
 
 // Allow passing order ID as command line argument
-const orderId = process.argv[2] || '2000012504382820'
+const orderId = process.argv[2] || '2000013047409832'
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   testSingleOrder(orderId)
