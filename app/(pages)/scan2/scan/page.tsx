@@ -1,15 +1,20 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Loader2, X, Package, Camera } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect, useRef, useCallback } from "react"
+import {
+  Loader2,
+  X,
+  Package,
+  Camera,
+  Search
+} from "lucide-react"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { CameraManager } from "@/lib/scan2/camera"
 import { EnhancedBarcodeScanner } from "@/lib/scan2/barcode-scanner"
 import { useMultipleMode } from "@/hooks/use-multiple-mode"
 import { useRouter } from "next/navigation"
 
-type ScanMode = "camera" | "manual"
+type ScanMode = 'camera' | 'manual'
 
 const useCameraManager = () => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -32,7 +37,7 @@ const useCameraManager = () => {
   return {
     videoRef,
     cameraManager,
-    scanner,
+    scanner
   }
 }
 
@@ -40,9 +45,9 @@ function ScanPage() {
   const router = useRouter()
 
   // Core state
-  const [scanMode, setScanMode] = useState<ScanMode>("camera")
+  const [scanMode, setScanMode] = useState<ScanMode>('camera')
   const [error, setError] = useState("")
-  const [permissionState, setPermissionState] = useState("unknown")
+  const [permissionState, setPermissionState] = useState('unknown')
 
   // Scanning state
   const [isScanning, setIsScanning] = useState(false)
@@ -54,7 +59,7 @@ function ScanPage() {
   const { multipleMode, toggleMultipleMode } = useMultipleMode({
     clearScannedCodes: () => setScannedCodes([]),
     enableVibration: true,
-    enableLogging: true,
+    enableLogging: true
   })
 
   // Ref to always have latest multipleMode value (avoid stale closure)
@@ -74,7 +79,7 @@ function ScanPage() {
     if (cameraManager) {
       cameraManager.setPermissionChangeCallback((newState) => {
         setPermissionState(newState)
-        if (newState === "granted" && scanMode === "camera") {
+        if (newState === 'granted' && scanMode === 'camera') {
           setTimeout(() => {
             setError("")
             startCamera()
@@ -86,7 +91,7 @@ function ScanPage() {
 
   // Handle camera start/stop based on mode
   useEffect(() => {
-    if (scanMode === "camera" && cameraManager && scanner) {
+    if (scanMode === 'camera' && cameraManager && scanner) {
       startCamera()
     }
 
@@ -131,59 +136,53 @@ function ScanPage() {
     }
   }, [scanner])
 
-  const handleMultipleScan = useCallback(
-    (code: string) => {
-      console.log("handleMultipleScan called:", code, "| current codes:", scannedCodes)
+  const handleMultipleScan = useCallback((code: string) => {
+    console.log('handleMultipleScan called:', code, '| current codes:', scannedCodes)
 
-      if (scannedCodes.includes(code)) {
-        console.log("Duplicate code detected")
-        setError("Código ya escaneado")
-        setTimeout(() => setError(""), 2000)
-        return
+    if (scannedCodes.includes(code)) {
+      console.log('Duplicate code detected')
+      setError("Código ya escaneado")
+      setTimeout(() => setError(""), 2000)
+      return
+    }
+
+    console.log('Adding code to array')
+    setScannedCodes(prev => {
+      const newCodes = [...new Set([...prev, code])]
+      console.log('Updated scannedCodes:', newCodes)
+      return newCodes
+    })
+    setJustScanned(true)
+
+    setTimeout(() => {
+      console.log('Attempting to restart scanner...', { isScanning, multipleMode })
+      setJustScanned(false)
+      if (isScanning) {
+        startBarcodeDetection()
       }
+    }, 2000)
+  }, [scannedCodes, isScanning, startBarcodeDetection, multipleMode])
 
-      console.log("Adding code to array")
-      setScannedCodes((prev) => {
-        const newCodes = [...new Set([...prev, code])]
-        console.log("Updated scannedCodes:", newCodes)
-        return newCodes
-      })
-      setJustScanned(true)
+  const handleSingleScan = useCallback(async (code: string) => {
+    setIsProcessing(true)
+    setIsScanning(false)
+    scanner?.stopScanning()
+
+    try {
+      // Navigate to results page with the scanned code
+      router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
+    } catch (err: any) {
+      setError(err.message || "Error al procesar el envío")
+      setIsProcessing(false)
 
       setTimeout(() => {
-        console.log("Attempting to restart scanner...", { isScanning, multipleMode })
-        setJustScanned(false)
-        if (isScanning) {
+        setError("")
+        if (scanMode === 'camera') {
           startBarcodeDetection()
         }
-      }, 2000)
-    },
-    [scannedCodes, isScanning, startBarcodeDetection, multipleMode],
-  )
-
-  const handleSingleScan = useCallback(
-    async (code: string) => {
-      setIsProcessing(true)
-      setIsScanning(false)
-      scanner?.stopScanning()
-
-      try {
-        // Navigate to results page with the scanned code
-        router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
-      } catch (err: any) {
-        setError(err.message || "Error al procesar el envío")
-        setIsProcessing(false)
-
-        setTimeout(() => {
-          setError("")
-          if (scanMode === "camera") {
-            startBarcodeDetection()
-          }
-        }, 3000)
-      }
-    },
-    [router, scanner, scanMode],
-  )
+      }, 3000)
+    }
+  }, [router, scanner, scanMode])
 
   const handleManualSubmit = useCallback(() => {
     const trimmedInput = manualInput.trim()
@@ -201,7 +200,7 @@ function ScanPage() {
 
     try {
       // Navigate to results page with multiple codes
-      const codesParam = encodeURIComponent(scannedCodes.join(","))
+      const codesParam = encodeURIComponent(scannedCodes.join(','))
       router.push(`/scan2/results?codes=${codesParam}`)
     } catch (err: any) {
       setError(err.message || "Error al procesar los envíos")
@@ -209,231 +208,225 @@ function ScanPage() {
     }
   }, [scannedCodes, router])
 
-  const handleScannedCode = useCallback(
-    async (code: string) => {
-      const currentMultipleMode = multipleModeRef.current
-      console.log("Code scanned:", code, "| multipleMode:", currentMultipleMode, "| scannedCodes:", scannedCodes.length)
+  const handleScannedCode = useCallback(async (code: string) => {
+    const currentMultipleMode = multipleModeRef.current
+    console.log('Code scanned:', code, '| multipleMode:', currentMultipleMode, '| scannedCodes:', scannedCodes.length)
 
-      if (currentMultipleMode) {
-        console.log("Routing to handleMultipleScan")
-        handleMultipleScan(code)
-      } else {
-        console.log("Routing to handleSingleScan")
-        handleSingleScan(code)
-      }
-    },
-    [scannedCodes, handleMultipleScan, handleSingleScan],
-  )
+    if (currentMultipleMode) {
+      console.log('Routing to handleMultipleScan')
+      handleMultipleScan(code)
+    } else {
+      console.log('Routing to handleSingleScan')
+      handleSingleScan(code)
+    }
+  }, [scannedCodes, handleMultipleScan, handleSingleScan])
 
   const toggleScanMode = useCallback(() => {
-    const newMode: ScanMode = scanMode === "camera" ? "manual" : "camera"
+    const newMode: ScanMode = scanMode === 'camera' ? 'manual' : 'camera'
     setScanMode(newMode)
 
-    if (newMode === "manual") {
+    if (newMode === 'manual') {
       stopCamera()
     } else {
       startCamera()
     }
   }, [scanMode, startCamera, stopCamera])
 
-  const renderHeader = () => (
-    <div className="px-4 pt-6 pb-4">
-      {error && (
-        <div className="mb-4 p-3 bg-gray-100 border border-gray-300 text-gray-800 text-sm text-center">{error}</div>
-      )}
-
-      <div className="flex items-center justify-between gap-3">
-        {!isProcessing && (
-          <>
-            {scanMode === "camera" && (
-              <button
-                className={`px-3 py-2 text-sm flex items-center gap-2 border transition-colors ${
-                  multipleMode
-                    ? "bg-black text-white border-black"
-                    : "bg-white text-black border-gray-400 hover:border-black"
-                }`}
-                onClick={toggleMultipleMode}
-              >
-                <Package className="h-4 w-4" />
-                Múltiple
-              </button>
-            )}
-
-            <div className="flex border border-gray-400 overflow-hidden flex-1 max-w-xs">
-              <input
-                type="text"
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
-                placeholder="Código..."
-                className="px-3 py-2 text-sm outline-none flex-1 bg-white"
-                disabled={isProcessing}
-              />
-              <button
-                onClick={handleManualSubmit}
-                disabled={isProcessing}
-                className="px-4 py-2 bg-black text-white text-sm hover:bg-gray-800 transition-colors"
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderManualInput = () => null
-
-  const renderCamera = () => (
+  return (
     <>
-      {scanMode === "camera" && (
-        <div className="relative w-full h-[65vh] min-h-[350px] max-h-[500px] bg-black overflow-hidden">
-          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+      {/* Clean minimal background */}
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-50 to-white" />
 
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-80 h-48">
-              {/* Corner indicators */}
-              {[
-                { pos: "top-0 left-0", border: "border-t-2 border-l-2" },
-                { pos: "top-0 right-0", border: "border-t-2 border-r-2" },
-                { pos: "bottom-0 left-0", border: "border-b-2 border-l-2" },
-                { pos: "bottom-0 right-0", border: "border-b-2 border-r-2" },
-              ].map((corner, i) => (
-                <div key={i} className={`absolute ${corner.pos} w-8 h-8 ${corner.border} border-gray-300`} />
-              ))}
+      {/* Main Content - Mobile First */}
+      <main className="relative z-10 min-h-screen flex flex-col">
+        {/* Top Section - Controls */}
+        <div className="w-full px-4 pt-safe pb-4">
+          <div className="max-w-lg mx-auto space-y-3">
+            {/* Manual Input Bar */}
+            <div className="flex gap-2 items-center">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={manualInput}
+                  onChange={(e) => setManualInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
+                  placeholder="Ingresar código..."
+                  className="w-full h-12 px-4 pr-10 text-base bg-gray-50 rounded-full outline-none focus:bg-white focus:ring-2 focus:ring-gray-200 transition-all"
+                  disabled={isProcessing}
+                />
+                <button
+                  onClick={handleManualSubmit}
+                  disabled={isProcessing || !manualInput.trim()}
+                  className="absolute right-1 top-1 w-10 h-10 flex items-center justify-center bg-gray-900 text-white rounded-full disabled:opacity-50 transition-opacity"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
 
-              {isScanning && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-full h-0.5 bg-gray-400 animate-pulse" />
-                </div>
+              {/* Multiple Mode Toggle */}
+              {scanMode === 'camera' && !isProcessing && (
+                <button
+                  onClick={toggleMultipleMode}
+                  className={`h-12 px-6 rounded-full font-medium text-sm transition-all flex items-center gap-2 ${
+                    multipleMode
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Package className="h-4 w-4" />
+                  <span className="hidden sm:inline">Múltiple</span>
+                </button>
               )}
             </div>
-          </div>
 
-          <div className="absolute top-4 left-4 right-4 flex justify-center">
-            <div className="bg-black bg-opacity-60 px-3 py-1">
-              <p className="text-white text-sm flex items-center gap-2">
-                {permissionState === "denied" && error ? (
+            {/* Error Message */}
+            {error && (
+              <div className="text-center text-sm text-red-600 py-2 px-4 bg-red-50 rounded-full">
+                {error}
+              </div>
+            )}
+
+            {/* Status Indicators */}
+            {(isScanning || isProcessing || justScanned) && (
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-600 py-2">
+                {isProcessing ? (
                   <>
-                    <Camera className="w-4 h-4" />
-                    Permiso necesario
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Procesando...</span>
                   </>
                 ) : multipleMode && justScanned ? (
                   <>
-                    <span className="w-2 h-2 bg-gray-300 rounded-full animate-pulse" />
-                    Escaneado! Siguiente...
-                  </>
-                ) : isProcessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Procesando...
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span>Escaneado! Siguiente...</span>
                   </>
                 ) : isScanning ? (
                   <>
-                    <span className="w-2 h-2 bg-gray-300 rounded-full animate-pulse" />
-                    Escaneando...
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    <span>Escaneando...</span>
                   </>
                 ) : null}
-              </p>
-            </div>
-          </div>
-
-          <div className="absolute top-4 right-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-black bg-opacity-60 hover:bg-opacity-80 text-white border-0 w-10 h-10 p-0"
-              onClick={stopCamera}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="absolute bottom-4 left-4 right-4 flex justify-center">
-            {multipleMode && scannedCodes.length > 0 ? (
-              <Button
-                onClick={handleProcessMultiple}
-                disabled={isProcessing}
-                className="bg-black hover:bg-gray-800 text-white px-6 py-3 flex items-center gap-2"
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Package className="h-4 w-4" />}
-                Continuar ({scannedCodes.length} Etiquetas)
-              </Button>
-            ) : (
-              <div className="bg-black bg-opacity-60 px-4 py-2">
-                <p className="text-white text-xs text-center">
-                  {multipleMode ? "Escanear múltiple etiquetas" : "Enfoca para auto-detección"}
-                </p>
               </div>
             )}
           </div>
         </div>
-      )}
-    </>
-  )
 
-  const renderFooter = () => {
-    const footerMessage = isScanning ? "Mantén estable para auto-detección" : ""
+        {/* Camera Section - Flexible Height */}
+        <div className="flex-1 px-4 pb-4 flex flex-col">
+          <div className="flex-1 max-w-lg w-full mx-auto">
+            {scanMode === 'camera' && (
+              <div className="relative w-full h-full min-h-[400px] max-h-[600px] bg-gray-900 rounded-3xl overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
 
-    return (
-      <div className="px-4 pb-4 pt-2">
-        <p className="text-xs text-gray-500 text-center">{footerMessage}</p>
-      </div>
-    )
-  }
+                {/* Scanning Frame Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="relative w-72 h-40">
+                    {/* Corner indicators */}
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-3 border-l-3 border-white/60 rounded-tl-xl" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-3 border-r-3 border-white/60 rounded-tr-xl" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-3 border-l-3 border-white/60 rounded-bl-xl" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-3 border-r-3 border-white/60 rounded-br-xl" />
 
-  return (
-    <>
-      <div className="fixed inset-0 bg-gray-50" />
+                    {/* Scanning line animation */}
+                    {isScanning && (
+                      <div className="absolute inset-x-0 top-1/2 h-0.5 bg-white/40 animate-pulse" />
+                    )}
+                  </div>
+                </div>
 
-      <main className="relative z-10 min-h-screen flex flex-col">
-        <div className="flex-1 w-full max-w-md mx-auto">
-          <div className="bg-white min-h-screen">
-            {renderHeader()}
+                {/* Close Button */}
+                <button
+                  onClick={stopCamera}
+                  className="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
 
-            <div className="flex flex-col">
-              {renderManualInput()}
-              {renderCamera()}
-
-              {error && !isScanning && scanMode === "camera" && (
-                <div className="px-4 py-6">
-                  {permissionState === "denied" ? (
-                    <div className="space-y-4">
-                      <div className="bg-gray-100 border border-gray-300 p-4">
-                        <div className="flex items-center gap-2 text-gray-800 mb-2">
-                          <Camera className="w-5 h-5" />
-                          <span className="font-medium text-sm">Permiso de Cámara Requerido</span>
-                        </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          Por favor permite el acceso a la cámara en la configuración de tu navegador para escanear
-                          códigos de barras. Busca el ícono de la cámara en la barra de direcciones o actualiza la
-                          página para intentar de nuevo.
+                {/* Permission Denied State */}
+                {permissionState === 'denied' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm">
+                    <div className="text-center px-6 space-y-4">
+                      <Camera className="h-12 w-12 text-white/70 mx-auto" />
+                      <div className="space-y-2">
+                        <p className="text-white font-medium">Permiso de Cámara Requerido</p>
+                        <p className="text-white/70 text-sm">
+                          Permite el acceso a la cámara para escanear códigos
                         </p>
                       </div>
-                      <Button
+                      <button
                         onClick={startCamera}
-                        className="w-full h-10 bg-gray-800 hover:bg-black text-white font-medium transition-colors text-sm"
+                        className="px-6 py-3 bg-white text-gray-900 rounded-full font-medium text-sm hover:bg-gray-100 transition-colors"
                       >
-                        <Camera className="w-4 h-4 mr-2" />
-                        Solicitar Acceso a Cámara
-                      </Button>
+                        Solicitar Acceso
+                      </button>
                     </div>
-                  ) : (
-                    <Button
-                      onClick={startCamera}
-                      className="w-full h-10 bg-black hover:bg-gray-800 text-white font-medium transition-colors text-sm"
-                    >
-                      Vuelve a Intentar
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-            {renderFooter()}
+            {/* No Camera Error State */}
+            {error && !isScanning && scanMode === 'camera' && permissionState !== 'denied' && (
+              <div className="h-full min-h-[400px] flex items-center justify-center">
+                <div className="text-center space-y-4 px-6">
+                  <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                    <Camera className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-gray-900 font-medium">Error al acceder a la cámara</p>
+                    <p className="text-gray-500 text-sm">{error}</p>
+                  </div>
+                  <button
+                    onClick={startCamera}
+                    className="px-6 py-3 bg-gray-900 text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-colors"
+                  >
+                    Vuelve a Intentar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Bottom Action Section */}
+        {multipleMode && scannedCodes.length > 0 && (
+          <div className="px-4 pb-safe">
+            <div className="max-w-lg mx-auto">
+              <button
+                onClick={handleProcessMultiple}
+                disabled={isProcessing}
+                className="w-full h-14 bg-gray-900 text-white rounded-full font-medium flex items-center justify-center gap-3 hover:bg-gray-800 disabled:opacity-50 transition-all"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <Package className="h-5 w-5" />
+                    <span>Continuar con {scannedCodes.length} etiqueta{scannedCodes.length !== 1 ? 's' : ''}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Helper Text */}
+        {scanMode === 'camera' && isScanning && !multipleMode && !error && (
+          <div className="px-4 pb-safe">
+            <p className="text-center text-xs text-gray-500">
+              Enfoca el código para escanear automáticamente
+            </p>
+          </div>
+        )}
       </main>
     </>
   )
@@ -446,487 +439,3 @@ export default function ScanMainPage() {
     </LayoutWrapper>
   )
 }
-
-
-
-// "use client"
-
-// import React, { useState, useEffect, useRef, useCallback } from "react"
-// import { 
-//   Loader2, 
-//   X, 
-//   Package, 
-//   Sparkles, 
-//   Camera, 
-//   Edit3 
-// } from "lucide-react"
-// import { Button } from "@/components/ui/button"
-// import { LayoutWrapper } from "@/components/layout-wrapper"
-// import { CameraManager } from "@/lib/scan2/camera"
-// import { EnhancedBarcodeScanner } from "@/lib/scan2/barcode-scanner"
-// import { useMultipleMode } from "@/hooks/use-multiple-mode"
-// import { useRouter } from "next/navigation"
-
-// type ScanMode = 'camera' | 'manual'
-
-// const useCameraManager = () => {
-//   const videoRef = useRef<HTMLVideoElement>(null)
-//   const [cameraManager, setCameraManager] = useState<CameraManager | null>(null)
-//   const [scanner, setScanner] = useState<EnhancedBarcodeScanner | null>(null)
-
-//   useEffect(() => {
-//     const cameraManagerInstance = new CameraManager()
-//     const scannerInstance = new EnhancedBarcodeScanner()
-    
-//     setCameraManager(cameraManagerInstance)
-//     setScanner(scannerInstance)
-
-//     return () => {
-//       cameraManagerInstance?.stopCamera()
-//       scannerInstance?.stopScanning()
-//     }
-//   }, [])
-
-//   return {
-//     videoRef,
-//     cameraManager,
-//     scanner
-//   }
-// }
-
-// function ScanPage() {
-//   const router = useRouter()
-  
-//   // Core state
-//   const [scanMode, setScanMode] = useState<ScanMode>('camera')
-//   const [error, setError] = useState("")
-//   const [permissionState, setPermissionState] = useState('unknown')
-  
-//   // Scanning state
-//   const [isScanning, setIsScanning] = useState(false)
-//   const [scannedCodes, setScannedCodes] = useState<string[]>([])
-//   const [justScanned, setJustScanned] = useState(false)
-//   const [isProcessing, setIsProcessing] = useState(false)
-  
-//   // Multiple mode state with custom hook
-//   const { multipleMode, toggleMultipleMode } = useMultipleMode({
-//     clearScannedCodes: () => setScannedCodes([]),
-//     enableVibration: true,
-//     enableLogging: true
-//   })
-  
-//   // Ref to always have latest multipleMode value (avoid stale closure)
-//   const multipleModeRef = useRef(multipleMode)
-//   useEffect(() => {
-//     multipleModeRef.current = multipleMode
-//   }, [multipleMode])
-  
-//   // Manual input state
-//   const [manualInput, setManualInput] = useState("")
-  
-//   // Custom hooks
-//   const { videoRef, cameraManager, scanner } = useCameraManager()
-
-//   // Set up permission change callback when cameraManager is ready
-//   useEffect(() => {
-//     if (cameraManager) {
-//       cameraManager.setPermissionChangeCallback((newState) => {
-//         setPermissionState(newState)
-//         if (newState === 'granted' && scanMode === 'camera') {
-//           setTimeout(() => {
-//             setError("")
-//             startCamera()
-//           }, 100)
-//         }
-//       })
-//     }
-//   }, [cameraManager])
-
-//   // Handle camera start/stop based on mode
-//   useEffect(() => {
-//     if (scanMode === 'camera' && cameraManager && scanner) {
-//       startCamera()
-//     }
-    
-//     return () => {
-//       stopCamera()
-//     }
-//   }, [scanMode, cameraManager, scanner])
-
-//   const startCamera = useCallback(async () => {
-//     if (!cameraManager || !scanner || !videoRef.current) {
-//       return
-//     }
-
-//     try {
-//       setError("")
-//       setIsScanning(true)
-//       await cameraManager.startCamera(videoRef.current)
-//       setPermissionState(cameraManager.getPermissionState())
-//       await startBarcodeDetection()
-//     } catch (err: any) {
-//       setError(err.message || "Failed to start camera")
-//       console.error("Camera access error:", err)
-//       setIsScanning(false)
-//       setPermissionState(cameraManager.getPermissionState())
-//     }
-//   }, [cameraManager, scanner])
-
-//   const stopCamera = useCallback(() => {
-//     scanner?.stopScanning()
-//     cameraManager?.stopCamera()
-//     setIsScanning(false)
-//   }, [cameraManager, scanner])
-
-//   const startBarcodeDetection = useCallback(async () => {
-//     if (!scanner || !videoRef.current) return
-
-//     try {
-//       await scanner.startScanning(videoRef.current, handleScannedCode)
-//     } catch (err) {
-//       console.error("Barcode detection error:", err)
-//       setError("Scanner initialization failed")
-//     }
-//   }, [scanner])
-
-//   const handleMultipleScan = useCallback((code: string) => {
-//     console.log('handleMultipleScan called:', code, '| current codes:', scannedCodes)
-    
-//     if (scannedCodes.includes(code)) {
-//       console.log('Duplicate code detected')
-//       setError("Código ya escaneado")
-//       setTimeout(() => setError(""), 2000)
-//       return
-//     }
-
-//     console.log('Adding code to array')
-//     setScannedCodes(prev => {
-//       const newCodes = [...new Set([...prev, code])]
-//       console.log('Updated scannedCodes:', newCodes)
-//       return newCodes
-//     })
-//     setJustScanned(true)
-    
-//     setTimeout(() => {
-//       console.log('Attempting to restart scanner...', { isScanning, multipleMode })
-//       setJustScanned(false)
-//       if (isScanning) {
-//         startBarcodeDetection()
-//       }
-//     }, 2000)
-//   }, [scannedCodes, isScanning, startBarcodeDetection, multipleMode])
-
-//   const handleSingleScan = useCallback(async (code: string) => {
-//     setIsProcessing(true)
-//     setIsScanning(false)
-//     scanner?.stopScanning()
-
-//     try {
-//       // Navigate to results page with the scanned code
-//       router.push(`/scan2/results?codes=${encodeURIComponent(code)}`)
-//     } catch (err: any) {
-//       setError(err.message || "Error al procesar el envío")
-//       setIsProcessing(false)
-      
-//       setTimeout(() => {
-//         setError("")
-//         if (scanMode === 'camera') {
-//           startBarcodeDetection()
-//         }
-//       }, 3000)
-//     }
-//   }, [router, scanner, scanMode])
-
-//   const handleManualSubmit = useCallback(() => {
-//     const trimmedInput = manualInput.trim()
-//     if (!trimmedInput) return
-
-//     handleSingleScan(trimmedInput)
-//     setManualInput("")
-//   }, [manualInput, handleSingleScan])
-
-//   const handleProcessMultiple = useCallback(async () => {
-//     if (scannedCodes.length === 0) return
-
-//     setIsProcessing(true)
-//     stopCamera()
-
-//     try {
-//       // Navigate to results page with multiple codes
-//       const codesParam = encodeURIComponent(scannedCodes.join(','))
-//       router.push(`/scan2/results?codes=${codesParam}`)
-//     } catch (err: any) {
-//       setError(err.message || "Error al procesar los envíos")
-//       setIsProcessing(false)
-//     }
-//   }, [scannedCodes, router])
-
-//   const handleScannedCode = useCallback(async (code: string) => {
-//     const currentMultipleMode = multipleModeRef.current
-//     console.log('Code scanned:', code, '| multipleMode:', currentMultipleMode, '| scannedCodes:', scannedCodes.length)
-    
-//     if (currentMultipleMode) {
-//       console.log('Routing to handleMultipleScan')
-//       handleMultipleScan(code)
-//     } else {
-//       console.log('Routing to handleSingleScan')
-//       handleSingleScan(code)
-//     }
-//   }, [scannedCodes, handleMultipleScan, handleSingleScan])
-
-//   const toggleScanMode = useCallback(() => {
-//     const newMode: ScanMode = scanMode === 'camera' ? 'manual' : 'camera'
-//     setScanMode(newMode)
-    
-//     if (newMode === 'manual') {
-//       stopCamera()
-//     } else {
-//       startCamera()
-//     }
-//   }, [scanMode, startCamera, stopCamera])
-
-//   const renderHeader = () => (
-//     <div className="px-6 pt-6 pb-2">
-//       {error && (
-//         <div className="mb-4 text-sm font-medium text-center">
-//           {error}
-//         </div>
-//       )}
-      
-// <div className="flex items-center justify-between mb-4">
-//   {!isProcessing && (
-//     <>
-//       {scanMode === 'camera' && (
-//         <button
-//           className={`px-3 py-1.5 rounded-lg border text-sm flex items-center gap-1 ${
-//             multipleMode ? 'bg-black text-white' : 'bg-white text-black border-black'
-//           }`}
-//           onClick={toggleMultipleMode}
-//         >
-//           <Package className="h-4 w-4" />
-//           Múltiple
-//         </button>
-//       )}
-      
-//       <div className="flex border border-black rounded-lg overflow-hidden">
-//         <input
-//           type="text"
-//           value={manualInput}
-//           onChange={(e) => setManualInput(e.target.value)}
-//           onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
-//           placeholder="Código..."
-//           className="px-2 py-1.5 text-sm outline-none w-24"
-//           disabled={isProcessing}
-//         />
-//         <button
-//           onClick={handleManualSubmit}
-//           disabled={isProcessing}
-//           className="px-3 py-1.5 bg-black text-white text-sm"
-//         >
-//           {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
-//         </button>
-//       </div>
-//     </>
-//   )}
-// </div>
-//     </div>
-//   )
-
-//   const renderManualInput = () => null
-
-//   const renderCamera = () => (
-//     <>
-//       {scanMode === 'camera' && (
-//         <div className="relative w-full h-[60vh] min-h-[320px] max-h-[400px] bg-black rounded-3xl overflow-hidden shadow-2xl">
-//           <video 
-//             ref={videoRef} 
-//             autoPlay 
-//             playsInline 
-//             muted 
-//             className="w-full h-full object-cover" 
-//           />
-
-//           {/* Scanning Frame */}
-//           <div className="absolute inset-0 flex items-center justify-center">
-//             <div className="relative w-80 h-48">
-//               {/* Corner indicators */}
-//               {[
-//                 { pos: 'top-0 left-0', border: 'border-t-4 border-l-4', round: 'rounded-tl-2xl' },
-//                 { pos: 'top-0 right-0', border: 'border-t-4 border-r-4', round: 'rounded-tr-2xl' },
-//                 { pos: 'bottom-0 left-0', border: 'border-b-4 border-l-4', round: 'rounded-bl-2xl' },
-//                 { pos: 'bottom-0 right-0', border: 'border-b-4 border-r-4', round: 'rounded-br-2xl' }
-//               ].map((corner, i) => (
-//                 <div
-//                   key={i}
-//                   className={`absolute ${corner.pos} w-10 h-10 ${corner.border} border-blue-400 ${corner.round} opacity-75`}
-//                 />
-//               ))}
-
-//               {/* Scanning line */}
-//               {isScanning && (
-//                 <div className="absolute inset-0 flex items-center justify-center">
-//                   <div className="w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full shadow-lg animate-pulse" />
-//                 </div>
-//               )}
-//             </div>
-//           </div>
-
-//           {/* Status Indicator */}
-//           <div className="absolute top-6 left-6 right-6 flex justify-center">
-//             <div>
-//               <p className="text-white text-sm font-medium flex items-center gap-2">
-//                 {permissionState === 'denied' && error ? (
-//                   <>
-//                     <Camera className="w-4 h-4 text-amber-400" />
-//                     Permiso necesario
-//                   </>
-//                 ) : multipleMode && justScanned ? (
-//                   <>
-//                     <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-//                     Escaneado! Siguiente...
-//                   </>
-//                 ) : isProcessing ? (
-//                   <>
-//                     <Loader2 className="w-4 h-4 animate-spin" />
-//                     Procesando...
-//                   </>
-//                 ) : isScanning ? (
-//                   <>
-//                     <span className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-//                     Escaneando...
-//                   </>
-//                 ) : null}
-//               </p>
-//             </div>
-//           </div>
-
-//           {/* Camera Controls */}
-//           <div className="absolute top-6 right-6 flex gap-3">
-//             <Button
-//               variant="secondary"
-//               size="sm"
-//               className="bg-black hover:bg-gray-800 text-white border-0 rounded-2xl w-12 h-12 p-0"
-//               onClick={stopCamera}
-//             >
-//               <X className="h-5 w-5" />
-//             </Button>
-//           </div>
-
-//           {/* Bottom Action */}
-//           <div className="absolute bottom-6 left-6 right-6 flex justify-center">
-//             {multipleMode && scannedCodes.length > 0 ? (
-//               <Button
-//                 onClick={handleProcessMultiple}
-//                 disabled={isProcessing}
-//                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-medium rounded-2xl px-6 py-3 transition-all flex items-center gap-3"
-//               >
-//                 {isProcessing ? (
-//                   <Loader2 className="h-4 w-4 animate-spin" />
-//                 ) : (
-//                   <Package className="h-4 w-4" />
-//                 )}
-//                 Continuar ({scannedCodes.length} Etiquetas)
-//               </Button>
-//             ) : (
-//               <div className="bg-black rounded-2xl px-6 py-3 border border-gray-600">
-//                 <p className="text-white text-xs text-center">
-//                   {multipleMode 
-//                     ? "Escanear múltiple etiquetas"
-//                     : "Enfoca para auto-detección"
-//                   }
-//                 </p>
-//               </div>
-//             )}
-//           </div>
-//         </div>
-//       )}
-//     </>
-//   )
-
-//   const renderFooter = () => {
-//     const footerMessage = isScanning
-//       ? "Mantén estable para auto-detección"
-//       : ""
-
-//     return (
-//       <div className="px-6 pb-6 pt-2">
-//         <p className="text-xs text-gray-500 text-center">
-//           {footerMessage}
-//         </p>
-//       </div>
-//     )
-//   }
-
-//   return (
-//     <>
-//       {/* Background */}
-//       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-//         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50" />
-//         <div className="absolute top-0 left-0 w-full h-full">
-//           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse" />
-//           <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
-//           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-r from-indigo-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500" />
-//         </div>
-//       </div>
-
-//       {/* Main Content */}
-//       <main className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-safe px-4 pb-safe overflow-x-hidden">
-//         <div className="w-full max-w-md mx-auto mt-8">
-//           <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
-//             {renderHeader()}
-            
-//             <div className="px-6 pb-6 flex flex-col gap-6">
-//               {renderManualInput()}
-//               {renderCamera()}
-              
-//               {/* Error State Action */}
-//               {error && !isScanning && scanMode === 'camera' && (
-//                 <div className="text-center py-6">
-//                     {permissionState === 'denied' ? (
-//                       <div className="space-y-4">
-//                         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-//                           <div className="flex items-center gap-2 text-amber-800 mb-2">
-//                             <Camera className="w-5 h-5" />
-//                             <span className="font-medium text-sm">Permiso de Cámara Requerido</span>
-//                           </div>
-//                           <p className="text-xs text-amber-700 leading-relaxed">
-//                             Por favor permite el acceso a la cámara en la configuración de tu navegador para escanear códigos de barras.
-//                             Busca el ícono de la cámara en la barra de direcciones o actualiza la página para intentar de nuevo.
-//                           </p>
-//                         </div>
-//                         <Button
-//                           onClick={startCamera}
-//                           className="w-full h-10 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-all text-sm"
-//                         >
-//                           <Camera className="w-4 h-4 mr-2" />
-//                           Solicitar Acceso a Cámara
-//                         </Button>
-//                       </div>
-//                     ) : (
-//                       <Button
-//                         onClick={startCamera}
-//                         className="w-full h-10 bg-black hover:bg-gray-800 text-white font-medium rounded-lg transition-all text-sm"
-//                       >
-//                         Vuelve a Intentar
-//                       </Button>
-//                     )}
-//                 </div>
-//               )}
-//             </div>
-
-//             {renderFooter()}
-//           </div>
-//         </div>
-//       </main>
-//     </>
-//   )
-// }
-
-// export default function ScanMainPage() {
-//   return (
-//     <LayoutWrapper>
-//       <ScanPage />
-//     </LayoutWrapper>
-//   )
-// }
-
