@@ -109,25 +109,25 @@ function parseOrderPayments(paymentsArray, orderId, meli_user_id) {
       date_created: payment.date_created,
       installments: payment.installments,
       payment_type: payment.payment_type,
-      taxes_amount: payment.taxes_amount / 100, // Convert from cents
-      coupon_amount: payment.coupon_amount / 100,
+      taxes_amount: payment.taxes_amount, // Convert from cents
+      coupon_amount: payment.coupon_amount,
       date_approved: payment.date_approved,
-      shipping_cost: payment.shipping_cost / 100,
+      shipping_cost: payment.shipping_cost,
       status_detail: payment.status_detail,
       activation_uri: payment.activation_uri,
       operation_type: payment.operation_type,
       deferred_period: payment.deferred_period,
-      overpaid_amount: payment.overpaid_amount / 100,
+      overpaid_amount: payment.overpaid_amount,
       available_actions: JSON.stringify(payment.available_actions),
       payment_method_id: payment.payment_method_id,
-      total_paid_amount: payment.total_paid_amount / 100,
+      total_paid_amount: payment.total_paid_amount,
       authorization_code: payment.authorization_code,
       date_last_modified: payment.date_last_modified,
-      installment_amount: payment.installment_amount ? payment.installment_amount / 100 : null,
-      transaction_amount: payment.transaction_amount / 100,
+      installment_amount: payment.installment_amount ? payment.installment_amount : null,
+      transaction_amount: payment.transaction_amount,
       transaction_order_id: payment.transaction_order_id,
       atm_transfer_reference: JSON.stringify(payment.atm_transfer_reference),
-      transaction_amount_refunded: payment.transaction_amount_refunded / 100
+      transaction_amount_refunded: payment.transaction_amount_refunded
   }));
 }
 
