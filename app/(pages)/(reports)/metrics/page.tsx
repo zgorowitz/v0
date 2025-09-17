@@ -233,6 +233,7 @@ export default function MetricsPage() {
                   </CardContent>
                 </Card>
               ) : (
+              <>
               <Card className="bg-white">
                 <CardContent className="space-y-4 p-6">
                   <div>
@@ -406,6 +407,7 @@ export default function MetricsPage() {
                   </div>
                 </CardContent>
               </Card>
+              </>
               )}
             </div>
           )}

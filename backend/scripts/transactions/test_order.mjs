@@ -220,10 +220,10 @@ async function testSingleOrder(orderId = '2000013047409832') {
     return acc
   }, {})
   
-  console.log(`Scenario Breakdown:`)
-  Object.entries(scenarioCounts).forEach(([scenario, count]) => {
-    console.log(`  ${scenario}: ${count}`)
-  })
+  // console.log(`Scenario Breakdown:`)
+  // Object.entries(scenarioCounts).forEach(([scenario, count]) => {
+  //   console.log(`  ${scenario}: ${count}`)
+  // })
   
   return {
     order: foundOrder,
@@ -234,7 +234,7 @@ async function testSingleOrder(orderId = '2000013047409832') {
 }
 
 // Allow passing order ID as command line argument
-const orderId = process.argv[2] || '2000013047409832'
+const orderId = process.argv[2] || '2000013000884856'
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   testSingleOrder(orderId)
