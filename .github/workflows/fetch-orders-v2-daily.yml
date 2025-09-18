@@ -1,0 +1,52 @@
+name: Fetch Orders V2 Daily
+
+on:
+  schedule:
+    # Run at 8:00 AM Argentina time (11:00 UTC)
+    - cron: '0 11 * * *'
+    # Run at 8:00 PM Argentina time (23:00 UTC)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  fetch-orders-v2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run fetchOrdersByChunks for past 24 hours
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
+          MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+        run: |
+          cd backend
+          node scripts/transactions/fetch_orderV2.mjs
+
+      - name: Run fetchAllAdvertiserItems for past 2 days
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
+          MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+        run: |
+          cd backend
+          node scripts/fetch_adsV2.mjs
+
+      - name: Log completion
+        run: echo "Orders V2 and advertiser items daily fetch completed at $(date)"
