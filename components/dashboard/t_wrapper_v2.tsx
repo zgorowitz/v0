@@ -7,6 +7,7 @@ import {
   getPaginationRowModel,
   flexRender,
 } from '@tanstack/react-table';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export const SimpleTable = ({
   data = [],
@@ -37,9 +38,9 @@ export const SimpleTable = ({
       >
         {col.header}
         {enableSorting && column.getCanSort() && (
-          <span>
-            {column.getIsSorted() === 'asc' ? ' ↑' : 
-             column.getIsSorted() === 'desc' ? ' ↓' : ' ↕'}
+          <span style={{ fontSize: '12px', opacity: column.getIsSorted() ? 1 : 0.2 }}>
+            {column.getIsSorted() === 'asc' ? ' ⌃' :
+             column.getIsSorted() === 'desc' ? ' ⌄' : ' ⌄'}
           </span>
         )}
       </div>
@@ -98,57 +99,63 @@ export const SimpleTable = ({
       )}
 
       {/* Table */}
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          {table.getHeaderGroups().map(headerGroup => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
-                <th
-                  key={header.id}
-                  style={{
-                    border: '1px solid #ddd',
-                    padding: '8px',
-                    backgroundColor: '#f5f5f5',
-                    textAlign: 'left'
-                  }}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())
-                  }
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map(row => (
-            <tr key={row.id}>
-              {row.getVisibleCells().map(cell => (
-                <td
-                  key={cell.id}
-                  style={{
-                    border: '1px solid #ddd',
-                    padding: '8px'
-                  }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {loading ? (
+        <div>
+          <LoadingSpinner message="Loading data..." />
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            {table.getHeaderGroups().map(headerGroup => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map(header => (
+                  <th
+                    key={header.id}
+                    style={{
+                      border: '1px solid #ddd',
+                      padding: '4px 8px',
+                      backgroundColor: '#f5f5f5',
+                      textAlign: 'left',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '200px'
+                    }}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())
+                    }
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map(row => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map(cell => (
+                  <td
+                    key={cell.id}
+                    style={{
+                      border: '1px solid #ddd',
+                      padding: '4px 8px'
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
 
       {/* Pagination */}
       {enablePagination && (
-        <div style={{ 
-          marginTop: '12px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px',
-          justifyContent: 'space-between'
-        }}>
+        <div style={{  marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between'
+          }}>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => table.setPageIndex(0)}

@@ -146,7 +146,7 @@ async function fetchAdvertiserItems(advertiserId, accessToken, dateFrom, dateTo)
 
 export async function fetchAllAdvertiserItems(options = {}) {
   const {
-    days = 65,
+    days = 3,
   } = options
 
   const supabase = createClient()

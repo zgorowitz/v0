@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LayoutWrapper } from "@/components/layout-wrapper";
-import { SimpleTable } from '@/components/ui/t_wrapper_v2';
+import { SimpleTable } from '@/components/dashboard/t_wrapper_v2';
 import { fetchAllItems, bulkUpdateItemCogs } from '@/lib/cogs/data';
 import { handleFileUpload, generateCSVTemplate, exportToCSV } from '@/lib/cogs/csvHandler';
 import { useItemsFilter } from '@/lib/cogs/useItemsFilter';
@@ -226,7 +226,7 @@ const CogsManagementPage = () => {
     <img
       src={getValue()}
       alt="Product"
-      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+      style={{ width: '30px', height: '30px', objectFit: 'cover'}}
     />
   ), []);
 
@@ -276,11 +276,16 @@ const CogsManagementPage = () => {
       />
     );
   }, [editedItems, handleTagsChange]);
-
+  
+  const formatItemInfo = ({row}) => (
+    <div>
+      <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
+      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000' }}>{row.original.title}</div>
+    </div>
+  );
   const columns = useMemo(() => [
-      { accessorKey: 'thumbnail', header: 'Image', cell: formatImage },
-      { accessorKey: 'item_id', header: 'Item ID' },
-      { accessorKey: 'title', header: 'Title' },
+      { accessorKey: 'thumbnail', header: '', cell: formatImage },
+      { accessorKey: 'item_id', header: 'Item', cell: formatItemInfo },
       { accessorKey: 'cogs', header: 'COGS ($)', cell: formatCogs },
       { accessorKey: 'tags', header: 'Tags', cell: formatTags },
     { accessorKey: 'available_quantity', header: 'Stock' },
@@ -335,9 +340,6 @@ const CogsManagementPage = () => {
   return (
     <LayoutWrapper>
       <div className="p-4">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">COGS Management</h1>
-        </div>
 
         <SimpleTable
           data={filteredItems as any}

@@ -1,10 +1,8 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase, getCurrentUserOrganizationId } from '@/lib/supabase/client';
 import { LayoutWrapper } from "@/components/layout-wrapper"
-import { SimpleTable } from '@/components/ui/t_wrapper_v2';
-import { Calendar, ChevronDown } from 'lucide-react';
+import { SimpleTable } from '@/components/dashboard/t_wrapper_v2';
 import { itemSalesData } from '@/lib/dashboard/data';
 import { useMetricCards } from '@/lib/dashboard/useMetricCards';
 import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
@@ -25,6 +23,8 @@ interface DashboardRow {
   item_cogs: number;
   net_profit: number;
   ad_cost: number;
+  refund_amount: number;
+  refund_units: number;
   
   title: string;
   available_quantity: number;
@@ -86,19 +86,26 @@ const DashboardPage = () => {
   }, [dateRange, appliedItemIds]);
 
 
-  const formatMoney = ({getValue}) => `$${getValue()?.toLocaleString()}`;
-  const formatImage = ({getValue}) => <img src={getValue()} alt="Product" style={{ width: '50px', height: '50px', objectFit: 'cover' }} />
+  const formatMoney = ({getValue}) => `$${Math.round(getValue())?.toLocaleString()}`;
+  const formatImage = ({getValue}) => <img src={getValue()} alt="Product" style={{ width: '30px', height: '30px', objectFit: 'cover' }} />
+  const formatItemInfo = ({row}) => (
+    <div>
+      <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
+      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000' }}>{row.original.title}</div>
+    </div>
+  );
   const columns = [
-    {accessorKey: 'thumbnail', header: 'Image', cell: formatImage},
-    { accessorKey: 'item_id', header: 'Item ID' },
-    { accessorKey: 'title', header: 'Title' },
+    {accessorKey: 'thumbnail', header: '', cell: formatImage},
+    { accessorKey: 'item_id', header: 'Item', cell: formatItemInfo },
     // { accessorKey: 'item_orders', header: 'Orders' },
     { accessorKey: 'item_units', header: 'Units' },
     { accessorKey: 'item_sales', header: 'Sales', cell: formatMoney },
     { accessorKey: 'gross_profit', header: 'Gross Profit', cell: formatMoney },
     { accessorKey: 'net_profit', header: 'Net Profit', cell: formatMoney },
     { accessorKey: 'ad_cost', header: 'Ads', cell: formatMoney },
-    { accessorKey: 'item_fee', header: 'Fee', cell: formatMoney },
+    { accessorKey: 'refund_units', header: 'Refunds' },
+    { accessorKey: 'refund_amount', header: 'Refund Cost', cell: formatMoney },
+    { accessorKey: 'item_fee', header: 'Mercado-Libre Fee', cell: formatMoney },
     { accessorKey: 'item_discount', header: 'Discount', cell: formatMoney },
     { accessorKey: 'item_cogs', header: 'COGS', cell: formatMoney },
     { accessorKey: 'status', header: 'Status' }

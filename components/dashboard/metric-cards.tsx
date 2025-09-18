@@ -14,6 +14,8 @@ interface MetricCardData {
   gross_profit?: number;
   net_profit?: number;
   ad_cost?: number;
+  refund_amount?: number;
+  refund_units?: number;
 }
 
 interface MetricCardsProps {
@@ -102,14 +104,23 @@ const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Da
           <span className="text-sm font-medium text-gray-800">{formatCurrency(data.ad_cost || 0)}</span>
         </div>
         
-        <div className="flex justify-between items-center">
+        {/* <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Gross Profit</span>
           <span className="text-sm font-medium text-gray-800">{formatCurrency(data.gross_profit || 0)}</span>
-        </div>
+        </div> */}
         
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Net Profit</span>
           <span className="text-sm font-medium text-gray-800">{formatCurrency(data.net_profit || 0)}</span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500">Refund Units</span>
+          <span className="text-sm font-medium text-gray-800">{formatNumber(data.refund_units || 0)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500">Refund Amount</span>
+          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.refund_amount || 0)}</span>
         </div>
       </div>
     </div>
