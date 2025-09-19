@@ -159,10 +159,9 @@ export async function fetchOrders(options = {}) {
       const orders = await paginateV2(apiUrl, user.access_token)
       console.log(`Found ${orders.length} orders for user ${user.meli_user_id}`)
       
-      // FIXED: Deduplicate orders FIRST, before processing items
+      // Deduplicate
       const orderMap = new Map()
       
-      // First pass: deduplicate orders keeping the latest version
       for (const order of orders) {
         if (!orderMap.has(order.id) || 
             new Date(order.last_updated) > new Date(orderMap.get(order.id).last_updated)) {
@@ -170,86 +169,94 @@ export async function fetchOrders(options = {}) {
         }
       }
       
-      // Now process only the deduplicated orders
-      const batchOrders = []
-      const batchOrderItems = []
-      const batchOrderPayments = []
-      const orderIds = []
-      
-      // Process only unique orders
-      for (const order of orderMap.values()) {
-        const orderData = parseOrder(order, user.meli_user_id)
-        batchOrders.push(orderData)
-        orderIds.push(order.id)
+      const allOrders = Array.from(orderMap.values())
+      const BATCH_SIZE = 300
 
-        if (order.order_items && order.order_items.length > 0) {
-          const orderItems = parseOrderItems(order.order_items, order.id, user.meli_user_id)
-          batchOrderItems.push(...orderItems)
-        }
+      // Process in chunks of 500
+      for (let i = 0; i < allOrders.length; i += BATCH_SIZE) {
+        const orderChunk = allOrders.slice(i, i + BATCH_SIZE)
         
-        if (order.payments && order.payments.length > 0) {
-          const orderPayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
-          batchOrderPayments.push(...orderPayments)
-        }
-      }
-      
-      // Batch upsert all orders
-      if (batchOrders.length > 0) {
-        const { error: ordersError } = await supabase
-          .from('ml_orders_v2')
-          .upsert(batchOrders, { onConflict: ['id'] })
+        console.log(`Processing orders ${i + 1}-${Math.min(i + BATCH_SIZE, allOrders.length)} of ${allOrders.length}`)
         
-        if (ordersError) {
-          console.error(`Error batch inserting orders:`, ordersError.message)
-        } else {
-          totalOrders += batchOrders.length
-        }
-      }
-      
-      // Batch handle order items
-      if (batchOrderItems.length > 0) {
-        // Delete existing items for all orders in this batch
-        const { error: deleteError } = await supabase
-          .from('ml_order_items_v2')
-          .delete()
-          .in('order_id', orderIds)
-        
-        if (deleteError) {
-          console.error(`Error deleting existing order items:`, deleteError.message)
-        }
-        
-        // Insert all new items
-        const { error: itemsError } = await supabase
-          .from('ml_order_items_v2')
-          .insert(batchOrderItems)
-        
-        if (itemsError) {
-          console.error(`Error batch inserting order items:`, itemsError.message)
-        } else {
-          totalOrderItems += batchOrderItems.length
-        }
-      }
+        const batchOrders = []
+        const batchOrderItems = []
+        const batchOrderPayments = []
+        const orderIds = []
+              
+        for (const order of orderChunk) {
+          const orderData = parseOrder(order, user.meli_user_id)
+          batchOrders.push(orderData)
+          orderIds.push(order.id)
 
-      if (batchOrderPayments.length > 0) {
-        // Delete existing payments for all orders in this batch
-        const { error: deleteError } = await supabase
-          .from('ml_order_payments_v2')
-          .delete()
-          .in('order_id', orderIds)
-        
-        if (deleteError) {
-          console.error(`Error deleting existing order payments:`, deleteError.message)
+          if (order.order_items && order.order_items.length > 0) {
+            const orderItems = parseOrderItems(order.order_items, order.id, user.meli_user_id)
+            batchOrderItems.push(...orderItems)
+          }
+          
+          if (order.payments && order.payments.length > 0) {
+            const orderPayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
+            batchOrderPayments.push(...orderPayments)
+          }
+        }
+      
+        // Batch upsert all orders
+        if (batchOrders.length > 0) {
+          const { error: ordersError } = await supabase
+            .from('ml_orders_v2')
+            .upsert(batchOrders, { onConflict: ['id'] })
+          
+          if (ordersError) {
+            console.error(`Error batch inserting orders:`, ordersError.message)
+          } else {
+            totalOrders += batchOrders.length
+          }
         }
         
-        // Insert all new payments
-        const { error: paymentsError } = await supabase
-          .from('ml_order_payments_v2')
-          .insert(batchOrderPayments)
-        
-        if (paymentsError) {
-          console.error(`Error inserting payments:`, paymentsError.message)
-        } else {
-          totalOrderPayments += batchOrderPayments.length
+        // order items insert
+        if (batchOrderItems.length > 0) {
+          // Delete existing items for all orders in this batch
+          const { error: deleteError } = await supabase
+            .from('ml_order_items_v2')
+            .delete()
+            .in('order_id', orderIds)
+          
+          if (deleteError) {
+            console.error(`Error deleting existing order items:`, deleteError.message)
+          }
+          
+          // Insert all new items
+          const { error: itemsError } = await supabase
+            .from('ml_order_items_v2')
+            .insert(batchOrderItems)
+          
+          if (itemsError) {
+            console.error(`Error batch inserting order items:`, itemsError.message)
+          } else {
+            totalOrderItems += batchOrderItems.length
+          }
+        }
+        // order payments insert
+        if (batchOrderPayments.length > 0) {
+          // Delete existing payments for all orders in this batch
+          const { error: deleteError } = await supabase
+            .from('ml_order_payments_v2')
+            .delete()
+            .in('order_id', orderIds)
+          
+          if (deleteError) {
+            console.error(`Error deleting existing order payments:`, deleteError.message)
+          }
+          
+          // Insert all new payments
+          const { error: paymentsError } = await supabase
+            .from('ml_order_payments_v2')
+            .insert(batchOrderPayments)
+          
+          if (paymentsError) {
+            console.error(`Error inserting payments:`, paymentsError.message)
+          } else {
+            totalOrderPayments += batchOrderPayments.length
+          }
         }
       }
       
