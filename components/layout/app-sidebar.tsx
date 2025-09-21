@@ -23,7 +23,7 @@ import {
 const navItems = [
   {
     title: "Scanner",
-    url: "/scan",
+    url: "/scan2/scan",
     icon: Scan,
   },
   // {
@@ -31,12 +31,12 @@ const navItems = [
   //   url: "/scan2",
   //   icon: Zap,
   // },
-  {
-    title: "Dashboard",
-    url: "/dashboard",
-    icon: LayoutDashboard,
-    adminOnly: true,
-  },
+  // {
+  //   title: "Dashboard",
+  //   url: "/dashboard",
+  //   icon: LayoutDashboard,
+  //   adminOnly: true,
+  // },
   {
     title: "Admin",
     url: "/metrics",
