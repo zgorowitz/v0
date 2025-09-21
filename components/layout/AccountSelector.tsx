@@ -137,7 +137,7 @@ export function AccountSelector() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="bg-white/90 shadow-lg border-gray-200 rounded p-2 flex items-center gap-2">
+      <div className="bg-white/90 border-gray-200 rounded p-2 flex items-center gap-2">
         <User className="h-4 w-4" />
         <span className="text-sm font-medium">Checking auth...</span>
       </div>
@@ -147,11 +147,11 @@ export function AccountSelector() {
   // Show login prompt if not authenticated
   if (!user) {
     return (
-      <div className="bg-white/90 shadow-lg border-gray-200 rounded p-2 flex items-center gap-2">
+      <div className="bg-white/90 border-gray-200 rounded p-2 flex items-center gap-2">
         <User className="h-4 w-4" />
         <span className="text-sm font-medium">Please log in</span>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="text-xs text-blue-500 hover:text-blue-700 ml-2"
         >
           Refresh
@@ -162,7 +162,7 @@ export function AccountSelector() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="bg-white/90 hover:bg-gray-200 shadow-lg border-gray-200 rounded p-2 flex items-center gap-2">
+      <DropdownMenuTrigger className="bg-white/90 hover:bg-gray-200 border-gray-200 rounded p-2 flex items-center gap-2">
         <User className="h-4 w-4" />
         <span className="text-sm font-medium">
           {dataLoading ? 'Loading...' : currentAccount?.nickname || 'Select Account'}

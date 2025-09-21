@@ -8,6 +8,7 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ColumnSelector, ExportButton } from '@/components/ui/table-controls';
 
 export const SimpleTable = ({
   data = [],
@@ -19,8 +20,10 @@ export const SimpleTable = ({
   customControls = null,
   loading = false,
   getRowId = undefined,
+  exportFilename = 'table_export',
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
+  const [columnVisibility, setColumnVisibility] = useState({});
 
   // Enhanced columns with sorting indicators
   const enhancedColumns = columns.map(col => ({
@@ -57,8 +60,10 @@ export const SimpleTable = ({
     getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
     state: {
       globalFilter,
+      columnVisibility,
     },
     onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     globalFilterFn: 'includesString',
     initialState: {
       pagination: { pageSize },
@@ -68,35 +73,43 @@ export const SimpleTable = ({
   return (
     <div>
       {/* Controls Row */}
-      {(enableSearch || customControls) && (
-        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {enableSearch && (
-            <div>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={globalFilter ?? ''}
-                onChange={(e) => setGlobalFilter(e.target.value)}
-                style={{
-                  padding: '8px',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px',
-                  width: '300px'
-                }}
-              />
-              {globalFilter && (
-                <button
-                  onClick={() => setGlobalFilter('')}
-                  style={{ marginLeft: '8px', padding: '8px', cursor: 'pointer' }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          )}
-          {customControls && (enableSearch ? <div>{customControls}</div> : customControls)}
+      <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {enableSearch && (
+          <div>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              style={{
+                padding: '8px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                width: '300px'
+              }}
+            />
+            {globalFilter && (
+              <button
+                onClick={() => setGlobalFilter('')}
+                style={{ marginLeft: '8px', padding: '8px', cursor: 'pointer' }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Custom controls with full flex width */}
+        {customControls && (
+          <div style={{ flex: 1 }}>{customControls}</div>
+        )}
+
+        {/* Table Controls - Always visible at extreme right */}
+        <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+          <ColumnSelector table={table} />
+          <ExportButton table={table} filename={exportFilename} />
         </div>
-      )}
+      </div>
 
       {/* Table */}
       {loading ? (
@@ -112,14 +125,7 @@ export const SimpleTable = ({
                   <th
                     key={header.id}
                     style={{
-                      border: '1px solid #ddd',
-                      padding: '4px 8px',
-                      backgroundColor: '#f5f5f5',
-                      textAlign: 'left',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      maxWidth: '200px'
+                      border: '1px solid #ddd', padding: '4px 8px', backgroundColor: '#e8f4fcff', textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px'
                     }}
                   >
                     {header.isPlaceholder
@@ -138,8 +144,7 @@ export const SimpleTable = ({
                   <td
                     key={cell.id}
                     style={{
-                      border: '1px solid #ddd',
-                      padding: '4px 8px'
+                      border: '1px solid #ddd', padding: '4px 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px'
                     }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
