@@ -13,17 +13,18 @@ interface DesktopLayoutProps {
 
 const navigationItems = [
   { name: 'Home', href: '/dashboard', adminOnly: true  },
+  { name: 'P&L', href: '/daily', adminOnly: true  },
   { name: 'Products', href: '/cogs', adminOnly: true  },
   { name: 'Scan', href: '/scanner' },
   // { name: 'Categorias', href: '/categories' },
 ];
 
-const reportsItems = [
-  // { name: 'Productos', href: '/products' },
-  // { name: 'Dashboard', href: '/dashboard', adminOnly: true },
-  // { name: 'Ventas', href: '/dashboard/v2', adminOnly: true },
-  { name: 'Envios', href: '/shipments' },
-];
+// const reportsItems = [
+//   // { name: 'Productos', href: '/products' },
+//   // { name: 'Dashboard', href: '/dashboard', adminOnly: true },
+//   // { name: 'Ventas', href: '/dashboard/v2', adminOnly: true },
+//   // { name: 'Envios', href: '/shipments' },
+// ];
 
 const ajustesItems = [
   { name: 'Admin', href: '/metrics', adminOnly: true },
@@ -86,7 +87,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                   })}
                 
                 {/* Reports Dropdown */}
-                <div className="relative">
+                {/* <div className="relative">
                   <button
                     onClick={() => setIsReportsOpen(!isReportsOpen)}
                     className={`
@@ -127,7 +128,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                       })}
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 {/* Ajustes Dropdown */}
                 {filteredAjustesItems.length > 0 && (

@@ -34,7 +34,7 @@ const DailyDashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DailySalesRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
   const itemsFilter = useItemsFilter();
 
@@ -46,7 +46,8 @@ const DailyDashboardPage = () => {
     const end = new Date();
     end.setDate(end.getDate() - 1);
     const start = new Date(end);
-    start.setDate(start.getDate() - 6);
+    start.setMonth(start.getMonth() - 11); // Go back 11 months from yesterday (12 months total)
+    start.setDate(1); // Set to first day of that month
     return [start, end];
   });
 
@@ -107,7 +108,8 @@ const DailyDashboardPage = () => {
 
   const formatDateForColumn = (dateStr: string) => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
+    // Add 'T00:00:00' to parse as local time, not UTC
+    const date = new Date(dateStr + 'T00:00:00');
 
     switch (period) {
       case 'day':
@@ -144,7 +146,7 @@ const DailyDashboardPage = () => {
       dashboardData.forEach(data => {
         const dateStr = formatDateForColumn(data.date);
         const value = data[metric.key];
-        row[dateStr] = metric.format && value != null ? `$${Math.round(value).toLocaleString()}` : (value ?? '-');
+        row[dateStr] = value == null ? '-' : metric.format ? `$${Math.round(value).toLocaleString()}` : Math.round(value).toLocaleString();
       });
       return row;
     });
@@ -170,7 +172,7 @@ const DailyDashboardPage = () => {
   return (
     <LayoutWrapper>
       <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4">Daily Sales Dashboard</h1>
+        {/* <h1 className="text-2xl font-bold mb-4">Daily Sales Dashboard</h1> */}
 
         {dateRangeError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
@@ -178,15 +180,21 @@ const DailyDashboardPage = () => {
           </div>
         )}
 
-        <SimpleTable
-          data={pivotedData as any}
-          columns={columns as any}
-          loading={loading}
-          enableSearch={false}
-          enableSorting={false}
-          enablePagination={false}
-          exportFilename={`sales_${period}_${dateRange[0]?.toISOString().split('T')[0]}_${dateRange[1]?.toISOString().split('T')[0]}`}
-          customControls={
+        <div className="daily-dashboard-table">
+          <style jsx>{`
+            .daily-dashboard-table table {
+              table-layout: fixed !important;
+            }
+          `}</style>
+          <SimpleTable
+            data={pivotedData as any}
+            columns={columns as any}
+            loading={loading}
+            enableSearch={false}
+            enableSorting={false}
+            enablePagination={false}
+            exportFilename={`sales_${period}_${dateRange[0]?.toISOString().split('T')[0]}_${dateRange[1]?.toISOString().split('T')[0]}`}
+            customControls={
             <div className="flex justify-between items-start w-full gap-4">
               <div className="min-w-[300px]">
                 <ItemsFilter {...itemsFilter} />
@@ -216,7 +224,8 @@ const DailyDashboardPage = () => {
               </div>
             </div>
           }
-        />
+          />
+        </div>
       </div>
     </LayoutWrapper>
   );
