@@ -238,7 +238,7 @@ function ScanPage() {
       <div className="fixed inset-0 bg-gradient-to-b from-gray-50 to-white" />
 
       {/* Main Content - Mobile First */}
-      <main className="relative z-10 h-[calc(100vh-4rem)] flex flex-col">
+      <main className="relative z-10 h-[80vh] flex flex-col">
         {/* Top Section - Controls */}
         <div className="w-full px-4 pt-safe pb-4">
           <div className="max-w-lg mx-auto space-y-3">
