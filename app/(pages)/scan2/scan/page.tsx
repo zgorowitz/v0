@@ -374,6 +374,26 @@ function ScanPage() {
                     </div>
                   </div>
                 )}
+                  {/* Multiple Mode Continue Button - Inside Camera */}
+                 {multipleMode && scannedCodes.length > 0 && (
+                   <div className="absolute bottom-4 left-4 right-4">
+                    <button
+                      onClick={handleProcessMultiple}
+                      disabled={isProcessing}
+                      className="w-full h-14 bg-black/80 backdrop-blur-sm text-white rounded-full font-medium flex items-center justify-center gap-3 hover:bg-black/90 
+            disabled:opacity-50 transition-all"
+                     >
+                        {isProcessing ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                         <>
+                            <Package className="h-5 w-5" />
+                            <span>Continuar con {scannedCodes.length} etiqueta{scannedCodes.length !== 1 ? 's' : ''}</span>
+                          </>
+                       )}
+                     </button>
+                    </div>
+                 )}
               </div>
             )}
 
@@ -399,7 +419,7 @@ function ScanPage() {
             )}
 
             {/* Bottom Action Section - Now directly below camera */}
-            {multipleMode && scannedCodes.length > 0 && (
+            {/* {multipleMode && scannedCodes.length > 0 && (
               <button
                 onClick={handleProcessMultiple}
                 disabled={isProcessing}
@@ -414,7 +434,7 @@ function ScanPage() {
                   </>
                 )}
               </button>
-            )}
+            )} */}
           </div>
         </div>
 
