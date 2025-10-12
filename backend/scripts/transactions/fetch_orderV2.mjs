@@ -131,15 +131,16 @@ function parseOrderPayments(paymentsArray, orderId, meli_user_id) {
   }));
 }
 
-function getLast24HoursFilter() {
-  const twentyFourHoursAgo = new Date()
-  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 12)
-  return twentyFourHoursAgo.toISOString()
+function getTimeFilter() {
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 24
+  const timeAgo = new Date()
+  timeAgo.setHours(timeAgo.getHours() - hoursAgo)
+  return timeAgo.toISOString()
 }
 
 export async function fetchOrders(options = {}) {
-  const { 
-    fromDate = getLast24HoursFilter(),
+  const {
+    fromDate = getTimeFilter(),
     toDate = new Date().toISOString(),
   } = options
   
@@ -275,8 +276,9 @@ export async function fetchOrders(options = {}) {
 }
 
 export async function fetchDailyOrders() {
-  console.log('Starting DAILY orders sync (last 24 hours)...')
-  return fetchOrders({ fromDate: getLast24HoursFilter() })
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 24
+  console.log(`Starting DAILY orders sync (last ${hoursAgo} hours)...`)
+  return fetchOrders({ fromDate: getTimeFilter() })
 }
 
 export async function fetchOrdersFromDate(fromDate, toDate = null) {

@@ -1,5 +1,7 @@
 name: Fetch Orders V2 Daily
 
+# This workflow fetches MercadoLibre orders and advertiser items twice daily
+# It runs at 8:00 AM and 8:00 PM Argentina time to capture orders throughout the day
 on:
   schedule:
     # Run at 8:00 AM Argentina time (11:00 UTC)
@@ -26,20 +28,49 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run fetchOrdersByChunks for past 24 hours
+      # Calculate how many hours to look back based on the schedule
+      # 8AM run (11 UTC) = 12 hours since 8PM previous day
+      # 8PM run (23 UTC) = 12 hours since 8AM same day
+      # Default = 24 hours for manual runs or first run
+      - name: Calculate hours since last run
+        id: calc-hours
+        run: |
+          hour=$(date -u +%H)
+          case $hour in
+            11) hours=12 ;;  # 8AM Argentina - 12 hours since 8PM
+            23) hours=12 ;;  # 8PM Argentina - 12 hours since 8AM
+            *) hours=24 ;;   # Default for manual/off-schedule runs
+          esac
+          echo "hours_ago=$hours" >> $GITHUB_OUTPUT
+
+      # Fetch orders using the calculated time window
+      - name: Run fetchOrdersByChunks for calculated hours
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
           MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+          HOURS_AGO: ${{ steps.calc-hours.outputs.hours_ago }}
         run: node backend/scripts/transactions/fetch_orderV2.mjs
 
-      - name: Run fetchAllAdvertiserItems for past 2 days
+      # Fetch order notes for unfulfilled orders in the same time window
+      - name: Run fetch order notes script
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
           MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+          HOURS_AGO: ${{ steps.calc-hours.outputs.hours_ago }}
+        run: node backend/scripts/transactions/fetch_order_notes.mjs
+
+      # Fetch advertiser items - using same time window for consistency
+      - name: Run fetchAllAdvertiserItems for calculated hours
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
+          MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
+          HOURS_AGO: ${{ steps.calc-hours.outputs.hours_ago }}
         run: node backend/scripts/fetch_adsV2.mjs
 
       - name: Log completion
