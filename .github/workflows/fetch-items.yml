@@ -1,4 +1,4 @@
-name: Fetch MercadoLibre Items
+name: Fetch Items V2 Daily
 
 on:
   schedule:
