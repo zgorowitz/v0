@@ -1,5 +1,6 @@
 "use client"
 
+
 import React, { useState, useEffect, useCallback, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
@@ -501,12 +502,12 @@ function ResultsPageContent() {
                   {/* Product List */}
                   <div className="divide-y divide-gray-200">
                     {shipment.items.map((item, idx) => (
-                      <ProductCard 
-                        key={`${shipment.shipmentId}-${item.user_product_id || item.item_id || item.id || idx}`} 
-                        item={item} 
-                        index={idx}
-                      />
-                    ))}
+                    <ProductCard 
+                      key={`${shipment.shipmentId}-${item.item_id}-${item.variation_id || idx}`} 
+                      item={item} 
+                      index={idx}
+                    />
+                  ))}
                   </div>
                   
                   {/* Order Notes */}

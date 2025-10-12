@@ -257,60 +257,6 @@ export async function fetchAllItems() {
   console.log(`Scenario 4 (Fallback): ${scenarioCounts.scenario4}`)
 }
 
-// Fetch items for specific user
-// export async function fetchUserItems(meliUserId) {
-//   const supabase = createClient()
-  
-//   const { data: userToken } = await supabase
-//     .from('meli_tokens')
-//     .select('access_token')
-//     .eq('meli_user_id', meliUserId)
-//     .single()
-  
-//   if (!userToken) throw new Error('User token not found')
-  
-//   // Use paginated fetch
-//   const itemIds = await fetchAllItemIdsForUser(meliUserId, userToken.access_token)
-  
-//   for (const itemId of itemIds) {
-//     // Get complete item data including all attributes for variations
-//     const itemDetail = await apiRequest(
-//       `https://api.mercadolibre.com/items/${itemId}?include_attributes=all`,
-//       userToken.access_token
-//     )
-    
-//     const itemData = parseItem(itemDetail, meliUserId)
-//     await supabase.from('meli_items').upsert(itemData)
-    
-//     // Handle variations based on all scenarios
-//     const hasFamilyName = itemDetail.family_name !== null && itemDetail.family_name !== undefined
-//     const hasVariations = itemDetail.variations && itemDetail.variations.length > 0
-//     const itemUserProductId = itemDetail.user_product_id
-    
-//     let variationsToStore = []
-    
-//     if (hasVariations) {
-//       // SCENARIO 1 or SCENARIO 3: Item has explicit variations
-//       variationsToStore = itemDetail.variations.map((variation, index) => 
-//         parseVariation(itemId, variation, index, itemDetail)
-//       )
-//     } else if (hasFamilyName && itemUserProductId) {
-//       // SCENARIO 2: Item has family_name and user_product_id but no explicit variations
-//       const syntheticVariation = createVariationFromItem(itemDetail)
-//       if (syntheticVariation) {
-//         variationsToStore.push(syntheticVariation)
-//       }
-//     }
-    
-//     // Store variations if any
-//     if (variationsToStore.length > 0) {
-//       await supabase.from('meli_variations').upsert(variationsToStore)
-//     }
-    
-//     await new Promise(resolve => setTimeout(resolve, 100))
-//   }
-// }
-
 // Standalone runner
 if (import.meta.url === `file://${process.argv[1]}`) {
   fetchAllItems()

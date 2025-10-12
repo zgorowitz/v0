@@ -29,7 +29,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           MERCADO_LIBRE_APP_ID: ${{ secrets.MERCADO_LIBRE_APP_ID }}
           MERCADO_LIBRE_CLIENT_SECRET: ${{ secrets.MERCADO_LIBRE_CLIENT_SECRET }}
-        run: node backend/scripts/items/fetch_item.mjs
+        run: node backend/scripts/items/fetch_itemV2.mjs
 
       - name: Log completion
         run: echo "Items fetch completed at $(date)"

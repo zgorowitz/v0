@@ -1,5 +1,5 @@
 import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
-import { apiRequest, paginate } from '../../lib/scripts/utils.js'
+import { apiRequest, paginate } from '../../lib/utils.js'
 
 function parseItem(item, meliUserId) {
   return {
