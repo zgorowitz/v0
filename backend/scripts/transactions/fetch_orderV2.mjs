@@ -5,7 +5,6 @@ import { createClient, refreshAllTokens, getMeliUsers } from '../../lib/supabase
 import { paginateV2 } from '../../lib/utils.js'
 
 
-
 function parseOrder(order, meliUserId) {
   return {
     id: order.id,
@@ -143,7 +142,7 @@ export async function fetchOrders(options = {}) {
     fromDate = getTimeFilter(),
     toDate = new Date().toISOString(),
   } = options
-  
+  console.log(`--------------- ${fromDate}${toDate ? ` to ${toDate}` : ''}...`)
   const supabase = createClient()
   
   const meliUsers = await getMeliUsers()
@@ -171,9 +170,9 @@ export async function fetchOrders(options = {}) {
       }
       
       const allOrders = Array.from(orderMap.values())
-      const BATCH_SIZE = 300
+      const BATCH_SIZE = 300 // Reduced from 100 to prevent timeout errors
 
-      // Process in chunks of 500
+      // Process in chunks of 25
       for (let i = 0; i < allOrders.length; i += BATCH_SIZE) {
         const orderChunk = allOrders.slice(i, i + BATCH_SIZE)
         
@@ -194,10 +193,10 @@ export async function fetchOrders(options = {}) {
             batchOrderItems.push(...orderItems)
           }
           
-          if (order.payments && order.payments.length > 0) {
-            const orderPayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
-            batchOrderPayments.push(...orderPayments)
-          }
+          // if (order.payments && order.payments.length > 0) {
+          //   const orderPayments = parseOrderPayments(order.payments, order.id, user.meli_user_id)
+          //   batchOrderPayments.push(...orderPayments)
+          // }
         }
       
         // Batch upsert all orders
@@ -237,28 +236,28 @@ export async function fetchOrders(options = {}) {
           }
         }
         // order payments insert
-        if (batchOrderPayments.length > 0) {
-          // Delete existing payments for all orders in this batch
-          const { error: deleteError } = await supabase
-            .from('ml_order_payments_v2')
-            .delete()
-            .in('order_id', orderIds)
+        // if (batchOrderPayments.length > 0) {
+        //   // Delete existing payments for all orders in this batch
+        //   const { error: deleteError } = await supabase
+        //     .from('ml_order_payments_v2')
+        //     .delete()
+        //     .in('order_id', orderIds)
           
-          if (deleteError) {
-            console.error(`Error deleting existing order payments:`, deleteError.message)
-          }
+        //   if (deleteError) {
+        //     console.error(`Error deleting existing order payments:`, deleteError.message)
+        //   }
           
-          // Insert all new payments
-          const { error: paymentsError } = await supabase
-            .from('ml_order_payments_v2')
-            .insert(batchOrderPayments)
+        //   // Insert all new payments
+        //   const { error: paymentsError } = await supabase
+        //     .from('ml_order_payments_v2')
+        //     .insert(batchOrderPayments)
           
-          if (paymentsError) {
-            console.error(`Error inserting payments:`, paymentsError.message)
-          } else {
-            totalOrderPayments += batchOrderPayments.length
-          }
-        }
+        //   if (paymentsError) {
+        //     console.error(`Error inserting payments:`, paymentsError.message)
+        //   } else {
+        //     totalOrderPayments += batchOrderPayments.length
+        //   }
+        // }
       }
       
       console.log(`Completed user ${user.meli_user_id}`)
@@ -276,38 +275,30 @@ export async function fetchOrders(options = {}) {
 }
 
 export async function fetchDailyOrders() {
-  const hoursAgo = parseInt(process.env.HOURS_AGO) || 24
-  console.log(`Starting DAILY orders sync (last ${hoursAgo} hours)...`)
   return fetchOrders({ fromDate: getTimeFilter() })
 }
 
 export async function fetchOrdersFromDate(fromDate, toDate = null) {
   console.log(`--------------- ${fromDate}${toDate ? ` to ${toDate}` : ''}...`)
-  
   let options = { fromDate, toDate }
   
   return fetchOrders(options)
 }
 
-async function fetchOrdersByChunks(startDate, endDate) {
-  // const allOrders = []
+export async function fetchOrdersByChunks(startDate, endDate) {
 
-  // if (refreshTokens) {
-    try {
-      await refreshAllTokens()
-    } catch (error) {
-      console.warn(error.message)
-    }
-  // }
+    // try {
+    //   await refreshAllTokens()
+    // } catch (error) {
+    //   console.warn(error.message)
+    // }
   const start = new Date(startDate)
   const end = new Date(endDate)
-
   let currentStart = new Date(start)
 
   while (currentStart < end) {
     let currentEnd = new Date(currentStart)
     currentEnd.setDate(currentEnd.getDate() + 1) // 30 days chunk (0-29)
-
     if (currentEnd > end) {
       currentEnd = end
     }
@@ -316,17 +307,14 @@ async function fetchOrdersByChunks(startDate, endDate) {
       currentStart.toISOString(), 
       currentEnd.toISOString()
     )
-
-    // allOrders.push(...orders)
-
     currentStart = new Date(currentEnd)
-  }
 
-  // return allOrders
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  fetchOrdersByChunks('2025-09-16T00:00:00.000-04:00', new Date().toISOString())
+  // fetchOrdersByChunks()//'2025-10-01T00:00:00.000-04:00', new Date().toISOString())
+  fetchDailyOrders()
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
