@@ -285,13 +285,13 @@ export async function fetchOrdersFromDate(fromDate, toDate = null) {
   return fetchOrders(options)
 }
 
-export async function fetchOrdersByChunks(startDate, endDate) {
+export async function fetchOrdersByChunks(startDate, endDate = new Date().toISOString()) {
 
-    // try {
-    //   await refreshAllTokens()
-    // } catch (error) {
-    //   console.warn(error.message)
-    // }
+    try {
+      await refreshAllTokens()
+    } catch (error) {
+      console.warn(error.message)
+    }
   const start = new Date(startDate)
   const end = new Date(endDate)
   let currentStart = new Date(start)
@@ -312,9 +312,21 @@ export async function fetchOrdersByChunks(startDate, endDate) {
   }
 }
 
+async function refreshMaterializedViews() {
+  const supabase = createClient()
+  try {
+    await supabase.rpc('refresh_item_sales_views')
+    console.log('Materialized views refreshed successfully')
+  } catch (error) {
+    console.error('Error refreshing materialized views:', error.message)
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  // fetchOrdersByChunks()//'2025-10-01T00:00:00.000-04:00', new Date().toISOString())
-  fetchDailyOrders()
+  fetchOrdersByChunks(getTimeFilter())//'2025-10-01T00:00:00.000-04:00', new Date().toISOString())
+
+  // fetchDailyOrders()
+    .then(() => refreshMaterializedViews())
     .then(() => {
       console.log('Daily orders sync completed successfully')
       process.exit(0)
