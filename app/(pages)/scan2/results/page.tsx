@@ -449,15 +449,15 @@ function ResultsPageContent() {
                   className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-white/30 shadow-lg"
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-bold text-gray-900 text-lg mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm mb-1 truncate">
                         {hasMultipleShipments ? `Etiqueta: ${shipment.shipmentId}` : shipment.shipmentId}
                       </h3>
                       <p className="text-sm text-gray-600">
                         {shipment.items.length} item{shipment.items.length !== 1 ? 's' : ''}
                       </p>
                     </div>
-                          
+
                     {/* Packing Button/Status for this shipment */}
                     <div className="flex items-center gap-2">
                       {(packedShipments.has(shipment.shipmentId) || packingInfoMap[shipment.shipmentId]) ? (
@@ -469,14 +469,14 @@ function ResultsPageContent() {
                             <div className="font-semibold">Empacado</div>
                             {packingInfoMap[shipment.shipmentId] && (
                               <div className="text-xs text-green-600">
-                                por {packingInfoMap[shipment.shipmentId].packed_by_name}
+                                {packingInfoMap[shipment.shipmentId].packed_by_name}
                                 <br />
                                 {new Date(packingInfoMap[shipment.shipmentId].created_at!).toLocaleString('es-ES', {
                                   day: '2-digit',
                                   month: '2-digit',
                                   year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                  // hour: '2-digit',
+                                  // minute: '2-digit'
                                 })}
                               </div>
                             )}
@@ -532,7 +532,7 @@ function ResultsPageContent() {
                     ) : (
                       <Package className="w-5 h-5" />
                     )}
-                    Empacar Todo
+                    Empacar
                   </Button>
                 </motion.div>
               )}
@@ -542,7 +542,7 @@ function ResultsPageContent() {
                   className="bg-black hover:bg-gray-800 text-white font-semibold px-8 py-4 rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-3"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  Escanear otra etiqueta
+                  Escanear
                 </Button>
               </motion.div>
             </div>
