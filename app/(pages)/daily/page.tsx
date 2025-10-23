@@ -2,13 +2,28 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LayoutWrapper } from "@/components/layout-wrapper"
-import { SimpleTable } from '@/components/dashboard/t_wrapper_v2';
 import { totalSalesDaily } from '@/lib/dashboard/data';
 import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
 import { ItemsFilter } from '@/components/dashboard/ItemsFilter';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Download, Settings2 } from "lucide-react"
 
 interface DailySalesRow {
   date: string;
@@ -37,6 +52,21 @@ const DailyDashboardPage = () => {
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
   const itemsFilter = useItemsFilter();
+
+  // Column visibility state
+  const [columnVisibility, setColumnVisibility] = useState({
+    total_orders: true,
+    total_units: true,
+    total_sales: true,
+    gross_profit: true,
+    net_profit: true,
+    ad_cost: true,
+    refund_units: true,
+    refund_amount: true,
+    total_fee: true,
+    total_discount: true,
+    total_cogs: true,
+  });
 
   const appliedItemIds = useMemo(() => {
     return itemsFilter.appliedItemIds;
@@ -123,109 +153,224 @@ const DailyDashboardPage = () => {
     }
   };
 
+  const metrics = useMemo(() => [
+    { key: 'total_orders', label: 'Orders', format: false, visible: columnVisibility.total_orders },
+    { key: 'total_units', label: 'Units', format: false, visible: columnVisibility.total_units },
+    { key: 'total_sales', label: 'Sales', format: true, visible: columnVisibility.total_sales },
+    { key: 'gross_profit', label: 'Gross Profit', format: true, visible: columnVisibility.gross_profit },
+    { key: 'net_profit', label: 'Net Profit', format: true, visible: columnVisibility.net_profit },
+    { key: 'ad_cost', label: 'Ad Cost', format: true, visible: columnVisibility.ad_cost },
+    { key: 'refund_units', label: 'Refund Units', format: false, visible: columnVisibility.refund_units },
+    { key: 'refund_amount', label: 'Refund Amount', format: true, visible: columnVisibility.refund_amount },
+    { key: 'total_fee', label: 'ML Fee', format: true, visible: columnVisibility.total_fee },
+    { key: 'total_discount', label: 'Discount', format: true, visible: columnVisibility.total_discount },
+    { key: 'total_cogs', label: 'COGS', format: true, visible: columnVisibility.total_cogs }
+  ], [columnVisibility]);
+
   // Pivot the data to have dates as columns
   const pivotedData = useMemo(() => {
     if (!dashboardData || dashboardData.length === 0) return [];
 
-    const metrics = [
-      { key: 'total_orders', label: 'Orders', format: false },
-      { key: 'total_units', label: 'Units', format: false },
-      { key: 'total_sales', label: 'Sales', format: true },
-      { key: 'gross_profit', label: 'Gross Profit', format: true },
-      { key: 'net_profit', label: 'Net Profit', format: true },
-      { key: 'ad_cost', label: 'Ad Cost', format: true },
-      { key: 'refund_units', label: 'Refund Units', format: false },
-      { key: 'refund_amount', label: 'Refund Amount', format: true },
-      { key: 'total_fee', label: 'ML Fee', format: true },
-      { key: 'total_discount', label: 'Discount', format: true },
-      { key: 'total_cogs', label: 'COGS', format: true }
-    ];
-
-    return metrics.map(metric => {
-      const row: PivotedRow = { metric: metric.label };
-      dashboardData.forEach(data => {
-        const dateStr = formatDateForColumn(data.date);
-        const value = data[metric.key];
-        row[dateStr] = value == null ? '-' : metric.format ? `$${Math.round(value).toLocaleString()}` : Math.round(value).toLocaleString();
-      });
-      return row;
-    });
-  }, [dashboardData, period]);
-
-  // Generate columns dynamically based on dates
-  const columns = useMemo(() => {
-    const cols = [{ accessorKey: 'metric', header: 'Metric' }];
-
-    if (dashboardData && dashboardData.length > 0) {
-      dashboardData.forEach(data => {
-        const dateStr = formatDateForColumn(data.date);
-        cols.push({
-          accessorKey: dateStr,
-          header: dateStr
+    return metrics
+      .filter(metric => metric.visible)
+      .map(metric => {
+        const row: PivotedRow = { metric: metric.label };
+        dashboardData.forEach(data => {
+          const dateStr = formatDateForColumn(data.date);
+          const value = data[metric.key];
+          row[dateStr] = value == null ? '-' : metric.format ? `$${Math.round(value).toLocaleString()}` : Math.round(value).toLocaleString();
         });
+        return row;
       });
-    }
+  }, [dashboardData, period, metrics]);
 
-    return cols;
-  }, [dashboardData, period]);
+  const handleDownload = () => {
+    const headers = ['Metric', ...dashboardData.map(data => formatDateForColumn(data.date))];
+    const rows = pivotedData.map(row => {
+      const values = [row.metric];
+      dashboardData.forEach(data => {
+        const dateStr = formatDateForColumn(data.date);
+        values.push(row[dateStr] || '-');
+      });
+      return values.join(',');
+    });
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales_${period}_${dateRange[0]?.toISOString().split('T')[0]}_${dateRange[1]?.toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
 
   return (
     <LayoutWrapper>
       <div className="p-4">
-        {/* <h1 className="text-2xl font-bold mb-4">Daily Sales Dashboard</h1> */}
-
         {dateRangeError && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded">
             {dateRangeError}
           </div>
         )}
 
-        <div className="daily-dashboard-table">
-          <style jsx>{`
-            .daily-dashboard-table table {
-              table-layout: fixed !important;
-            }
-          `}</style>
-          <SimpleTable
-            data={pivotedData as any}
-            columns={columns as any}
-            loading={loading}
-            enableSearch={false}
-            enableSorting={false}
-            enablePagination={false}
-            exportFilename={`sales_${period}_${dateRange[0]?.toISOString().split('T')[0]}_${dateRange[1]?.toISOString().split('T')[0]}`}
-            customControls={
-            <div className="flex justify-between items-start w-full gap-4">
-              <div className="min-w-[300px]">
-                <ItemsFilter {...itemsFilter} />
-              </div>
-              <div className="flex gap-2 items-center">
-                <PeriodSelector
-                  period={period}
-                  onChange={setPeriod}
-                  dateRange={dateRange}
-                  onDateRangeError={setDateRangeError}
-                />
-                <DatePicker
-                  selected={null}
-                  onChange={(dates) => {
-                    if (Array.isArray(dates)) {
-                      validateAndSetDateRange([dates[0], dates[1]]);
-                    }
-                  }}
-                  startDate={dateRange[0]}
-                  endDate={dateRange[1]}
-                  selectsRange
-                  dateFormat="yyyy-MM-dd"
-                  className="px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-                  placeholderText="Select date range..."
-                  maxDate={new Date()}
-                />
-              </div>
-            </div>
-          }
-          />
+        {/* Top Controls */}
+        <div className="flex justify-between items-start w-full gap-4 mb-6">
+          <div className="min-w-[300px]">
+            <ItemsFilter {...itemsFilter} />
+          </div>
+          <div className="flex gap-2 items-center">
+            <PeriodSelector
+              period={period}
+              onChange={setPeriod}
+              dateRange={dateRange}
+              onDateRangeError={setDateRangeError}
+            />
+            <DatePicker
+              selected={null}
+              onChange={(dates) => {
+                if (Array.isArray(dates)) {
+                  validateAndSetDateRange([dates[0], dates[1]]);
+                }
+              }}
+              startDate={dateRange[0]}
+              endDate={dateRange[1]}
+              selectsRange
+              dateFormat="yyyy-MM-dd"
+              className="px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              placeholderText="Select date range..."
+              maxDate={new Date()}
+            />
+          </div>
         </div>
+
+        {/* Table Controls */}
+        <div className="flex justify-end items-center w-full mb-4 gap-2">
+          {/* Column Customization Button */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_orders}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_orders: checked }))}
+              >
+                Orders
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_units}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_units: checked }))}
+              >
+                Units
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_sales}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_sales: checked }))}
+              >
+                Sales
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.gross_profit}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, gross_profit: checked }))}
+              >
+                Gross Profit
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.net_profit}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, net_profit: checked }))}
+              >
+                Net Profit
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.ad_cost}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, ad_cost: checked }))}
+              >
+                Ad Cost
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.refund_units}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, refund_units: checked }))}
+              >
+                Refund Units
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.refund_amount}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, refund_amount: checked }))}
+              >
+                Refund Amount
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_fee}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_fee: checked }))}
+              >
+                ML Fee
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_discount}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_discount: checked }))}
+              >
+                Discount
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={columnVisibility.total_cogs}
+                onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, total_cogs: checked }))}
+              >
+                COGS
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Download Button */}
+          <Button variant="outline" size="icon" onClick={handleDownload}>
+            <Download className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="text-center py-8">Loading...</div>
+        ) : (
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="sticky left-0 bg-background z-10">Metric</TableHead>
+                  {dashboardData.map((data, index) => (
+                    <TableHead key={index}>{formatDateForColumn(data.date)}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pivotedData.length > 0 ? (
+                  pivotedData.map((row, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                        {row.metric}
+                      </TableCell>
+                      {dashboardData.map((data, dataIndex) => {
+                        const dateStr = formatDateForColumn(data.date);
+                        return (
+                          <TableCell key={dataIndex}>
+                            {row[dateStr]}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={dashboardData.length + 1} className="text-center">
+                      No data available
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
     </LayoutWrapper>
   );

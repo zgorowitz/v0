@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
+import React, { useEffect } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface MetricCardData {
   period?: string;
@@ -16,12 +17,15 @@ interface MetricCardData {
   ad_cost?: number;
   refund_amount?: number;
   refund_units?: number;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface MetricCardsProps {
   data: MetricCardData[];
   loading?: boolean;
-  onDateChange?: (index: number, startDate: Date, endDate: Date) => void;
+  selectedIndex?: number;
+  onCardClick?: (index: number) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -38,102 +42,83 @@ const formatNumber = (num: number) => {
 };
 
 const colorSchemes = [
-  { header: 'bg-emerald-200', text: 'text-emerald-800' }, // Fuller greenish
-  { header: 'bg-teal-200', text: 'text-teal-800' },      // Fuller teal/greenish-blue
-  { header: 'bg-cyan-200', text: 'text-cyan-800' },    // Fuller brownish
-  { header: 'bg-sky-200', text: 'text-sky-800' },          // Fuller blueish
+  { header: 'bg-emerald-200/75', text: 'text-emerald-800' }, // Fuller greenish
+  { header: 'bg-teal-200/75', text: 'text-teal-800' },      // Fuller teal/greenish-blue
+  { header: 'bg-cyan-200/75', text: 'text-cyan-800' },    // Fuller brownish
+  { header: 'bg-sky-200/75', text: 'text-sky-800' },          // Fuller blueish
 ];
 
-const MetricCard: React.FC<{ data: MetricCardData; onDateChange?: (startDate: Date, endDate: Date) => void; colorIndex: number }> = ({ data, onDateChange, colorIndex }) => {
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+const MetricCard: React.FC<{
+  data: MetricCardData;
+  colorIndex: number;
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ data, colorIndex, isSelected, onClick }) => {
   const colors = colorSchemes[colorIndex % colorSchemes.length];
-  
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Creamy header section */}
-      <div className={`${colors.header} px-4 pt-4 pb-3`}>
-        <h3 className="text-sm font-medium text-gray-700 mb-2 cursor-pointer" onClick={() => setShowPicker(!showPicker)}>
-          {data.period}
-        </h3>
-        <div className="flex justify-between items-baseline">
-          <span className="text-xs text-gray-600">Sales</span>
-          <span className={`text-2xl font-bold ${colors.text}`}>{formatCurrency(data.total_sales || 0)}</span>
-        </div>
-      </div>
-      
-      {showPicker && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-          <div className="absolute z-50 bg-white border shadow-lg">
-            <DatePicker selected={startDate} onChange={(dates) => { const [start, end] = dates; setStartDate(start); setEndDate(end); if (start && end) { onDateChange?.(start, end); setShowPicker(false); } }} startDate={startDate} endDate={endDate} selectsRange inline />
-          </div>
-        </>
+    <Card
+      className={cn(
+        "cursor-pointer transition-all hover:shadow-lg rounded-xl overflow-hidden",
+        isSelected && "ring-2 ring-primary shadow-lg"
       )}
-      
-      {/* White body section */}
-      <div className="px-4 py-3 space-y-2">
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Orders/Units</span>
-          <span className="text-sm font-medium text-gray-800">{formatNumber(data.total_orders || 0)}/{formatNumber(data.total_units || 0)}</span>
+      onClick={onClick}
+    >
+      <CardHeader className={cn(colors.header, "px-4 pt-4 pb-3 rounded-t-xl")}>
+        <div className="mb-2">
+          <h3 className="text-sm font-medium text-gray-700">
+            {data.period}
+          </h3>
+          <div className="text-xs text-gray-600 mt-0.5">
+            {data.startDate === data.endDate
+              ? data.startDate
+              : `${data.startDate} - ${data.endDate}`}
+          </div>
         </div>
-        
-        {/* <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Units</span>
-          <span className="text-sm font-medium text-gray-800">{formatNumber(data.total_units || 0)}</span>
-        </div> */}
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Discount</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_discount || 0)}</span>
+        <div className="flex justify-between items-baseline">
+          <span className="text-xs text-gray-600">Orders / Units</span>
+          <span className={cn("text-2xl font-bold", colors.text)}>
+            {formatNumber(data.total_orders || 0)} / {formatNumber(data.total_units || 0)}
+          </span>
         </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Fee</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_fee || 0)}</span>
+      </CardHeader>
+
+      <CardContent className="px-4 py-4">
+        {/* Revenue and Profit - Grid Layout */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-800">{formatCurrency(data.total_sales || 0)}</div>
+            <div className="text-xs text-gray-500 mt-1">Revenue</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-gray-800">{formatCurrency(data.net_profit || 0)}</div>
+            <div className="text-xs text-gray-500 mt-1">Profit</div>
+          </div>
         </div>
-        
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-3"></div>
+
+        {/* Ad Spend - Single Row */}
         <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">COGS</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.total_cogs || 0)}</span>
+          <span className="text-sm text-gray-600">Ad Spend</span>
+          <span className="text-lg font-semibold text-gray-800">
+            {formatCurrency(data.ad_cost || 0)}
+          </span>
         </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Ads</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.ad_cost || 0)}</span>
-        </div>
-        
-        {/* <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Gross Profit</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.gross_profit || 0)}</span>
-        </div> */}
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Net Profit</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.net_profit || 0)}</span>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Refund Units</span>
-          <span className="text-sm font-medium text-gray-800">{formatNumber(data.refund_units || 0)}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-500">Refund Amount</span>
-          <span className="text-sm font-medium text-gray-800">{formatCurrency(data.refund_amount || 0)}</span>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
-export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, onDateChange }) => {
+export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, selectedIndex = 0, onCardClick }) => {
   // Debug: Log component renders
   useEffect(() => {
     console.log('[MetricCards] Component rendered with:', {
       dataLength: data?.length,
       loading,
-      hasOnDateChange: !!onDateChange
+      selectedIndex,
+      hasOnCardClick: !!onCardClick
     });
   });
 
@@ -164,11 +149,12 @@ export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, onDateC
   return (
     <div className="grid grid-cols-4 gap-4 mb-6">
       {data.map((cardData, index) => (
-        <MetricCard 
-          key={index} 
-          data={cardData} 
+        <MetricCard
+          key={index}
+          data={cardData}
           colorIndex={index}
-          onDateChange={(start, end) => onDateChange?.(index, start, end)} 
+          isSelected={index === selectedIndex}
+          onClick={() => onCardClick?.(index)}
         />
       ))}
     </div>

@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useState } from 'react';
-import { X, ChevronDown } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface Item {
   item_id: string;
@@ -35,95 +37,44 @@ export function ItemsFilter({
   applyFilter,
   hasPendingChanges
 }: ItemsFilterProps) {
-  const [showSelectedDropdown, setShowSelectedDropdown] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const handleAddItem = (item: Item) => {
+    addItem(item);
+    // Don't close dropdown after adding item
+  };
+
+  const handleRemoveItem = (itemId: string) => {
+    removeItem(itemId);
+    // Don't close dropdown after removing item
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    if (e.target.value.trim()) {
+      setShowDropdown(true);
+    }
+  };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 w-full">
       {/* Search Input with Dropdown Results */}
-      <div className="relative">
+      <div className="relative w-full">
         <div className="flex gap-2">
-          <input
+          <Input
             type="text"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
+            onFocus={() => setShowDropdown(true)}
             placeholder="Search by item ID or title..."
-            className="flex-1 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 max-w-2xl"
           />
 
-          {/* Selected Items Button */}
-          {selectedItems.length > 0 && (
-            <button
-              onClick={() => setShowSelectedDropdown(!showSelectedDropdown)}
-              className="flex items-center gap-1 px-3 py-2 bg-white text-gray-600 rounded hover:bg-gray-50"
-            >
-              <span className="text-sm font-medium">
-                {selectedItems.length}
-              </span>
-              <ChevronDown size={14} className={`transition-transform ${showSelectedDropdown ? 'rotate-180' : ''}`} />
-            </button>
-          )}
-
           {/* Filter Button */}
-          {hasPendingChanges && (
-            <button
-              onClick={applyFilter}
-              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 font-medium text-sm"
-            >
-              Filter
-            </button>
-          )}
+          <Button onClick={applyFilter} variant="outline" disabled={!hasPendingChanges}>
+            Search{selectedItems.length > 0 && ` (${selectedItems.length})`}
+          </Button>
         </div>
-
-        {/* Selected Items Dropdown */}
-        {showSelectedDropdown && selectedItems.length > 0 && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setShowSelectedDropdown(false)}
-            />
-            <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-md shadow-lg right-0 max-h-48 overflow-auto">
-                    <div className="px-2 py-1.5 border-b border-gray-100 flex items-center justify-between">
-                      <span className="text-xs font-medium text-gray-700">
-                        {selectedItems.length} selected
-                      </span>
-                      <button
-                        onClick={clearAll}
-                        className="text-xs text-red-500 hover:text-red-700"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    <div className="p-1 space-y-0.5">
-                      {selectedItems.map(item => (
-                        <div
-                          key={item.item_id}
-                          className="flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded group"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {item.thumbnail && (
-                              <img
-                                src={item.thumbnail}
-                                alt={item.title}
-                                className="w-4 h-4 object-cover rounded"
-                              />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-medium text-gray-900">{item.item_id}</div>
-                              <div className="text-xs text-gray-500 truncate">{item.title}</div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeItem(item.item_id)}
-                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-500 transition-all"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
 
         {/* Loading indicator */}
         {isSearching && (
@@ -132,29 +83,119 @@ export function ItemsFilter({
           </div>
         )}
 
-        {/* Dropdown with search results */}
-        {searchResults.length > 0 && !isSearching && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-            {searchResults.map(item => (
-              <button
-                key={item.item_id}
-                onClick={() => addItem(item)}
-                className="w-full px-3 py-2 text-left hover:bg-gray-100 border-b last:border-b-0 flex items-center gap-2"
-              >
-                {item.thumbnail && (
-                  <img
-                    src={item.thumbnail}
-                    alt={item.title}
-                    className="w-10 h-10 object-cover rounded"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm">{item.item_id}</div>
-                  <div className="text-xs text-gray-600 truncate">{item.title}</div>
+        {/* Combined Dropdown - Selected Items + Search Results */}
+        {showDropdown && (searchResults.length > 0 || selectedItems.length > 0) && !isSearching && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowDropdown(false)}
+            />
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-[500px] overflow-auto">
+              {/* Selected Items Section */}
+              {selectedItems.length > 0 && (
+                <div className="border-b border-gray-200">
+                  <div className="px-3 py-2 bg-gray-50 flex items-center justify-between sticky top-0 z-10">
+                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Selected ({selectedItems.length})
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearAll();
+                      }}
+                      className="h-6 text-xs text-red-500 hover:text-red-700"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  <div className="max-h-[200px] overflow-auto">
+                    {selectedItems.map(item => (
+                      <div
+                        key={item.item_id}
+                        className="flex items-center justify-between px-3 py-2 hover:bg-blue-50 border-b last:border-b-0 group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {item.thumbnail && (
+                            <img
+                              src={item.thumbnail}
+                              alt={item.title}
+                              className="w-8 h-8 object-cover rounded"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium text-gray-900">{item.item_id}</div>
+                            <div className="text-xs text-gray-600 truncate">{item.title}</div>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveItem(item.item_id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 hover:text-red-500"
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+              )}
+
+              {/* Search Results Section */}
+              {searchResults.length > 0 && (
+                <div>
+                  {selectedItems.length > 0 && (
+                    <div className="px-3 py-2 bg-gray-50 sticky top-0 z-10">
+                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                        Search Results
+                      </span>
+                    </div>
+                  )}
+                  {searchResults.map(item => {
+                    const isSelected = selectedItems.some(s => s.item_id === item.item_id);
+                    return (
+                      <Button
+                        key={item.item_id}
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isSelected) {
+                            handleAddItem(item);
+                          }
+                        }}
+                        disabled={isSelected}
+                        className={`w-full h-auto justify-start px-3 py-2 border-b last:border-b-0 rounded-none ${
+                          isSelected
+                            ? 'cursor-not-allowed opacity-50'
+                            : ''
+                        }`}
+                      >
+                        {item.thumbnail && (
+                          <img
+                            src={item.thumbnail}
+                            alt={item.title}
+                            className="w-8 h-8 object-cover rounded mr-2"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="font-medium text-sm">{item.item_id}</div>
+                          <div className="text-xs text-gray-600 truncate">{item.title}</div>
+                        </div>
+                        {isSelected && (
+                          <Badge variant="secondary" className="text-xs ml-2">Selected</Badge>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
