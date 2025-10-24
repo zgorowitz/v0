@@ -59,14 +59,20 @@ interface DashboardRow {
   ad_cost: number;
   refund_amount: number;
   refund_units: number;
-  
+
+  // New calculated metrics
+  profit_margin: number;
+  tacos: number;
+  fees_percent: number;
+  refund_rate: number;
+
   title: string;
   available_quantity: number;
   thumbnail: string;
   permalink: string;
   status: string;
   sub_status: string;
-  
+
   // // Grouping and hierarchy fields
   // isVariation?: boolean;
   // subRows?: DashboardRow[];
@@ -84,7 +90,25 @@ const DashboardContent = () => {
 
   // TanStack Table states
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
+    thumbnail: true,
+    item: true,
+    units: true,
+    sales: true,
+    gross_profit: false,
+    net_profit: true,
+    ads: true,
+    refunds: true,
+    refund_cost: false,
+    fee: false,
+    discount: false,
+    cogs: false,
+    profit_margin: true,
+    tacos: true,
+    fees_percent: true,
+    refund_rate: true,
+    status: false,
+  });
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
   const [columnResizeMode] = useState<ColumnResizeMode>('onChange');
 
@@ -141,6 +165,10 @@ const DashboardContent = () => {
       { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 180 },
       { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
       { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
+      { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 140 },
+      { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
+      { id: 'fees_percent', accessorKey: 'fees_percent', header: ({ column }) => <SortableHeader column={column}>Fees %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
+      { id: 'refund_rate', accessorKey: 'refund_rate', header: ({ column }) => <SortableHeader column={column}>Refund Rate</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 130 },
       { id: 'status', accessorKey: 'status', header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>, size: 120 },
     ],
     []
@@ -280,6 +308,10 @@ const DashboardContent = () => {
              id === 'fee' ? 'Mercado-Libre Fee' :
              id === 'discount' ? 'Discount' :
              id === 'cogs' ? 'COGS' :
+             id === 'profit_margin' ? 'Margin' :
+             id === 'tacos' ? 'TACOS' :
+             id === 'fees_percent' ? 'Fees %' :
+             id === 'refund_rate' ? 'Refund Rate' :
              id === 'status' ? 'Status' : id;
     }).join(',');
 
@@ -333,13 +365,14 @@ const DashboardContent = () => {
                     <Settings2 className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="max-h-[80vh] overflow-y-auto grid grid-cols-2 gap-x-4 p-2 w-[500px]">
                   {table.getAllLeafColumns().map((column) => (
                     <DropdownMenuCheckboxItem
                       key={column.id}
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) => column.toggleVisibility(!!value)}
                       onSelect={(e) => e.preventDefault()}
+                      className="cursor-pointer"
                     >
                       {column.id === 'thumbnail' ? 'Thumbnail' :
                        column.id === 'item' ? 'Item' :
@@ -353,6 +386,10 @@ const DashboardContent = () => {
                        column.id === 'fee' ? 'Mercado-Libre Fee' :
                        column.id === 'discount' ? 'Discount' :
                        column.id === 'cogs' ? 'COGS' :
+                       column.id === 'profit_margin' ? 'Margin' :
+                       column.id === 'tacos' ? 'TACOS' :
+                       column.id === 'fees_percent' ? 'Fees %' :
+                       column.id === 'refund_rate' ? 'Refund Rate' :
                        column.id === 'status' ? 'Status' : column.id}
                     </DropdownMenuCheckboxItem>
                   ))}

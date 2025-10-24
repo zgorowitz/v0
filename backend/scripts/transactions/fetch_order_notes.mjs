@@ -57,12 +57,12 @@ function parseOrderNotes(notesData, orderId, meliUserId) {
 async function getOrdersToFetch(supabase, hoursAgo = 6) {
   const timeAgo = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
 
-  // Get order IDs from meli_orders where fulfilled = false and updated in last N hours
+  // Get order IDs from ml_orders_v2 where fulfilled = false and updated in last N hours
   const { data: orders, error } = await supabase
-    .from('meli_orders')
+    .from('ml_orders_v2')
     .select('id, meli_user_id')
     .eq('fulfilled', false)
-    .gte('date_last_updated', timeAgo)
+    .gte('last_updated', timeAgo)
   
   if (error) throw error
   

@@ -6,8 +6,9 @@ import { totalSalesDaily } from '@/lib/dashboard/data';
 import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
 import { ItemsFilter } from '@/components/dashboard/ItemsFilter';
 import { PeriodSelector } from '@/components/dashboard/PeriodSelector';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -48,7 +49,6 @@ interface PivotedRow {
 const DailyDashboardPage = () => {
   const [dashboardData, setDashboardData] = useState<DailySalesRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('month');
   const [dateRangeError, setDateRangeError] = useState<string | null>(null);
   const itemsFilter = useItemsFilter();
@@ -72,22 +72,22 @@ const DailyDashboardPage = () => {
     return itemsFilter.appliedItemIds;
   }, [JSON.stringify(itemsFilter.appliedItemIds)]);
 
-  const [dateRange, setDateRange] = useState(() => {
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const end = new Date();
     end.setDate(end.getDate() - 1);
     const start = new Date(end);
     start.setMonth(start.getMonth() - 11); // Go back 11 months from yesterday (12 months total)
     start.setDate(1); // Set to first day of that month
-    return [start, end];
+    return { from: start, to: end };
   });
 
-  const validateAndSetDateRange = (dates: [Date | null, Date | null]) => {
-    if (!dates[0] || !dates[1]) {
-      setDateRange(dates);
+  const validateAndSetDateRange = (newDateRange: DateRange) => {
+    if (!newDateRange.from || !newDateRange.to) {
+      setDateRange(newDateRange);
       return;
     }
 
-    const diffTime = Math.abs(dates[1].getTime() - dates[0].getTime());
+    const diffTime = Math.abs(newDateRange.to.getTime() - newDateRange.from.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     let isValid = true;
@@ -111,7 +111,7 @@ const DailyDashboardPage = () => {
 
     if (isValid) {
       setDateRangeError(null);
-      setDateRange(dates);
+      setDateRange(newDateRange);
     }
   };
 
@@ -122,16 +122,15 @@ const DailyDashboardPage = () => {
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
-    const [start, end] = dateRange;
-    if (!start || !end) {
+    if (!dateRange?.from || !dateRange?.to) {
       setLoading(false);
       return;
     }
 
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = end.toISOString().split('T')[0];
+    const startStr = dateRange.from.toISOString().split('T')[0];
+    const endStr = dateRange.to.toISOString().split('T')[0];
 
-    const data = await totalSalesDaily(startStr, endStr, period, appliedItemIds);
+    const data = await totalSalesDaily(startStr, endStr, period, appliedItemIds.length > 0 ? appliedItemIds : null as any);
     setDashboardData(data || []);
     setLoading(false);
   }, [dateRange, appliedItemIds, period]);
@@ -147,7 +146,7 @@ const DailyDashboardPage = () => {
       case 'week':
         return `Week ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
       case 'month':
-        return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+        return date.toLocaleDateString('en-US', { month: 'short' });
       default:
         return dateStr;
     }
@@ -177,7 +176,7 @@ const DailyDashboardPage = () => {
         const row: PivotedRow = { metric: metric.label };
         dashboardData.forEach(data => {
           const dateStr = formatDateForColumn(data.date);
-          const value = data[metric.key];
+          const value = (data as any)[metric.key];
           row[dateStr] = value == null ? '-' : metric.format ? `$${Math.round(value).toLocaleString()}` : Math.round(value).toLocaleString();
         });
         return row;
@@ -200,7 +199,7 @@ const DailyDashboardPage = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sales_${period}_${dateRange[0]?.toISOString().split('T')[0]}_${dateRange[1]?.toISOString().split('T')[0]}.csv`;
+    a.download = `sales_${period}_${dateRange?.from?.toISOString().split('T')[0]}_${dateRange?.to?.toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -223,24 +222,21 @@ const DailyDashboardPage = () => {
             <PeriodSelector
               period={period}
               onChange={setPeriod}
-              dateRange={dateRange}
+              dateRange={[dateRange?.from || null, dateRange?.to || null]}
               onDateRangeError={setDateRangeError}
             />
-            <DatePicker
-              selected={null}
-              onChange={(dates) => {
-                if (Array.isArray(dates)) {
-                  validateAndSetDateRange([dates[0], dates[1]]);
-                }
-              }}
-              startDate={dateRange[0]}
-              endDate={dateRange[1]}
-              selectsRange
-              dateFormat="yyyy-MM-dd"
-              className="px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-              placeholderText="Select date range..."
-              maxDate={new Date()}
-            />
+            <DateRangePicker
+              dateRange={dateRange}
+              onDateRangeChange={validateAndSetDateRange}
+              align="end"
+              numberOfMonths={2}
+            >
+              <Button variant="outline" className="w-64">
+                {dateRange?.from && dateRange?.to
+                  ? `${format(dateRange.from, 'MMM dd, yyyy')} - ${format(dateRange.to, 'MMM dd, yyyy')}`
+                  : 'Select date range...'}
+              </Button>
+            </DateRangePicker>
           </div>
         </div>
 
@@ -334,12 +330,12 @@ const DailyDashboardPage = () => {
           <div className="text-center py-8">Loading...</div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
-            <Table>
+            <Table style={{ tableLayout: 'fixed', width: 'auto' }}>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 bg-background z-10">Metric</TableHead>
+                  <TableHead className="sticky left-0 bg-background z-10 w-40 min-w-40 max-w-40">Metric</TableHead>
                   {dashboardData.map((data, index) => (
-                    <TableHead key={index}>{formatDateForColumn(data.date)}</TableHead>
+                    <TableHead key={index} className="w-28 min-w-28 max-w-28 text-center">{formatDateForColumn(data.date)}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
@@ -347,13 +343,13 @@ const DailyDashboardPage = () => {
                 {pivotedData.length > 0 ? (
                   pivotedData.map((row, index) => (
                     <TableRow key={index}>
-                      <TableCell className="sticky left-0 bg-background z-10 font-medium">
+                      <TableCell className="sticky left-0 bg-background z-10 font-medium w-40 min-w-40 max-w-40">
                         {row.metric}
                       </TableCell>
                       {dashboardData.map((data, dataIndex) => {
                         const dateStr = formatDateForColumn(data.date);
                         return (
-                          <TableCell key={dataIndex}>
+                          <TableCell key={dataIndex} className="w-28 min-w-28 max-w-28 text-center">
                             {row[dateStr]}
                           </TableCell>
                         );
