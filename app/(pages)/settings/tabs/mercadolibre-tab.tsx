@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
+  Card,
+  CardContent,
+} from "@/components/ui/card"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -147,7 +151,7 @@ export default function MercadoLibreTab() {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold mb-6">MercadoLibre Connections</h2>
+      {/* <h2 className="text-xl font-semibold mb-6">MercadoLibre Connections</h2> */}
 
       {error && (
         <div className="mb-4 p-3 border border-red-200 bg-red-50 text-red-700 text-sm rounded">
@@ -156,15 +160,17 @@ export default function MercadoLibreTab() {
       )}
 
       {accounts.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600 mb-4">No MercadoLibre accounts connected</p>
-          <Button
-            onClick={connectNewAccount}
-            className="bg-black hover:bg-gray-800 text-white"
-          >
-            Connect MercadoLibre Account
-          </Button>
-        </div>
+        <Card>
+          <CardContent className="text-center py-8">
+            <p className="text-gray-600 mb-4">No MercadoLibre accounts</p>
+            <Button
+              onClick={connectNewAccount}
+              className="bg-black hover:bg-gray-800 text-white"
+            >
+              Connect MercadoLibre Account
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div className="border border-gray-200 rounded-lg overflow-hidden">

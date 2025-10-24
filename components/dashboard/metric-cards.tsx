@@ -2,7 +2,9 @@
 
 import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 interface MetricCardData {
   period?: string;
@@ -26,6 +28,7 @@ interface MetricCardsProps {
   loading?: boolean;
   selectedIndex?: number;
   onCardClick?: (index: number) => void;
+  onCardDateChange?: (cardIndex: number, dateRange: DateRange) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -53,7 +56,8 @@ const MetricCard: React.FC<{
   colorIndex: number;
   isSelected: boolean;
   onClick: () => void;
-}> = ({ data, colorIndex, isSelected, onClick }) => {
+  onDateChange?: (dateRange: DateRange) => void;
+}> = ({ data, colorIndex, isSelected, onClick, onDateChange }) => {
   const colors = colorSchemes[colorIndex % colorSchemes.length];
 
   return (
@@ -65,45 +69,63 @@ const MetricCard: React.FC<{
       onClick={onClick}
     >
       <CardHeader className={cn(colors.header, "px-4 pt-4 pb-3 rounded-t-xl")}>
-        <div className="mb-2">
+        <div>
           <h3 className="text-sm font-medium text-gray-700">
             {data.period}
           </h3>
-          <div className="text-xs text-gray-600 mt-0.5">
-            {data.startDate === data.endDate
-              ? data.startDate
-              : `${data.startDate} - ${data.endDate}`}
-          </div>
-        </div>
-        <div className="flex justify-between items-baseline">
-          <span className="text-xs text-gray-600">Orders / Units</span>
-          <span className={cn("text-2xl font-bold", colors.text)}>
-            {formatNumber(data.total_orders || 0)} / {formatNumber(data.total_units || 0)}
-          </span>
+          <DateRangePicker
+            onDateRangeChange={onDateChange}
+            align="start"
+            numberOfMonths={2}
+          >
+            <div
+              className="text-xs text-gray-600 mt-0.5 cursor-pointer hover:text-gray-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {data.startDate === data.endDate
+                ? data.startDate
+                : `${data.startDate} - ${data.endDate}`}
+            </div>
+          </DateRangePicker>
         </div>
       </CardHeader>
 
       <CardContent className="px-4 py-4">
-        {/* Revenue and Profit - Grid Layout */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-800">{formatCurrency(data.total_sales || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">Revenue</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-800">{formatCurrency(data.net_profit || 0)}</div>
-            <div className="text-xs text-gray-500 mt-1">Profit</div>
-          </div>
+        {/* Orders / Units - Single Row */}
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-600">Orders / Units</span>
+          <span className="text-2xl font-bold text-gray-800">
+            {formatNumber(data.total_orders || 0)} / {formatNumber(data.total_units || 0)}
+          </span>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-3"></div>
+
+        {/* Revenue - Single Row */}
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-600">Revenue</span>
+          <span className="text-2xl font-bold text-gray-800">
+            {formatCurrency(data.total_sales || 0)}
+          </span>
         </div>
 
         {/* Divider */}
         <div className="border-t border-gray-200 my-3"></div>
 
         {/* Ad Spend - Single Row */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-3">
           <span className="text-sm text-gray-600">Ad Spend</span>
           <span className="text-lg font-semibold text-gray-800">
             {formatCurrency(data.ad_cost || 0)}
+          </span>
+        </div>
+
+        {/* Profit - Single Row */}
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">Profit</span>
+          <span className="text-lg font-semibold text-gray-800">
+            {formatCurrency(data.net_profit || 0)}
           </span>
         </div>
       </CardContent>
@@ -111,7 +133,7 @@ const MetricCard: React.FC<{
   );
 };
 
-export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, selectedIndex = 0, onCardClick }) => {
+export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, selectedIndex = 0, onCardClick, onCardDateChange }) => {
   // Debug: Log component renders
   useEffect(() => {
     console.log('[MetricCards] Component rendered with:', {
@@ -155,6 +177,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({ data, loading, selecte
           colorIndex={index}
           isSelected={index === selectedIndex}
           onClick={() => onCardClick?.(index)}
+          onDateChange={(dateRange) => onCardDateChange?.(index, dateRange)}
         />
       ))}
     </div>

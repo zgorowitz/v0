@@ -142,6 +142,20 @@ export const getPresetGroups = () => [
     { ...getLastNDays(14), label: '14 days' },
     { ...getLastNDays(30), label: '30 days' },
   ],
+    // Group 6
+  [
+    { ...getToday(), label: 'Today' },
+    { ...getYesterday(), label: 'Yesterday' },
+    { ...getDaysAgo(2), label: '2 days ago' },
+    { ...getDaysAgo(3), label: '3 days ago' },
+  ],
+  // Group 7
+  [
+    { ...getToday(), label: 'Today' },
+    { ...getYesterday(), label: 'Yesterday' },
+    { ...getDaysAgo(7), label: '7 days ago' },
+    { ...getDaysAgo(8), label: '8 days ago' },
+  ],
   // Group 1
   [
     { ...getToday(), label: 'Today' },
@@ -162,20 +176,6 @@ export const getPresetGroups = () => [
     { ...getLastMonth(), label: 'Last month' },
     { ...getMonthsAgo(2), label: '2 months ago' },
     { ...getMonthsAgo(3), label: '3 months ago' },
-  ],
-  // Group 6
-  [
-    { ...getToday(), label: 'Today' },
-    { ...getYesterday(), label: 'Yesterday' },
-    { ...getDaysAgo(2), label: '2 days ago' },
-    { ...getDaysAgo(3), label: '3 days ago' },
-  ],
-  // Group 7
-  [
-    { ...getToday(), label: 'Today' },
-    { ...getYesterday(), label: 'Yesterday' },
-    { ...getDaysAgo(7), label: '7 days ago' },
-    { ...getDaysAgo(8), label: '8 days ago' },
   ],
   // Group 8
   [
@@ -246,7 +246,7 @@ export const DatePresetSelector: React.FC<DatePresetSelectorProps> = ({
                 {groupIndex < presetGroups.length - 1 && <Separator />}
               </React.Fragment>
             ))}
-            <Separator className="my-2" />
+            {/* <Separator className="my-2" />
             <Button
               variant="ghost"
               size="sm"
@@ -254,7 +254,7 @@ export const DatePresetSelector: React.FC<DatePresetSelectorProps> = ({
               onClick={handleCustomRangeClick}
             >
               Custom range
-            </Button>
+            </Button> */}
           </div>
         ) : (
           <div className="p-3">

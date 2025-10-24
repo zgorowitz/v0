@@ -173,6 +173,28 @@ const DashboardContent = () => {
     router.push(`?${params.toString()}`, { scroll: false });
   };
 
+  const handleCardDateChange = (cardIndex: number, dateRange: DateRange) => {
+    if (!dateRange.from || !dateRange.to || !cardDateRanges) return;
+
+    // Convert DateRange to DatePresetValue
+    const formatDate = (date: Date): string => date.toISOString().split('T')[0];
+    const newDatePreset: DatePresetValue = {
+      start: formatDate(dateRange.from),
+      end: formatDate(dateRange.to),
+      label: `${format(dateRange.from, 'MMM dd')} - ${format(dateRange.to, 'MMM dd, yyyy')}`,
+    };
+
+    // Update the specific card's date range
+    const updatedDateRanges = [...cardDateRanges];
+    updatedDateRanges[cardIndex] = newDatePreset;
+    setCardDateRanges(updatedDateRanges);
+
+    // Update URL with new dates
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('dates', encodeURIComponent(JSON.stringify(updatedDateRanges)));
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
   const handleDownload = () => {
     // Convert table data to CSV
     const headers = [
@@ -239,6 +261,7 @@ const DashboardContent = () => {
           loading={metricsLoading}
           selectedIndex={selectedCardIndex}
           onCardClick={setSelectedCardIndex}
+          onCardDateChange={handleCardDateChange}
         />
 
         <div className="mt-4">
@@ -374,7 +397,7 @@ const DashboardContent = () => {
                             <img
                               src={row.thumbnail}
                               alt="Product"
-                              style={{ width: '30px', height: '30px', objectFit: 'cover' }}
+                              style={{ width: '50px', height: '40px', objectFit: 'cover' }}
                             />
                           </TableCell>
                         )}
@@ -382,7 +405,7 @@ const DashboardContent = () => {
                           <TableCell>
                             <div>
                               <div style={{ fontSize: '11px', color: '#999' }}>{row.item_id}</div>
-                              <div style={{ fontSize: '13px', fontWeight: '500', color: '#000' }}>{row.title}</div>
+                              <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.title}</div>
                             </div>
                           </TableCell>
                         )}
