@@ -15,7 +15,7 @@ const navigationItems = [
   { name: 'Home', href: '/dashboard', adminOnly: true  },
   { name: 'P&L', href: '/daily', adminOnly: true  },
   { name: 'Products', href: '/cogs', adminOnly: true  },
-  { name: 'Scan', href: '/scanner' },
+  { name: 'Scan', href: '/scan2' },
   // { name: 'Categorias', href: '/categories' },
 ];
 

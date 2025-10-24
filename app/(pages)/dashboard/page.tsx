@@ -29,8 +29,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  ColumnDef,
+  ColumnResizeMode,
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+  VisibilityState,
+  ColumnOrderState,
+} from "@tanstack/react-table"
 import { DateRange } from "react-day-picker"
-import { Download, Settings2 } from "lucide-react"
+import { Download, Settings2, ArrowUpDown, ArrowUp, ArrowDown, GripVertical } from "lucide-react"
 import { format } from "date-fns"
 import { DatePresetSelector, DatePresetValue, getPresetGroups } from '@/components/dashboard/DatePresetSelector';
 
@@ -71,21 +82,82 @@ const DashboardContent = () => {
   const [error, setError] = useState<string | null>(null);
   const itemsFilter = useItemsFilter();
 
-  // Column visibility state
-  const [columnVisibility, setColumnVisibility] = useState({
-    thumbnail: true,
-    item: true,
-    units: true,
-    sales: true,
-    gross_profit: true,
-    net_profit: true,
-    ads: true,
-    refunds: true,
-    refund_cost: true,
-    fee: true,
-    discount: true,
-    cogs: true,
-    status: true,
+  // TanStack Table states
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
+  const [columnResizeMode] = useState<ColumnResizeMode>('onChange');
+
+  // Format money helper
+  const formatMoney = (value: number) => `$${Math.round(value)?.toLocaleString()}`;
+
+  // Sortable header component
+  const SortableHeader = ({ column, children }: { column: any; children: React.ReactNode }) => (
+    <div
+      className="flex items-center cursor-pointer select-none"
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    >
+      {children}
+      {column.getIsSorted() === "asc" ? (
+        <ArrowUp className="ml-2 h-4 w-4" />
+      ) : column.getIsSorted() === "desc" ? (
+        <ArrowDown className="ml-2 h-4 w-4" />
+      ) : (
+        <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
+      )}
+    </div>
+  );
+
+  // Column definitions
+  const columns = useMemo<ColumnDef<DashboardRow>[]>(
+    () => [
+      {
+        id: 'thumbnail',
+        accessorKey: 'thumbnail',
+        header: '',
+        cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '50px', height: '40px', objectFit: 'cover' }} />,
+        enableSorting: false,
+        size: 70,
+      },
+      {
+        id: 'item',
+        accessorKey: 'title',
+        header: ({ column }) => <SortableHeader column={column}>Item</SortableHeader>,
+        cell: ({ row }) => (
+          <div>
+            <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
+            <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
+          </div>
+        ),
+        size: 350,
+      },
+      { id: 'units', accessorKey: 'item_units', header: ({ column }) => <SortableHeader column={column}>Units</SortableHeader>, size: 100 },
+      { id: 'sales', accessorKey: 'item_sales', header: ({ column }) => <SortableHeader column={column}>Sales</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
+      { id: 'gross_profit', accessorKey: 'gross_profit', header: ({ column }) => <SortableHeader column={column}>Gross Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
+      { id: 'net_profit', accessorKey: 'net_profit', header: ({ column }) => <SortableHeader column={column}>Net Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 130 },
+      { id: 'ads', accessorKey: 'ad_cost', header: ({ column }) => <SortableHeader column={column}>Ads</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
+      { id: 'refunds', accessorKey: 'refund_units', header: ({ column }) => <SortableHeader column={column}>Refunds</SortableHeader>, size: 110 },
+      { id: 'refund_cost', accessorKey: 'refund_amount', header: ({ column }) => <SortableHeader column={column}>Refund Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
+      { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 180 },
+      { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
+      { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
+      { id: 'status', accessorKey: 'status', header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>, size: 120 },
+    ],
+    []
+  );
+
+  // Initialize table
+  const table = useReactTable({
+    data: dashboardData,
+    columns,
+    state: { sorting, columnVisibility, columnOrder },
+    enableColumnResizing: true,
+    columnResizeMode,
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   // Debug: Log when itemsFilter changes
@@ -161,9 +233,6 @@ const DashboardContent = () => {
     setLoading(false);
   }, [tableDataRange, appliedItemIds]);
 
-
-  const formatMoney = (value: number) => `$${Math.round(value)?.toLocaleString()}`;
-
   const handlePresetSelect = (presets: DatePresetValue[]) => {
     setCardDateRanges(presets);
 
@@ -196,40 +265,30 @@ const DashboardContent = () => {
   };
 
   const handleDownload = () => {
-    // Convert table data to CSV
-    const headers = [
-      columnVisibility.thumbnail && 'Thumbnail',
-      columnVisibility.item && 'Item ID',
-      columnVisibility.item && 'Title',
-      columnVisibility.units && 'Units',
-      columnVisibility.sales && 'Sales',
-      columnVisibility.gross_profit && 'Gross Profit',
-      columnVisibility.net_profit && 'Net Profit',
-      columnVisibility.ads && 'Ads',
-      columnVisibility.refunds && 'Refunds',
-      columnVisibility.refund_cost && 'Refund Cost',
-      columnVisibility.fee && 'Mercado-Libre Fee',
-      columnVisibility.discount && 'Discount',
-      columnVisibility.cogs && 'COGS',
-      columnVisibility.status && 'Status',
-    ].filter(Boolean).join(',');
+    const visibleColumns = table.getAllLeafColumns().filter(col => col.getIsVisible());
+    const headers = visibleColumns.map(col => {
+      const id = col.id;
+      return id === 'thumbnail' ? 'Thumbnail' :
+             id === 'item' ? 'Item' :
+             id === 'units' ? 'Units' :
+             id === 'sales' ? 'Sales' :
+             id === 'gross_profit' ? 'Gross Profit' :
+             id === 'net_profit' ? 'Net Profit' :
+             id === 'ads' ? 'Ads' :
+             id === 'refunds' ? 'Refunds' :
+             id === 'refund_cost' ? 'Refund Cost' :
+             id === 'fee' ? 'Mercado-Libre Fee' :
+             id === 'discount' ? 'Discount' :
+             id === 'cogs' ? 'COGS' :
+             id === 'status' ? 'Status' : id;
+    }).join(',');
 
-    const rows = dashboardData.map(row => [
-      columnVisibility.thumbnail && row.thumbnail,
-      columnVisibility.item && row.item_id,
-      columnVisibility.item && `"${row.title}"`,
-      columnVisibility.units && row.item_units,
-      columnVisibility.sales && row.item_sales,
-      columnVisibility.gross_profit && row.gross_profit,
-      columnVisibility.net_profit && row.net_profit,
-      columnVisibility.ads && row.ad_cost,
-      columnVisibility.refunds && row.refund_units,
-      columnVisibility.refund_cost && row.refund_amount,
-      columnVisibility.fee && row.item_fee,
-      columnVisibility.discount && row.item_discount,
-      columnVisibility.cogs && row.item_cogs,
-      columnVisibility.status && row.status,
-    ].filter(val => val !== false).join(','));
+    const rows = table.getRowModel().rows.map(row =>
+      visibleColumns.map(col => {
+        const value = row.getValue(col.id);
+        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+      }).join(',')
+    );
 
     const csv = [headers, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -275,84 +334,28 @@ const DashboardContent = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.thumbnail}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, thumbnail: checked }))}
-                  >
-                    Thumbnail
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.item}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, item: checked }))}
-                  >
-                    Item
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.units}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, units: checked }))}
-                  >
-                    Units
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.sales}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, sales: checked }))}
-                  >
-                    Sales
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.gross_profit}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, gross_profit: checked }))}
-                  >
-                    Gross Profit
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.net_profit}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, net_profit: checked }))}
-                  >
-                    Net Profit
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.ads}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, ads: checked }))}
-                  >
-                    Ads
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.refunds}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, refunds: checked }))}
-                  >
-                    Refunds
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.refund_cost}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, refund_cost: checked }))}
-                  >
-                    Refund Cost
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.fee}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, fee: checked }))}
-                  >
-                    Mercado-Libre Fee
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.discount}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, discount: checked }))}
-                  >
-                    Discount
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.cogs}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, cogs: checked }))}
-                  >
-                    COGS
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={columnVisibility.status}
-                    onCheckedChange={(checked) => setColumnVisibility(prev => ({ ...prev, status: checked }))}
-                  >
-                    Status
-                  </DropdownMenuCheckboxItem>
+                  {table.getAllLeafColumns().map((column) => (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {column.id === 'thumbnail' ? 'Thumbnail' :
+                       column.id === 'item' ? 'Item' :
+                       column.id === 'units' ? 'Units' :
+                       column.id === 'sales' ? 'Sales' :
+                       column.id === 'gross_profit' ? 'Gross Profit' :
+                       column.id === 'net_profit' ? 'Net Profit' :
+                       column.id === 'ads' ? 'Ads' :
+                       column.id === 'refunds' ? 'Refunds' :
+                       column.id === 'refund_cost' ? 'Refund Cost' :
+                       column.id === 'fee' ? 'Mercado-Libre Fee' :
+                       column.id === 'discount' ? 'Discount' :
+                       column.id === 'cogs' ? 'COGS' :
+                       column.id === 'status' ? 'Status' : column.id}
+                    </DropdownMenuCheckboxItem>
+                  ))}
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -363,72 +366,86 @@ const DashboardContent = () => {
           </div>
 
           {/* Table */}
-            <div className="rounded-md border">
-              <Table>
+            <div className="rounded-md border overflow-auto">
+              <Table style={{ width: table.getTotalSize() }}>
                 <TableHeader>
-                  <TableRow>
-                    {columnVisibility.thumbnail && <TableHead></TableHead>}
-                    {columnVisibility.item && <TableHead>Item</TableHead>}
-                    {columnVisibility.units && <TableHead>Units</TableHead>}
-                    {columnVisibility.sales && <TableHead>Sales</TableHead>}
-                    {columnVisibility.gross_profit && <TableHead>Gross Profit</TableHead>}
-                    {columnVisibility.net_profit && <TableHead>Net Profit</TableHead>}
-                    {columnVisibility.ads && <TableHead>Ads</TableHead>}
-                    {columnVisibility.refunds && <TableHead>Refunds</TableHead>}
-                    {columnVisibility.refund_cost && <TableHead>Refund Cost</TableHead>}
-                    {columnVisibility.fee && <TableHead>Mercado-Libre Fee</TableHead>}
-                    {columnVisibility.discount && <TableHead>Discount</TableHead>}
-                    {columnVisibility.cogs && <TableHead>COGS</TableHead>}
-                    {columnVisibility.status && <TableHead>Status</TableHead>}
-                  </TableRow>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          style={{
+                            width: header.getSize(),
+                            position: 'relative',
+                          }}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('columnId', header.column.id);
+                          }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const draggedColumnId = e.dataTransfer.getData('columnId');
+                            const targetColumnId = header.column.id;
+
+                            if (draggedColumnId !== targetColumnId) {
+                              const newColumnOrder = [...table.getState().columnOrder.length ? table.getState().columnOrder : table.getAllLeafColumns().map(c => c.id)];
+                              const draggedIndex = newColumnOrder.indexOf(draggedColumnId);
+                              const targetIndex = newColumnOrder.indexOf(targetColumnId);
+
+                              newColumnOrder.splice(draggedIndex, 1);
+                              newColumnOrder.splice(targetIndex, 0, draggedColumnId);
+
+                              setColumnOrder(newColumnOrder);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <GripVertical className="h-4 w-4 opacity-50 cursor-grab" />
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </div>
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${
+                              header.column.getIsResizing() ? 'bg-blue-500' : 'hover:bg-gray-300'
+                            }`}
+                            style={{
+                              userSelect: 'none',
+                            }}
+                          />
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={13} className="text-center py-8">
-                          Loading data...
-                        </TableCell>
-                      </TableRow>
-                    ) : dashboardData.length > 0 ? (
-                    dashboardData.map((row, index) => (
-                      <TableRow key={row.item_id + index}>
-                        {columnVisibility.thumbnail && (
-                          <TableCell>
-                            <img
-                              src={row.thumbnail}
-                              alt="Product"
-                              style={{ width: '50px', height: '40px', objectFit: 'cover' }}
-                            />
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="text-center py-8">
+                        Loading data...
+                      </TableCell>
+                    </TableRow>
+                  ) : table.getRowModel().rows.length > 0 ? (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            style={{ width: cell.column.getSize() }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
-                        )}
-                        {columnVisibility.item && (
-                          <TableCell>
-                            <div>
-                              <div style={{ fontSize: '11px', color: '#999' }}>{row.item_id}</div>
-                              <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.title}</div>
-                            </div>
-                          </TableCell>
-                        )}
-                        {columnVisibility.units && <TableCell>{row.item_units}</TableCell>}
-                        {columnVisibility.sales && <TableCell>{formatMoney(row.item_sales)}</TableCell>}
-                        {columnVisibility.gross_profit && <TableCell>{formatMoney(row.gross_profit)}</TableCell>}
-                        {columnVisibility.net_profit && <TableCell>{formatMoney(row.net_profit)}</TableCell>}
-                        {columnVisibility.ads && <TableCell>{formatMoney(row.ad_cost)}</TableCell>}
-                        {columnVisibility.refunds && <TableCell>{row.refund_units}</TableCell>}
-                        {columnVisibility.refund_cost && <TableCell>{formatMoney(row.refund_amount)}</TableCell>}
-                        {columnVisibility.fee && <TableCell>{formatMoney(row.item_fee)}</TableCell>}
-                        {columnVisibility.discount && <TableCell>{formatMoney(row.item_discount)}</TableCell>}
-                        {columnVisibility.cogs && <TableCell>{formatMoney(row.item_cogs)}</TableCell>}
-                        {columnVisibility.status && <TableCell>{row.status}</TableCell>}
+                        ))}
                       </TableRow>
                     ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={13} className="text-center">
-                          No data available
-                        </TableCell>
-                      </TableRow>
-                    )}
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="text-center">
+                        No data available
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
