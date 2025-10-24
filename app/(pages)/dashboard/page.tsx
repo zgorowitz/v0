@@ -63,7 +63,7 @@ interface DashboardRow {
   // group_size?: number;
 }
 
-const DashboardPage = () => {
+const DashboardContent = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [dashboardData, setDashboardData] = useState<DashboardRow[]>([]);
@@ -220,13 +220,6 @@ const DashboardPage = () => {
   };
 
   return (
-    <Suspense fallback={
-      <LayoutWrapper>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">Loading dashboard...</div>
-        </div>
-      </LayoutWrapper>
-    }>
     <LayoutWrapper>
       <div className="p-4">
         {/* Top Controls - Item Filter and Date Preset Selector */}
@@ -347,9 +340,6 @@ const DashboardPage = () => {
           </div>
 
           {/* Table */}
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -370,7 +360,13 @@ const DashboardPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {dashboardData.length > 0 ? (
+                  {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={13} className="text-center py-8">
+                          Loading data...
+                        </TableCell>
+                      </TableRow>
+                    ) : dashboardData.length > 0 ? (
                     dashboardData.map((row, index) => (
                       <TableRow key={row.item_id + index}>
                         {columnVisibility.thumbnail && (
@@ -403,22 +399,33 @@ const DashboardPage = () => {
                         {columnVisibility.status && <TableCell>{row.status}</TableCell>}
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={13} className="text-center">
-                        No data available
-                      </TableCell>
-                    </TableRow>
-                  )}
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={13} className="text-center">
+                          No data available
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
               </Table>
             </div>
-          )}
+
         </div>
       </div>
     </LayoutWrapper>
-    </Suspense>
   );
 }
 
-export default DashboardPage;
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <LayoutWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">Loading dashboard...</div>
+        </div>
+      </LayoutWrapper>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+}
