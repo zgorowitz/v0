@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { itemSalesData } from '@/lib/dashboard/data';
@@ -220,6 +220,7 @@ const DashboardPage = () => {
   };
 
   return (
+    <Suspense>
     <LayoutWrapper>
       <div className="p-4">
         {/* Top Controls - Item Filter and Date Preset Selector */}
@@ -410,6 +411,7 @@ const DashboardPage = () => {
         </div>
       </div>
     </LayoutWrapper>
+    </Suspense>
   );
 }
 
