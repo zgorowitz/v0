@@ -220,7 +220,13 @@ const DashboardPage = () => {
   };
 
   return (
-    <Suspense>
+    <Suspense fallback={
+      <LayoutWrapper>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">Loading dashboard...</div>
+        </div>
+      </LayoutWrapper>
+    }>
     <LayoutWrapper>
       <div className="p-4">
         {/* Top Controls - Item Filter and Date Preset Selector */}
