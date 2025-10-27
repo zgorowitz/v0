@@ -1,6 +1,7 @@
 // scripts/fetch_shipments.mjs
 // Fetch shipment status for meli orders
 
+import { date } from 'zod'
 import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
 import { apiRequest } from '../../lib/utils.js'
 // API request with auth and x-format-new header
@@ -8,38 +9,42 @@ import { apiRequest } from '../../lib/utils.js'
 // Parse shipment data
 function parseShipment(shipment, meliUserId) {
   return {
-    id: shipment.id,
+    shipment_id: shipment.id,
     meli_user_id: meliUserId,
-    status: shipment.status || null,
-    substatus: shipment.substatus || null,
-    tracking_number: shipment.tracking_number || null,
-    tracking_method: shipment.tracking_method || null,
-    date_created: shipment.date_created || null,
-    last_updated: shipment.last_updated || null,
-    declared_value: shipment.declared_value || 0,
-    logistic_mode: shipment.logistic?.mode || null,
-    logistic_type: shipment.logistic?.type || null,
-    logistic_direction: shipment.logistic?.direction || null,
-    priority_class_id: shipment.priority_class?.id || null,
-    origin_node: shipment.origin?.node || null,
-    origin_sender_id: shipment.origin?.sender_id || null,
-    origin_type: shipment.origin?.type || null,
-    origin_address: shipment.origin?.shipping_address || null,
-    destination_receiver_id: shipment.destination?.receiver_id || null,
-    destination_receiver_name: shipment.destination?.receiver_name || null,
-    destination_receiver_phone: shipment.destination?.receiver_phone || null,
-    destination_type: shipment.destination?.type || null,
-    destination_address: shipment.destination?.shipping_address || null,
-    source_site_id: shipment.source?.site_id || null,
-    source_market_place: shipment.source?.market_place || null,
-    tags: shipment.tags || null,
-    items_types: shipment.items_types || null,
-    lead_time: shipment.lead_time || null,
-    dimensions: shipment.dimensions || null,
+    substatus_history: shipment.substatus_history || null,
     snapshot_packing: shipment.snapshot_packing || null,
-    sibling: shipment.sibling || null,
-    external_reference: shipment.external_reference || null,
-    quotation: shipment.quotation || null
+    base_cost: shipment.base_cost || 0,
+    status_history: shipment.status_history || null,
+    type: shipment.type || null,
+    return_details: shipment.return_details || null,
+    mode: shipment.mode || null,
+    order_cost: shipment.order_cost || 0,
+    priority_class: shipment.priority_class || null,
+    service_id: shipment.service_id || null,
+    tracking_number: shipment.tracking_number || null,
+    cost_components: shipment.cost_components || null,
+    tracking_method: shipment.tracking_method || null,
+    last_updated: shipment.last_updated || null,
+    items_type: shipment.items_type || null,
+    comments: shipment.comments || null,
+    status: shipment.status || null,
+    date_created: shipment.date_created || null,
+    date_first_printed: shipment.date_first_printed || null,
+    created_by: shipment.created_by || null,
+    application_id: shipment.application_id || null,
+    shipping_option: shipment.shipping_option || null,
+    tags: shipment.tags || null,
+    sender_address: shipment.sender_address || null,
+    siblings: shipment.siblings || null,
+    return_tracking_number: shipment.return_tracking_number || null,
+    site_id: shipment.site_id || null,
+    carrier_info: shipment.carrier_info || null,
+    receiver_address: shipment.receiver_address || null,
+    customer_id: shipment.customer_id || null,
+    order_id: shipment.order_id || null,
+    quotation: shipment.quotation || null,
+    status: shipment.status || null,
+    logistic_type: shipment.logistic_type || null
   }
 }
 
@@ -52,7 +57,8 @@ async function getShipmentsToFetch(supabase) {
     .from('ml_orders_v2')
     .select('shipping, meli_user_id')
     // .eq('fulfilled', false)
-    .gte('last_updated', sixHoursAgo)
+    .eq('shipping', '45518690257')
+    // .gte('last_updated', sixHoursAgo)
     .not('shipping', 'is', null)
     // .limit(1)
 
@@ -104,10 +110,9 @@ export async function fetchShipments() {
       const batch = shipmentIds.slice(i, i + BATCH_SIZE)
       
       try {
-        // Fetch shipments in parallel for this batch
+        // Fetch shipments
         const shipmentPromises = batch.map(shipmentId => 
-          apiRequest(`https://api.mercadolibre.com/shipments/45518690257`, user.access_token)
-          // apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}`, user.access_token)
+          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}`, user.access_token)
             .then(shipmentData => ({ shipmentId, shipmentData, success: true }))
             .catch(error => ({ shipmentId, error, success: false }))
         )
@@ -115,31 +120,19 @@ export async function fetchShipments() {
         console.log(`Fetched batch of ${batch.length} shipments for user ${meliUserId}`)
         console.log(results)
         // Process results
-        for (const result of results) {
-          if (result.success) {
-            try {
-              const parsedShipment = parseShipment(result.shipmentData, meliUserId)
+        // for (const result of results) {
+        //     try {
+        //       const parsedShipment = parseShipment(result.shipmentData, meliUserId)
               
-              const { error: shipmentError } = await supabase
-                .from('meli_shipment_status')
-                .upsert(parsedShipment)
-              
-              if (shipmentError) {
-                console.error(`Error storing shipment ${result.shipmentId}:`, shipmentError)
-                errorCount++
-              } else {
-                totalShipments++
-                // console.log(`Shipment ${result.shipmentId} fetched successfully`)
-              }
-            } catch (error) {
-              console.error(`Error parsing shipment ${result.shipmentId}:`, error)
-              errorCount++
-            }
-          } else {
-            console.error(`Failed to fetch shipment ${result.shipmentId}:`, result.error.message)
-            errorCount++
-          }
-        }
+        //       const { error: shipmentError } = await supabase
+        //         .from('ml_shipments_v2')
+        //         .upsert(parsedShipment)
+        //         totalShipments++
+        //     } catch (error) {
+        //       console.error(`Error parsing shipment ${result.shipmentId}:`, error)
+        //       errorCount++
+        //     }
+        // }
         
       } catch (error) {
         console.error(`Error processing batch for user ${meliUserId}:`, error)
@@ -147,7 +140,7 @@ export async function fetchShipments() {
       }
       
       // Rate limiting between batches
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 5))
     }
   }
   
