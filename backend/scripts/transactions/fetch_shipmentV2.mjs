@@ -48,7 +48,7 @@ function parseShipment(shipment, meliUserId) {
   }
 }
 
-// Get shipment IDs with meli_user_id that need to be fetched
+// Get shipment IDs to be fetched
 async function getShipmentsToFetch(supabase) {
   const sixHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
@@ -57,7 +57,7 @@ async function getShipmentsToFetch(supabase) {
     .from('ml_orders_v2')
     .select('shipping, meli_user_id')
     // .eq('fulfilled', false)
-    .eq('shipping', '45518690257')
+    .eq('shipping', '45752413737')
     // .gte('last_updated', sixHoursAgo)
     .not('shipping', 'is', null)
     // .limit(1)
@@ -112,13 +112,13 @@ export async function fetchShipments() {
       try {
         // Fetch shipments
         const shipmentPromises = batch.map(shipmentId => 
-          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}`, user.access_token)
+          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}/lead_time`, user.access_token)
             .then(shipmentData => ({ shipmentId, shipmentData, success: true }))
             .catch(error => ({ shipmentId, error, success: false }))
         )
         const results = await Promise.all(shipmentPromises)
         console.log(`Fetched batch of ${batch.length} shipments for user ${meliUserId}`)
-        console.log(results)
+        console.log(results[0].shipmentData)
         // Process results
         // for (const result of results) {
         //     try {

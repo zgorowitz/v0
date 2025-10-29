@@ -24,11 +24,6 @@ async function apiRequest(url, accessToken) {
 
 // Parse item data
 function parseItem(item, meliUserId) {
-  // Defensive parsing - ensure required fields exist
-  if (!item.id) {
-    throw new Error(`Item missing required ID field: ${JSON.stringify(item)}`)
-  }
-  
   return {
     id: item.id,
     meli_user_id: meliUserId,

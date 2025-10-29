@@ -52,7 +52,8 @@ async function getShipmentsToFetch(supabase) {
     .from('ml_orders_v2')
     .select('shipping, meli_user_id')
     // .eq('fulfilled', false)
-    .gte('last_updated', sixHoursAgo)
+    .eq('shipping', '45518690257')
+    // .gte('last_updated', sixHoursAgo)
     .not('shipping', 'is', null)
     // .limit(1)
 
@@ -106,14 +107,13 @@ export async function fetchShipments() {
       try {
         // Fetch shipments in parallel for this batch
         const shipmentPromises = batch.map(shipmentId => 
-          apiRequest(`https://api.mercadolibre.com/shipments/45518690257`, user.access_token)
-          // apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}`, user.access_token)
+          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}`, user.access_token)
             .then(shipmentData => ({ shipmentId, shipmentData, success: true }))
             .catch(error => ({ shipmentId, error, success: false }))
         )
         const results = await Promise.all(shipmentPromises)
         console.log(`Fetched batch of ${batch.length} shipments for user ${meliUserId}`)
-        console.log(results)
+        console.log(results[0])
         // Process results
         for (const result of results) {
           if (result.success) {

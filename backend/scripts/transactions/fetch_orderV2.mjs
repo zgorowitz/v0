@@ -274,10 +274,6 @@ export async function fetchOrders(options = {}) {
   console.log(`Total order payments processed: ${totalOrderPayments}`)
 }
 
-export async function fetchDailyOrders() {
-  return fetchOrders({ fromDate: getTimeFilter() })
-}
-
 export async function fetchOrdersFromDate(fromDate, toDate = null) {
   console.log(`--------------- ${fromDate}${toDate ? ` to ${toDate}` : ''}...`)
   let options = { fromDate, toDate }

@@ -55,6 +55,7 @@ interface DashboardRow {
   item_discount: number;
   item_fee: number;
   item_cogs: number;
+  item_shipping_cost: number;
   net_profit: number;
   ad_cost: number;
   refund_amount: number;
@@ -103,6 +104,7 @@ const DashboardContent = () => {
     fee: false,
     discount: false,
     cogs: false,
+    shipping_cost: false,
     profit_margin: true,
     tacos: true,
     fees_percent: true,
@@ -139,9 +141,10 @@ const DashboardContent = () => {
         id: 'thumbnail',
         accessorKey: 'thumbnail',
         header: '',
-        cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '50px', height: '40px', objectFit: 'cover' }} />,
+        cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '60px', height: '40px', objectFit: 'cover' }} />,
         enableSorting: false,
         size: 70,
+        meta: { noPadding: true },
       },
       {
         id: 'item',
@@ -165,6 +168,7 @@ const DashboardContent = () => {
       { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 180 },
       { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
       { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
+      { id: 'shipping_cost', accessorKey: 'item_shipping_cost', header: ({ column }) => <SortableHeader column={column}>Shipping Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
       { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 140 },
       { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
       { id: 'fees_percent', accessorKey: 'fees_percent', header: ({ column }) => <SortableHeader column={column}>Fees %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
@@ -308,6 +312,7 @@ const DashboardContent = () => {
              id === 'fee' ? 'Mercado-Libre Fee' :
              id === 'discount' ? 'Discount' :
              id === 'cogs' ? 'COGS' :
+             id === 'shipping_cost' ? 'Shipping Cost' :
              id === 'profit_margin' ? 'Margin' :
              id === 'tacos' ? 'TACOS' :
              id === 'fees_percent' ? 'Fees %' :
@@ -386,6 +391,7 @@ const DashboardContent = () => {
                        column.id === 'fee' ? 'Mercado-Libre Fee' :
                        column.id === 'discount' ? 'Discount' :
                        column.id === 'cogs' ? 'COGS' :
+                       column.id === 'shipping_cost' ? 'Shipping Cost' :
                        column.id === 'profit_margin' ? 'Margin' :
                        column.id === 'tacos' ? 'TACOS' :
                        column.id === 'fees_percent' ? 'Fees %' :
@@ -469,7 +475,10 @@ const DashboardContent = () => {
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
                             key={cell.id}
-                            style={{ width: cell.column.getSize() }}
+                            style={{
+                              width: cell.column.getSize(),
+                              padding: cell.column.columnDef.meta?.noPadding ? '0' : undefined
+                            }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
