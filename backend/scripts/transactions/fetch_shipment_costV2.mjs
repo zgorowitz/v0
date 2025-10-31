@@ -122,29 +122,50 @@ export async function fetchShipments() {
   for (const [meliUserId, shipmentIds] of shipmentsByUser) {
     const user = meliUsers.find(u => u.meli_user_id === meliUserId)
     console.log(`Processing ${shipmentIds.length} shipments for user ${meliUserId}`)
-    try {
-      // Fetch both endpoints for each shipment
-      const shipmentPromises = shipmentIds.map(shipmentId => {
-        const startTime = performance.now()
 
-        return Promise.all([
-          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}/costs`, user.access_token),
-          apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}/items`, user.access_token)
-        ])
-          .then(([costsData, itemsData]) => {
-            const duration = performance.now() - startTime
-            apiTimings.push({ shipmentId, duration, success: true })
-            console.log(`✓ Shipment ${shipmentId}: ${duration.toFixed(2)}ms`)
-            return { shipmentId, costsData, itemsData, success: true }
-          })
-          .catch(error => {
-            const duration = performance.now() - startTime
-            apiTimings.push({ shipmentId, duration, success: false })
-            console.log(`✗ Shipment ${shipmentId}: ${duration.toFixed(2)}ms (failed)`)
-            return { shipmentId, error, success: false }
-          })
-      })
-      const results = await Promise.all(shipmentPromises)
+    // Mercado Libre rate limit: 10 requests/second
+    // We make 2 requests per shipment (costs + items), so process 5 shipments per second
+    const BATCH_SIZE = 20
+    const DELAY_MS = 1000 // 1 second delay between batches
+
+    const results = []
+
+    try {
+      // Process shipments in batches to respect rate limits
+      for (let i = 0; i < shipmentIds.length; i += BATCH_SIZE) {
+        const batch = shipmentIds.slice(i, i + BATCH_SIZE)
+
+        // Fetch both endpoints for each shipment in the batch
+        const shipmentPromises = batch.map(shipmentId => {
+          const startTime = performance.now()
+
+          return Promise.all([
+            apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}/costs`, user.access_token),
+            apiRequest(`https://api.mercadolibre.com/shipments/${shipmentId}/items`, user.access_token)
+          ])
+            .then(([costsData, itemsData]) => {
+              const duration = performance.now() - startTime
+              apiTimings.push({ shipmentId, duration, success: true })
+              console.log(`✓ Shipment ${shipmentId}: ${duration.toFixed(2)}ms`)
+              return { shipmentId, costsData, itemsData, success: true }
+            })
+            .catch(error => {
+              const duration = performance.now() - startTime
+              apiTimings.push({ shipmentId, duration, success: false })
+              console.log(`✗ Shipment ${shipmentId}: ${duration.toFixed(2)}ms (failed)`)
+              return { shipmentId, error, success: false }
+            })
+        })
+
+        const batchResults = await Promise.all(shipmentPromises)
+        results.push(...batchResults)
+
+        // Add delay between batches (except for the last batch)
+        if (i + BATCH_SIZE < shipmentIds.length) {
+          console.log(`Rate limit: waiting ${DELAY_MS}ms before next batch...`)
+          await new Promise(resolve => setTimeout(resolve, DELAY_MS))
+        }
+      }
 
       const costs = []
       const items = []
