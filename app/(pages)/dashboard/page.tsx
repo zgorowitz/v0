@@ -51,7 +51,7 @@ interface DashboardRow {
   item_orders: number;
   item_units: number;
   item_sales: number;
-  gross_profit: number;
+  // gross_profit: number;
   item_discount: number;
   item_fee: number;
   item_cogs: number;
@@ -99,7 +99,7 @@ const DashboardContent = () => {
     item: true,
     units: true,
     sales: true,
-    gross_profit: false,
+    // gross_profit: false,
     net_profit: true,
     ads: true,
     refunds: true,
@@ -169,7 +169,7 @@ const DashboardContent = () => {
       },
       { id: 'units', accessorKey: 'item_units', header: ({ column }) => <SortableHeader column={column}>Units</SortableHeader>, size: 100 },
       { id: 'sales', accessorKey: 'item_sales', header: ({ column }) => <SortableHeader column={column}>Sales</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
-      { id: 'gross_profit', accessorKey: 'gross_profit', header: ({ column }) => <SortableHeader column={column}>Gross Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
+      // { id: 'gross_profit', accessorKey: 'gross_profit', header: ({ column }) => <SortableHeader column={column}>Gross Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
       { id: 'net_profit', accessorKey: 'net_profit', header: ({ column }) => <SortableHeader column={column}>Net Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 130 },
       { id: 'ads', accessorKey: 'ad_cost', header: ({ column }) => <SortableHeader column={column}>Ads</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
       { id: 'refunds', accessorKey: 'refund_units', header: ({ column }) => <SortableHeader column={column}>Refunds</SortableHeader>, size: 110 },
@@ -314,7 +314,7 @@ const DashboardContent = () => {
              id === 'item' ? 'Item' :
              id === 'units' ? 'Units' :
              id === 'sales' ? 'Sales' :
-             id === 'gross_profit' ? 'Gross Profit' :
+            //  id === 'gross_profit' ? 'Gross Profit' :
              id === 'net_profit' ? 'Net Profit' :
              id === 'ads' ? 'Ads' :
              id === 'refunds' ? 'Refunds' :
@@ -394,7 +394,7 @@ const DashboardContent = () => {
                        column.id === 'item' ? 'Item' :
                        column.id === 'units' ? 'Units' :
                        column.id === 'sales' ? 'Sales' :
-                       column.id === 'gross_profit' ? 'Gross Profit' :
+                      //  column.id === 'gross_profit' ? 'Gross Profit' :
                        column.id === 'net_profit' ? 'Net Profit' :
                        column.id === 'ads' ? 'Ads' :
                        column.id === 'refunds' ? 'Refunds' :
