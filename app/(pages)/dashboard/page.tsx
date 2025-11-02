@@ -95,6 +95,7 @@ const DashboardContent = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     thumbnail: true,
+    item_id: false,
     item: true,
     units: true,
     sales: true,
@@ -145,6 +146,12 @@ const DashboardContent = () => {
         enableSorting: false,
         size: 70,
         meta: { noPadding: true },
+      },
+      {
+        id: 'item_id',
+        accessorKey: 'item_id',
+        header: 'Item ID',
+        size: 120,
       },
       {
         id: 'item',
@@ -303,6 +310,7 @@ const DashboardContent = () => {
     const headers = visibleColumns.map(col => {
       const id = col.id;
       return id === 'thumbnail' ? 'Thumbnail' :
+             id === 'item_id' ? 'Item ID' :
              id === 'item' ? 'Item' :
              id === 'units' ? 'Units' :
              id === 'sales' ? 'Sales' :
@@ -382,6 +390,7 @@ const DashboardContent = () => {
                       className="cursor-pointer"
                     >
                       {column.id === 'thumbnail' ? 'Thumbnail' :
+                       column.id === 'item_id' ? 'Item ID' :
                        column.id === 'item' ? 'Item' :
                        column.id === 'units' ? 'Units' :
                        column.id === 'sales' ? 'Sales' :
