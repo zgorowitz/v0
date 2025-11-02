@@ -320,7 +320,6 @@ async function refreshMaterializedViews() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   fetchOrdersByChunks(getTimeFilter())//'2025-10-01T00:00:00.000-04:00', new Date().toISOString())
-
   // fetchDailyOrders()
     .then(() => refreshMaterializedViews())
     .then(() => {

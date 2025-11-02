@@ -5,6 +5,14 @@ import { createClient, getMeliUsers } from '../../lib/supabase/script-client.js'
 import { apiRequest } from '../../lib/utils.js'
 // API request with auth and x-format-new header
 
+// Get time filter based on HOURS_AGO environment variable
+function getTimeFilter() {
+  const hoursAgo = parseInt(process.env.HOURS_AGO) || 24
+  const timeAgo = new Date()
+  timeAgo.setHours(timeAgo.getHours() - hoursAgo)
+  return timeAgo.toISOString()
+}
+
 // Parse shipment costs data - 20 fields total
 function parseCost(costData, shipmentId, meliUserId) {
   const sender = costData.senders?.[0] || {}
@@ -72,15 +80,14 @@ function parseItems(itemsData, shipmentId, meliUserId) {
 
 // Get shipment IDs to be fetched
 async function getShipmentsToFetch(supabase) {
-  const sixHoursAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const timeFilter = getTimeFilter()
 
   // Get shipment IDs with meli_user_id from meli_orders where fulfilled = false and updated in last 6 hours
   const { data: orderShipments, error: orderError } = await supabase
     .from('ml_orders_v2')
     .select('shipping, meli_user_id')
     // .eq('fulfilled', false)
-    .eq('meli_user_id', '340762172')
-    .gte('last_updated', sixHoursAgo)
+    .gte('last_updated', timeFilter)
     .not('shipping', 'is', null)
     // .limit(1)
 

@@ -41,7 +41,7 @@ import {
   ColumnOrderState,
 } from "@tanstack/react-table"
 import { DateRange } from "react-day-picker"
-import { Download, Settings2, ArrowUpDown, ArrowUp, ArrowDown, GripVertical } from "lucide-react"
+import { Download, Settings2, ArrowUp, ArrowDown } from "lucide-react"
 import { format } from "date-fns"
 import { DatePresetSelector, DatePresetValue, getPresetGroups } from '@/components/dashboard/DatePresetSelector';
 
@@ -65,9 +65,11 @@ interface DashboardRow {
   profit_margin: number;
   tacos: number;
   fees_percent: number;
-  refund_rate: number;
+  // refund_rate: number;
 
   title: string;
+  price: number;
+  stock: number;
   available_quantity: number;
   thumbnail: string;
   permalink: string;
@@ -108,7 +110,7 @@ const DashboardContent = () => {
     profit_margin: true,
     tacos: true,
     fees_percent: true,
-    refund_rate: true,
+    // refund_rate: true,
     status: false,
   });
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>([]);
@@ -128,9 +130,7 @@ const DashboardContent = () => {
         <ArrowUp className="ml-2 h-4 w-4" />
       ) : column.getIsSorted() === "desc" ? (
         <ArrowDown className="ml-2 h-4 w-4" />
-      ) : (
-        <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
-      )}
+      ) : null}
     </div>
   );
 
@@ -141,7 +141,7 @@ const DashboardContent = () => {
         id: 'thumbnail',
         accessorKey: 'thumbnail',
         header: '',
-        cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '60px', height: '40px', objectFit: 'cover' }} />,
+        cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '50px', height: '40px', objectFit: 'cover',  padding: '2px', borderRadius: '6px'  }} />,
         enableSorting: false,
         size: 70,
         meta: { noPadding: true },
@@ -151,12 +151,14 @@ const DashboardContent = () => {
         accessorKey: 'title',
         header: ({ column }) => <SortableHeader column={column}>Item</SortableHeader>,
         cell: ({ row }) => (
-          <div>
+          <div style={{ lineHeight: '1.2', padding: '8px' }}>
             <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
             <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
+            <div style={{ fontSize: '11px', color: '#999' }}>{formatMoney(row.original.price)} · Stock: {row.original.stock}</div>
           </div>
         ),
         size: 350,
+        meta: { noPadding: true },
       },
       { id: 'units', accessorKey: 'item_units', header: ({ column }) => <SortableHeader column={column}>Units</SortableHeader>, size: 100 },
       { id: 'sales', accessorKey: 'item_sales', header: ({ column }) => <SortableHeader column={column}>Sales</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
@@ -172,7 +174,7 @@ const DashboardContent = () => {
       { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 140 },
       { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
       { id: 'fees_percent', accessorKey: 'fees_percent', header: ({ column }) => <SortableHeader column={column}>Fees %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
-      { id: 'refund_rate', accessorKey: 'refund_rate', header: ({ column }) => <SortableHeader column={column}>Refund Rate</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 130 },
+      // { id: 'refund_rate', accessorKey: 'refund_rate', header: ({ column }) => <SortableHeader column={column}>Refund Rate</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 130 },
       { id: 'status', accessorKey: 'status', header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>, size: 120 },
     ],
     []
@@ -316,7 +318,7 @@ const DashboardContent = () => {
              id === 'profit_margin' ? 'Margin' :
              id === 'tacos' ? 'TACOS' :
              id === 'fees_percent' ? 'Fees %' :
-             id === 'refund_rate' ? 'Refund Rate' :
+            //  id === 'refund_rate' ? 'Refund Rate' :
              id === 'status' ? 'Status' : id;
     }).join(',');
 
@@ -395,7 +397,7 @@ const DashboardContent = () => {
                        column.id === 'profit_margin' ? 'Margin' :
                        column.id === 'tacos' ? 'TACOS' :
                        column.id === 'fees_percent' ? 'Fees %' :
-                       column.id === 'refund_rate' ? 'Refund Rate' :
+                      //  column.id === 'refund_rate' ? 'Refund Rate' :
                        column.id === 'status' ? 'Status' : column.id}
                     </DropdownMenuCheckboxItem>
                   ))}
@@ -421,36 +423,37 @@ const DashboardContent = () => {
                             width: header.getSize(),
                             position: 'relative',
                           }}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('columnId', header.column.id);
-                          }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const draggedColumnId = e.dataTransfer.getData('columnId');
-                            const targetColumnId = header.column.id;
-
-                            if (draggedColumnId !== targetColumnId) {
-                              const newColumnOrder = [...table.getState().columnOrder.length ? table.getState().columnOrder : table.getAllLeafColumns().map(c => c.id)];
-                              const draggedIndex = newColumnOrder.indexOf(draggedColumnId);
-                              const targetIndex = newColumnOrder.indexOf(targetColumnId);
-
-                              newColumnOrder.splice(draggedIndex, 1);
-                              newColumnOrder.splice(targetIndex, 0, draggedColumnId);
-
-                              setColumnOrder(newColumnOrder);
-                            }
-                          }}
                         >
-                          <div className="flex items-center gap-2">
-                            <GripVertical className="h-4 w-4 opacity-50 cursor-grab" />
+                          <div
+                            className="flex items-center gap-2 cursor-grab active:cursor-grabbing"
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('columnId', header.column.id);
+                            }}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const draggedColumnId = e.dataTransfer.getData('columnId');
+                              const targetColumnId = header.column.id;
+
+                              if (draggedColumnId !== targetColumnId) {
+                                const newColumnOrder = [...table.getState().columnOrder.length ? table.getState().columnOrder : table.getAllLeafColumns().map(c => c.id)];
+                                const draggedIndex = newColumnOrder.indexOf(draggedColumnId);
+                                const targetIndex = newColumnOrder.indexOf(targetColumnId);
+
+                                newColumnOrder.splice(draggedIndex, 1);
+                                newColumnOrder.splice(targetIndex, 0, draggedColumnId);
+
+                                setColumnOrder(newColumnOrder);
+                              }
+                            }}
+                          >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                           </div>
                           <div
                             onMouseDown={header.getResizeHandler()}
                             onTouchStart={header.getResizeHandler()}
-                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${
+                            className={`absolute right-0 top-0 h-full w-1.5 cursor-col-resize select-none touch-none ${
                               header.column.getIsResizing() ? 'bg-blue-500' : 'hover:bg-gray-300'
                             }`}
                             style={{
