@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'reac
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { itemSalesData } from '@/lib/dashboard/data';
+import { fetchCogsMap } from '@/lib/cogs/actions';
 import { useMetricCards } from '@/lib/dashboard/useMetricCards';
 import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
 import { ItemsFilter } from '@/components/dashboard/ItemsFilter';
 import { MetricCards } from '@/components/dashboard/metric-cards';
+import { CogsEditDialog } from '@/components/dashboard/CogsEditDialog';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import {
@@ -76,6 +78,9 @@ interface DashboardRow {
   status: string;
   sub_status: string;
 
+  // Unit COGS from cogs table
+  unit_cogs?: number;
+
   // // Grouping and hierarchy fields
   // isVariation?: boolean;
   // subRows?: DashboardRow[];
@@ -106,7 +111,8 @@ const DashboardContent = () => {
     refund_cost: false,
     fee: true,
     discount: false,
-    cogs: false,
+    cogs: true,
+    // unit_cogs: true,
     shipping_cost: true,
     profit_margin: true,
     tacos: true,
@@ -139,20 +145,11 @@ const DashboardContent = () => {
   const columns = useMemo<ColumnDef<DashboardRow>[]>(
     () => [
       {
-        id: 'thumbnail',
-        accessorKey: 'thumbnail',
-        header: '',
+        id: 'thumbnail', accessorKey: 'thumbnail', header: '',
         cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '50px', height: '40px', objectFit: 'cover',  padding: '2px', borderRadius: '6px'  }} />,
-        enableSorting: false,
-        size: 70,
-        meta: { noPadding: true },
+        enableSorting: false, size: 70, meta: { noPadding: true },
       },
-      {
-        id: 'item_id',
-        accessorKey: 'item_id',
-        header: 'Item ID',
-        size: 120,
-      },
+      { id: 'item_id', accessorKey: 'item_id', header: 'Item ID', size: 120, },
       {
         id: 'item',
         accessorKey: 'title',
@@ -161,7 +158,19 @@ const DashboardContent = () => {
           <div style={{ lineHeight: '1.2', padding: '8px' }}>
             <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
             <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
-            <div style={{ fontSize: '11px', color: '#999' }}>{formatMoney(row.original.price)} · Stock: {row.original.stock}</div>
+            <div style={{ fontSize: '11px', color: '#999' }}>{formatMoney(row.original.price)} · Stock: {row.original.stock} · COGS:       
+            {   <CogsEditDialog
+                  itemId={row.original.item_id}
+                  currentValue={row.original.unit_cogs || 0}
+                  onUpdate={(itemId, newValue) => {
+                    setDashboardData(prev => prev.map(item =>
+                      item.item_id === itemId ? { ...item, unit_cogs: newValue } : item
+                    ));
+                  }}
+                />
+            }
+            
+            </div> 
           </div>
         ),
         size: 350,
@@ -176,7 +185,7 @@ const DashboardContent = () => {
       { id: 'refund_cost', accessorKey: 'refund_amount', header: ({ column }) => <SortableHeader column={column}>Refund Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
       { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 180 },
       { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
-      { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
+      { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>Total COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
       { id: 'shipping_cost', accessorKey: 'item_shipping_cost', header: ({ column }) => <SortableHeader column={column}>Shipping Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
       { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 140 },
       { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
@@ -202,9 +211,9 @@ const DashboardContent = () => {
   });
 
   // Debug: Log when itemsFilter changes
-  useEffect(() => {
-    console.log('[Dashboard] itemsFilter.appliedItemIds changed:', itemsFilter.appliedItemIds);
-  }, [itemsFilter.appliedItemIds]);
+  // useEffect(() => {
+  //   console.log('[Dashboard] itemsFilter.appliedItemIds changed:', itemsFilter.appliedItemIds);
+  // }, [itemsFilter.appliedItemIds]);
 
   // Fix: Properly memoize the appliedItemIds array
   const appliedItemIds = useMemo(() => {
@@ -212,19 +221,15 @@ const DashboardContent = () => {
     return itemsFilter.appliedItemIds;
   }, [JSON.stringify(itemsFilter.appliedItemIds)]); // Use JSON.stringify for deep comparison
 
-  // Card date ranges - array of 4 date ranges (initialized from URL or first preset group)
+  // Card date ranges (from URL or first preset group)
   const [cardDateRanges, setCardDateRanges] = useState<DatePresetValue[] | null>(() => {
     // Try to read from URL
     const datesParam = searchParams.get('dates');
     if (datesParam) {
-      try {
         const parsed = JSON.parse(decodeURIComponent(datesParam));
         if (Array.isArray(parsed) && parsed.length === 4) {
           return parsed;
         }
-      } catch (e) {
-        console.error('Failed to parse dates from URL:', e);
-      }
     }
     // Default to first preset group
     const presetGroups = getPresetGroups();
@@ -234,17 +239,16 @@ const DashboardContent = () => {
   // Selected card index (determines table date range)
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
 
-  // Pass the memoized array and card date ranges to useMetricCards
   const { metricCards, loading: metricsLoading } = useMetricCards(appliedItemIds, cardDateRanges);
 
-  // Table date range comes from selected card
+  // Table date range
   const [tableDataRange, setTableDataRange] = useState<DateRange | undefined>(() => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return { from: yesterday, to: yesterday };
   });
 
-  // Update table date range when selected card changes
+  // Update table when card changes
   useEffect(() => {
     if (metricCards.length > 0 && metricCards[selectedCardIndex]) {
       const card = metricCards[selectedCardIndex];
@@ -258,7 +262,6 @@ const DashboardContent = () => {
 
   // Fetch dashboard data
   useEffect(() => {
-    console.log('[Dashboard] fetchDashboardData triggered by tableDataRange or appliedItemIds change');
     fetchDashboardData();
   }, [tableDataRange, appliedItemIds]);
 
@@ -268,9 +271,22 @@ const DashboardContent = () => {
     const startStr = tableDataRange?.from?.toISOString().split('T')[0];
     const endStr = tableDataRange?.to?.toISOString().split('T')[0];
     console.log("Fetching data from", startStr, "to", endStr, "with items:", appliedItemIds);
-    const child_data = await itemSalesData(startStr, endStr, appliedItemIds);
+
+    // Fetch dashboard data and COGS map in parallel
+    const [child_data, cogsMap] = await Promise.all([
+      itemSalesData(startStr, endStr, (appliedItemIds?.length ? appliedItemIds : null) as any),
+      fetchCogsMap()
+    ]);
+
     console.log("Fetched data:", child_data?.length || 0);
-    setDashboardData(child_data || []);
+
+    // Merge COGS data into dashboard data
+    const mergedData = (child_data || []).map((item: any) => ({
+      ...item,
+      unit_cogs: (cogsMap as any)[item.item_id] || 0
+    }));
+
+    setDashboardData(mergedData);
     setLoading(false);
   }, [tableDataRange, appliedItemIds]);
 
@@ -321,7 +337,8 @@ const DashboardContent = () => {
              id === 'refund_cost' ? 'Refund Cost' :
              id === 'fee' ? 'Mercado-Libre Fee' :
              id === 'discount' ? 'Discount' :
-             id === 'cogs' ? 'COGS' :
+             id === 'cogs' ? 'Total COGS' :
+             id === 'unit_cogs' ? 'Unit COGS' :
              id === 'shipping_cost' ? 'Shipping Cost' :
              id === 'profit_margin' ? 'Margin' :
              id === 'tacos' ? 'TACOS' :
@@ -401,7 +418,8 @@ const DashboardContent = () => {
                        column.id === 'refund_cost' ? 'Refund Cost' :
                        column.id === 'fee' ? 'Mercado-Libre Fee' :
                        column.id === 'discount' ? 'Discount' :
-                       column.id === 'cogs' ? 'COGS' :
+                       column.id === 'cogs' ? 'Total COGS' :
+                       column.id === 'unit_cogs' ? 'Unit COGS' :
                        column.id === 'shipping_cost' ? 'Shipping Cost' :
                        column.id === 'profit_margin' ? 'Margin' :
                        column.id === 'tacos' ? 'TACOS' :

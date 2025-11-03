@@ -16,7 +16,7 @@ const navigationItems = [
   { name: 'P&L', href: '/daily', adminOnly: true  },
   { name: 'Products', href: '/cogs', adminOnly: true  },
   { name: 'Scan', href: '/scan2' },
-  // { name: 'Categorias', href: '/categories' },
+  { name: 'Settings', href: '/settings' },
 ];
 
 // const reportsItems = [
@@ -26,10 +26,10 @@ const navigationItems = [
 //   // { name: 'Envios', href: '/shipments' },
 // ];
 
-const ajustesItems = [
-  { name: 'Admin', href: '/metrics', adminOnly: true },
-  { name: 'Account', href: '/settings', adminOnly: true },
-];
+// const ajustesItems = [
+//   { name: 'Admin', href: '/metrics', adminOnly: true },
+//   { name: 'Account', href: '/settings', adminOnly: true },
+// ];
 
 export function DesktopLayout({ children }: DesktopLayoutProps) {
   const pathname = usePathname();
@@ -37,9 +37,9 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
   const [isAjustesOpen, setIsAjustesOpen] = useState(false);
   const { isAdmin, loading } = useUserRole()
   
-  const filteredAjustesItems = ajustesItems.filter(item => 
-    !item.adminOnly || isAdmin
-  )
+  // const filteredAjustesItems = ajustesItems.filter(item => 
+  //   !item.adminOnly || isAdmin
+  // )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -131,7 +131,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                 </div> */}
 
                 {/* Ajustes Dropdown */}
-                {filteredAjustesItems.length > 0 && (
+                {/* {filteredAjustesItems.length > 0 && (
                   <div className="relative">
                     <button
                       onClick={() => setIsAjustesOpen(!isAjustesOpen)}
@@ -174,7 +174,7 @@ export function DesktopLayout({ children }: DesktopLayoutProps) {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
 

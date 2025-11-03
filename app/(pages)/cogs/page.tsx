@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { LayoutWrapper } from "@/components/layout-wrapper";
-import { SimpleTable } from '@/components/dashboard/t_wrapper_v2';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, ColumnDef, SortingState } from "@tanstack/react-table";
+import { ArrowUp, ArrowDown } from "lucide-react";
 import { fetchAllItems, bulkUpdateItemCogs } from '@/lib/cogs/data';
 import { handleFileUpload, generateCSVTemplate, exportToCSV } from '@/lib/cogs/csvHandler';
 import { useItemsFilter } from '@/lib/cogs/useItemsFilter';
@@ -33,6 +35,7 @@ const CogsManagementPage = () => {
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [editedItems, setEditedItems] = useState<Map<string, Partial<ItemRow>>>(new Map());
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadedData, setUploadedData] = useState<any[]>([]);
@@ -226,7 +229,7 @@ const CogsManagementPage = () => {
     <img
       src={getValue()}
       alt="Product"
-      style={{ width: '30px', height: '30px', objectFit: 'cover'}}
+      style={{ width: '50px', height: '40px', objectFit: 'cover', padding: '2px', borderRadius: '6px' }}
     />
   ), []);
 
@@ -276,80 +279,139 @@ const CogsManagementPage = () => {
       />
     );
   }, [editedItems, handleTagsChange]);
-  
-  const formatItemInfo = ({row}) => (
-    <div>
-      <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
-      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000' }}>{row.original.title}</div>
+
+  const SortableHeader = ({ column, children }: { column: any; children: React.ReactNode }) => (
+    <div
+      className="flex items-center cursor-pointer select-none"
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    >
+      {children}
+      {column.getIsSorted() === "asc" ? (
+        <ArrowUp className="ml-2 h-4 w-4" />
+      ) : column.getIsSorted() === "desc" ? (
+        <ArrowDown className="ml-2 h-4 w-4" />
+      ) : null}
     </div>
   );
-  const columns = useMemo(() => [
-      { accessorKey: 'thumbnail', header: '', cell: formatImage },
-      { accessorKey: 'item_id', header: 'Item', cell: formatItemInfo },
-      { accessorKey: 'cogs', header: 'COGS ($)', cell: formatCogs },
-      { accessorKey: 'tags', header: 'Tags', cell: formatTags },
-    { accessorKey: 'available_quantity', header: 'Stock' },
-    { accessorKey: 'status', header: 'Status' }
+
+  const formatItemInfo = ({row}) => (
+    <div style={{ lineHeight: '1.2', padding: '8px' }}>
+      <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
+      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
+    </div>
+  );
+
+  const columns = useMemo<ColumnDef<ItemRow>[]>(() => [
+    { id: 'thumbnail', accessorKey: 'thumbnail', header: '', cell: formatImage, enableSorting: false, size: 70, meta: { noPadding: true } as any },
+    { id: 'item', accessorKey: 'title', header: ({ column }) => <SortableHeader column={column}>Item</SortableHeader>, cell: formatItemInfo, size: 350, meta: { noPadding: true } as any },
+    { id: 'cogs', accessorKey: 'cogs', header: ({ column }) => <SortableHeader column={column}>COGS ($)</SortableHeader>, cell: formatCogs, size: 120 },
+    { id: 'tags', accessorKey: 'tags', header: 'Tags', cell: formatTags, size: 250, enableSorting: false }
   ], [formatImage, formatCogs, formatTags]);
 
-  const customControls = useMemo(() => (
-    <div className="flex justify-between items-start w-full">
-      <div className="min-w-[300px]">
-        <ItemsFilter {...stableItemsFilter} />
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {editedItems.size > 0 && (
-          <button
-            onClick={saveChanges}
-            disabled={saving}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Save size={14} />
-            {saving ? 'Saving...' : `Save ${editedItems.size} Changes`}
-          </button>
-        )}
-        <button
-          onClick={() => generateCSVTemplate()}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
-        >
-          <FileSpreadsheet size={14} />
-          Template
-        </button>
-        <button
-          onClick={() => exportToCSV(filteredItems)}
-          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
-        >
-          <Download size={14} />
-          Export
-        </button>
-        <label className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 cursor-pointer">
-          <Upload size={14} />
-          Upload
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </label>
-      </div>
-    </div>
-  ), [stableItemsFilter, editedItems.size, saving, filteredItems, handleFileSelect]);
+  const table = useReactTable({
+    data: filteredItems,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getRowId: (row) => row.item_id,
+  });
 
   return (
     <LayoutWrapper>
       <div className="p-4">
+        {/* Top Controls */}
+        <div className="flex justify-between items-start w-full mb-4">
+          <div className="min-w-[300px]">
+            <ItemsFilter {...stableItemsFilter} />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {editedItems.size > 0 && (
+              <button
+                onClick={saveChanges}
+                disabled={saving}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Save size={14} />
+                {saving ? 'Saving...' : `Save ${editedItems.size} Changes`}
+              </button>
+            )}
+            <button
+              onClick={() => generateCSVTemplate()}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
+            >
+              <FileSpreadsheet size={14} />
+              Template
+            </button>
+            <button
+              onClick={() => exportToCSV(filteredItems)}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
+            >
+              <Download size={14} />
+              Export
+            </button>
+            <label className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 cursor-pointer">
+              <Upload size={14} />
+              Upload
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
 
-        <SimpleTable
-          data={filteredItems as any}
-          columns={columns as any}
-          loading={loading}
-          pageSize={50}
-          enableSearch={false}
-          customControls={customControls as any}
-          getRowId={(row) => row.item_id}
-        />
+        {/* Table */}
+        <div className="rounded-md border overflow-auto">
+          <Table style={{ width: table.getTotalSize() }}>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} style={{ width: header.getSize() }}>
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center py-8">
+                    Loading data...
+                  </TableCell>
+                </TableRow>
+              ) : table.getRowModel().rows.length > 0 ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        style={{
+                          width: cell.column.getSize(),
+                          padding: cell.column.columnDef.meta?.noPadding ? '0' : undefined
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center">
+                    No data available
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
         {/* Upload Preview Modal */}
         {uploadModalOpen && (
