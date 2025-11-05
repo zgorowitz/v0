@@ -21,6 +21,7 @@ interface ItemsFilterProps {
   addItem: (item: Item) => void;
   removeItem: (itemId: string) => void;
   clearAll: () => void;
+  selectAll: () => void;
   applyFilter: () => void;
   hasPendingChanges: boolean;
 }
@@ -34,6 +35,7 @@ export function ItemsFilter({
   addItem,
   removeItem,
   clearAll,
+  selectAll,
   applyFilter,
   hasPendingChanges
 }: ItemsFilterProps) {
@@ -51,9 +53,7 @@ export function ItemsFilter({
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    if (e.target.value.trim()) {
-      setShowDropdown(true);
-    }
+    setShowDropdown(true);
   };
 
   return (
@@ -72,7 +72,7 @@ export function ItemsFilter({
 
           {/* Filter Button */}
           <Button onClick={applyFilter} variant="outline" disabled={!hasPendingChanges}>
-            Search{selectedItems.length > 0 && ` (${selectedItems.length})`}
+            Search{selectedItems.length > 0 ? ` (${selectedItems.length})` : ''}
           </Button>
         </div>
 
@@ -98,17 +98,30 @@ export function ItemsFilter({
                     <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
                       Selected ({selectedItems.length})
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        clearAll();
-                      }}
-                      className="h-6 text-xs text-red-500 hover:text-red-700"
-                    >
-                      Clear All
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectAll();
+                        }}
+                        className="h-6 text-xs text-blue-500 hover:text-blue-700"
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          clearAll();
+                        }}
+                        className="h-6 text-xs text-red-500 hover:text-red-700"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
                   </div>
                   <div className="max-h-[200px] overflow-auto">
                     {selectedItems.map(item => (
