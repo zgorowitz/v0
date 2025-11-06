@@ -16,6 +16,9 @@ interface ShipmentPacking {
   packed_by_name: string;
   packed_by_email: string;
   created_at: string;
+  order_ids: string[];
+  skus: string[];
+  item_ids: string[];
 }
 
 const ShipmentsPage = () => {
@@ -26,9 +29,11 @@ const ShipmentsPage = () => {
   // Filter states
   const [shipmentId, setShipmentId] = useState('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 30);
-    return { from: sevenDaysAgo, to: new Date() };
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { from: thirtyDaysAgo, to: yesterday };
   });
 
   // Fetch data on component mount and when filters change
@@ -48,9 +53,9 @@ const ShipmentsPage = () => {
       }
 
       // Use RPC function to join with organization_users
-      const { data: results, error: queryError } = await supabase.rpc('get_shipment_packing_with_org', {
+      const { data: results, error: queryError } = await supabase.rpc('get_shipments', {
         p_organization_id: userOrganizationId,
-        p_shipment_id: shipmentId.trim() || null,
+        p_identifier: shipmentId.trim() || null,
         p_date_from: dateRange?.from?.toISOString().split('T')[0] || null,
         p_date_to: dateRange?.to?.toISOString().split('T')[0] || null
       });
@@ -91,10 +96,10 @@ const ShipmentsPage = () => {
         {/* Filters */}
         <div className="flex gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium mb-2">Shipment ID</label>
+            <label className="block text-sm font-medium mb-2">Shipment/Order ID</label>
             <Input
               type="text"
-              placeholder="Enter shipment ID"
+              placeholder="Enter shipment or order ID"
               value={shipmentId}
               onChange={(e) => setShipmentId(e.target.value)}
             />
@@ -140,18 +145,21 @@ const ShipmentsPage = () => {
                 <TableHead>Packed By Name</TableHead>
                 <TableHead>Packed By Email</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Order IDs</TableHead>
+                <TableHead>SKUs</TableHead>
+                <TableHead>Item IDs</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No shipments found
                   </TableCell>
                 </TableRow>
@@ -162,6 +170,9 @@ const ShipmentsPage = () => {
                     <TableCell>{row.packed_by_name}</TableCell>
                     <TableCell>{row.packed_by_email}</TableCell>
                     <TableCell>{row.created_at}</TableCell>
+                    <TableCell>{row.order_ids?.join(', ') || '-'}</TableCell>
+                    <TableCell>{row.skus?.join(', ') || '-'}</TableCell>
+                    <TableCell>{row.item_ids?.join(', ') || '-'}</TableCell>
                   </TableRow>
                 ))
               )}
