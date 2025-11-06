@@ -67,6 +67,8 @@ interface DashboardRow {
   profit_margin: number;
   tacos: number;
   fees_percent: number;
+  cogs_percent: number;
+  shipping_percent: number;
   // refund_rate: number;
 
   title: string;
@@ -117,6 +119,8 @@ const DashboardContent = () => {
     profit_margin: true,
     tacos: true,
     fees_percent: true,
+    cogs_percent: true,
+    shipping_percent: true,
     // refund_rate: true,
     status: false,
   });
@@ -147,9 +151,9 @@ const DashboardContent = () => {
       {
         id: 'thumbnail', accessorKey: 'thumbnail', header: '',
         cell: ({ getValue }) => <img src={getValue() as string} alt="Product" style={{ width: '50px', height: '40px', objectFit: 'cover',  padding: '2px', borderRadius: '6px'  }} />,
-        enableSorting: false, size: 70, meta: { noPadding: true },
+        enableSorting: false, meta: { noPadding: true },
       },
-      { id: 'item_id', accessorKey: 'item_id', header: 'Item ID', size: 120, },
+      { id: 'item_id', accessorKey: 'item_id', header: 'Item ID' },
       {
         id: 'item',
         accessorKey: 'title',
@@ -158,7 +162,7 @@ const DashboardContent = () => {
           <div style={{ lineHeight: '1.2', padding: '8px' }}>
             <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
             <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
-            <div style={{ fontSize: '11px', color: '#999' }}>{formatMoney(row.original.price)} · Stock: {row.original.stock} · COGS:       
+            <div style={{ fontSize: '11px', color: '#999' }}>{formatMoney(row.original.price)} · Stock: {row.original.stock} · COGS:
             {   <CogsEditDialog
                   itemId={row.original.item_id}
                   currentValue={row.original.unit_cogs || 0}
@@ -169,29 +173,30 @@ const DashboardContent = () => {
                   }}
                 />
             }
-            
-            </div> 
+
+            </div>
           </div>
         ),
-        size: 350,
         meta: { noPadding: true },
       },
-      { id: 'units', accessorKey: 'item_units', header: ({ column }) => <SortableHeader column={column}>Units</SortableHeader>, size: 100 },
-      { id: 'sales', accessorKey: 'item_sales', header: ({ column }) => <SortableHeader column={column}>Sales</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
-      // { id: 'gross_profit', accessorKey: 'gross_profit', header: ({ column }) => <SortableHeader column={column}>Gross Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
-      { id: 'net_profit', accessorKey: 'net_profit', header: ({ column }) => <SortableHeader column={column}>Net Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 130 },
-      { id: 'ads', accessorKey: 'ad_cost', header: ({ column }) => <SortableHeader column={column}>Ads</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 100 },
-      { id: 'refunds', accessorKey: 'refund_units', header: ({ column }) => <SortableHeader column={column}>Refunds</SortableHeader>, size: 110 },
-      { id: 'refund_cost', accessorKey: 'refund_amount', header: ({ column }) => <SortableHeader column={column}>Refund Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
-      { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 180 },
-      { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
-      { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>Total COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 120 },
-      { id: 'shipping_cost', accessorKey: 'item_shipping_cost', header: ({ column }) => <SortableHeader column={column}>Shipping Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number), size: 140 },
-      { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 140 },
-      { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
-      { id: 'fees_percent', accessorKey: 'fees_percent', header: ({ column }) => <SortableHeader column={column}>Fees %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 110 },
-      // { id: 'refund_rate', accessorKey: 'refund_rate', header: ({ column }) => <SortableHeader column={column}>Refund Rate</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%`, size: 130 },
-      { id: 'status', accessorKey: 'status', header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>, size: 120 },
+      { id: 'units', accessorKey: 'item_units', header: ({ column }) => <SortableHeader column={column}>Units</SortableHeader> },
+      { id: 'sales', accessorKey: 'item_sales', header: ({ column }) => <SortableHeader column={column}>Sales</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      // { id: 'gross_profit', accessorKey: 'gross_profit', header: ({ column }) => <SortableHeader column={column}>Gross Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'net_profit', accessorKey: 'net_profit', header: ({ column }) => <SortableHeader column={column}>Net Profit</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'ads', accessorKey: 'ad_cost', header: ({ column }) => <SortableHeader column={column}>Ads</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'refunds', accessorKey: 'refund_units', header: ({ column }) => <SortableHeader column={column}>Refunds</SortableHeader> },
+      { id: 'refund_cost', accessorKey: 'refund_amount', header: ({ column }) => <SortableHeader column={column}>Refund Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'fee', accessorKey: 'item_fee', header: ({ column }) => <SortableHeader column={column}>Mercado-Libre Fee</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'discount', accessorKey: 'item_discount', header: ({ column }) => <SortableHeader column={column}>Discount</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'cogs', accessorKey: 'item_cogs', header: ({ column }) => <SortableHeader column={column}>Total COGS</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'shipping_cost', accessorKey: 'item_shipping_cost', header: ({ column }) => <SortableHeader column={column}>Shipping Cost</SortableHeader>, cell: ({ getValue }) => formatMoney(getValue() as number) },
+      { id: 'profit_margin', accessorKey: 'profit_margin', header: ({ column }) => <SortableHeader column={column}>Margin</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      { id: 'tacos', accessorKey: 'tacos', header: ({ column }) => <SortableHeader column={column}>TACOS</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      { id: 'fees_percent', accessorKey: 'fees_percent', header: ({ column }) => <SortableHeader column={column}>Fees %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      { id: 'cogs_percent', accessorKey: 'cogs_percent', header: ({ column }) => <SortableHeader column={column}>Cogs %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      { id: 'shipping_percent', accessorKey: 'shipping_percent', header: ({ column }) => <SortableHeader column={column}>Shipping %</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      // { id: 'refund_rate', accessorKey: 'refund_rate', header: ({ column }) => <SortableHeader column={column}>Refund Rate</SortableHeader>, cell: ({ getValue }) => `${(getValue() as number)?.toFixed(2)}%` },
+      { id: 'status', accessorKey: 'status', header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader> },
     ],
     []
   );
@@ -343,6 +348,8 @@ const DashboardContent = () => {
              id === 'profit_margin' ? 'Margin' :
              id === 'tacos' ? 'TACOS' :
              id === 'fees_percent' ? 'Fees %' :
+             id === 'cogs_percent' ? 'COGS %' :
+             id === 'shipping_percent' ? 'Shipping %' :
             //  id === 'refund_rate' ? 'Refund Rate' :
              id === 'status' ? 'Status' : id;
     }).join(',');
@@ -424,6 +431,8 @@ const DashboardContent = () => {
                        column.id === 'profit_margin' ? 'Margin' :
                        column.id === 'tacos' ? 'TACOS' :
                        column.id === 'fees_percent' ? 'Fees %' :
+                       column.id === 'cogs_percent' ? 'COGS %' :
+                       column.id === 'shipping_percent' ? 'Shipping %' :
                       //  column.id === 'refund_rate' ? 'Refund Rate' :
                        column.id === 'status' ? 'Status' : column.id}
                     </DropdownMenuCheckboxItem>
@@ -438,8 +447,14 @@ const DashboardContent = () => {
           </div>
 
           {/* Table */}
-            <div className="rounded-md border overflow-auto">
-              <Table style={{ width: table.getTotalSize() }}>
+            <div className="rounded-md border overflow-auto relative">
+              {/* Loading spinner overlay */}
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 z-10 pointer-events-none">
+                  <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-700 rounded-full animate-spin"></div>
+                </div>
+              )}
+              <Table style={{ width: '100%' }}>
                 <TableHeader>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
@@ -447,7 +462,6 @@ const DashboardContent = () => {
                         <TableHead
                           key={header.id}
                           style={{
-                            width: header.getSize(),
                             position: 'relative',
                           }}
                         >
@@ -494,11 +508,16 @@ const DashboardContent = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="text-center py-8">
-                        Loading data...
-                      </TableCell>
-                    </TableRow>
+                    // Show skeleton rows
+                    [...Array(10)].map((_, rowIndex) => (
+                      <TableRow key={`skeleton-${rowIndex}`}>
+                        {table.getVisibleLeafColumns().map((column) => (
+                          <TableCell key={column.id}>
+                            <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
                   ) : table.getRowModel().rows.length > 0 ? (
                     table.getRowModel().rows.map((row) => (
                       <TableRow key={row.id}>
@@ -506,7 +525,6 @@ const DashboardContent = () => {
                           <TableCell
                             key={cell.id}
                             style={{
-                              width: cell.column.getSize(),
                               padding: cell.column.columnDef.meta?.noPadding ? '0' : undefined
                             }}
                           >

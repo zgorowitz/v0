@@ -132,7 +132,7 @@ export async function fetchShipments() {
 
     // Mercado Libre rate limit: 10 requests/second
     // We make 2 requests per shipment (costs + items), so process 5 shipments per second
-    const BATCH_SIZE = 20
+    const BATCH_SIZE = 100
     const DELAY_MS = 1000 // 1 second delay between batches
 
     const results = []
@@ -153,7 +153,7 @@ export async function fetchShipments() {
             .then(([costsData, itemsData]) => {
               const duration = performance.now() - startTime
               apiTimings.push({ shipmentId, duration, success: true })
-              console.log(`✓ Shipment ${shipmentId}: ${duration.toFixed(2)}ms`)
+              // console.log(`✓ Shipment ${shipmentId}: ${duration.toFixed(2)}ms`)
               return { shipmentId, costsData, itemsData, success: true }
             })
             .catch(error => {
@@ -199,7 +199,7 @@ export async function fetchShipments() {
         await supabase.from('ml_shipment_items').upsert(items.slice(i, i + 300), { onConflict: ['shipment_id', 'item_id', 'variation_id'] })
       }
       const dbDuration = performance.now() - dbStart
-      console.log(`DB upsert: ${dbDuration.toFixed(2)}ms`)
+      // console.log(`DB upsert: ${dbDuration.toFixed(2)}ms`)
 
     } catch (error) {
       console.error(`Error processing batch for user ${meliUserId}:`, error)
