@@ -180,10 +180,10 @@ export default function Page() {
   // Available metrics for the chart
   const availableMetrics = useMemo(() => [
     { key: 'sales', label: 'Sales', dataKey: 'total_sales', color: 'hsl(var(--chart-1))' },
-    { key: 'gross_profit', label: 'Gross Profit', dataKey: 'gross_profit', color: 'hsl(var(--chart-2))' },
+    // { key: 'gross_profit', label: 'Gross Profit', dataKey: 'gross_profit', color: 'hsl(var(--chart-2))' },
     { key: 'net_profit', label: 'Net Profit', dataKey: 'net_profit', color: 'hsl(var(--chart-3))' },
     { key: 'units', label: 'Units', dataKey: 'total_units', color: 'hsl(var(--chart-4))' },
-    { key: 'orders', label: 'Orders', dataKey: 'total_orders', color: 'hsl(var(--chart-5))' },
+    // { key: 'orders', label: 'Orders', dataKey: 'total_orders', color: 'hsl(var(--chart-5))' },
     { key: 'ad_cost', label: 'Ad Cost', dataKey: 'ad_cost', color: 'hsl(var(--chart-6))' },
     { key: 'profit_margin', label: 'Profit Margin %', dataKey: 'profit_margin', color: 'hsl(var(--chart-7))' },
     { key: 'tacos', label: 'TACOS %', dataKey: 'tacos', color: 'hsl(var(--chart-8))' },

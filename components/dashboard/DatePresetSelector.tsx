@@ -227,7 +227,7 @@ export const DatePresetSelector: React.FC<DatePresetSelectorProps> = ({
       <PopoverTrigger asChild>
         <Button variant="outline" className="justify-start text-left font-normal min-w-[200px]">
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {selectedLabel || 'Select date range'}
+          Select date range
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0 max-h-[500px] overflow-y-auto" align="end">
