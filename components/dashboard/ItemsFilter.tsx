@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface Item {
@@ -61,14 +60,20 @@ export function ItemsFilter({
       {/* Search Input with Dropdown Results */}
       <div className="relative w-full">
         <div className="flex gap-2">
-          <Input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            onFocus={() => setShowDropdown(true)}
-            placeholder="Search by item ID or title..."
-            className="flex-1 max-w-2xl"
-          />
+          <Button
+            variant="outline"
+            onClick={() => setShowDropdown(true)}
+            className="flex-1 max-w-2xl justify-start text-left font-normal"
+          >
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onFocus={() => setShowDropdown(true)}
+              placeholder="Search by item ID or title..."
+              className="flex-1 bg-transparent outline-none border-none placeholder:text-muted-foreground"
+            />
+          </Button>
 
           {/* Filter Button */}
           <Button onClick={applyFilter} variant="outline" disabled={!hasPendingChanges}>
@@ -91,38 +96,40 @@ export function ItemsFilter({
               onClick={() => setShowDropdown(false)}
             />
             <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-[500px] overflow-auto">
-              {/* Selected Items Section */}
-              {selectedItems.length > 0 && (
-                <div className="border-b border-gray-200">
-                  <div className="px-3 py-2 bg-gray-50 flex items-center justify-between sticky top-0 z-10">
-                    <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                      Selected ({selectedItems.length})
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          selectAll();
-                        }}
-                        className="h-6 text-xs text-blue-500 hover:text-blue-700"
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearAll();
-                        }}
-                        className="h-6 text-xs text-red-500 hover:text-red-700"
-                      >
-                        Clear All
-                      </Button>
-                    </div>
+              {/* Selected Items Section - Always show header with buttons */}
+              <div className="border-b border-gray-200">
+                <div className="px-3 py-2 bg-gray-50 flex items-center justify-between sticky top-0 z-10">
+                  <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                    Selected ({selectedItems.length})
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectAll();
+                      }}
+                      className="h-6 text-xs text-blue-500 hover:text-blue-700"
+                    >
+                      Select All
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearAll();
+                      }}
+                      className="h-6 text-xs text-red-500 hover:text-red-700"
+                      disabled={selectedItems.length === 0}
+                    >
+                      Clear All
+                    </Button>
                   </div>
+                </div>
+                {/* Only show selected items list if there are items */}
+                {selectedItems.length > 0 && (
                   <div className="max-h-[200px] overflow-auto">
                     {selectedItems.map(item => (
                       <div
@@ -156,8 +163,8 @@ export function ItemsFilter({
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Search Results Section */}
               {searchResults.length > 0 && (
