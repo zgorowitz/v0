@@ -16,7 +16,7 @@ const navigationItems = [
   { name: 'Home', href: '/dashboard', icon: 'Home' as const, adminOnly: true  },
   { name: 'P&L', href: '/daily', icon: 'BarChart3' as const, adminOnly: true  },
   { name: 'Products', href: '/cogs', icon: 'Package' as const, adminOnly: true  },
-  { name: 'Envios', href: '/shipments', icon: 'BarChart3' as const, adminOnly: true  },
+  { name: 'Envios', href: '/shipments', icon: 'Truck' as const, adminOnly: true  },
   { name: 'Scan', href: '/scan2', icon: 'ScanLine' as const },
   { name: 'Settings', href: '/settings', icon: 'Settings' as const },
 ];

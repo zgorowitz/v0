@@ -1,15 +1,17 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { LayoutWrapper } from "@/components/layout-wrapper";
+import { SiteHeader } from "@/components/site-header"
+import { LayoutWrapper } from "@/components/layout-wrapper"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useReactTable, getCoreRowModel, getSortedRowModel, flexRender, ColumnDef, SortingState } from "@tanstack/react-table";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, Upload, Download, FileSpreadsheet, Save, X } from 'lucide-react';
 import { fetchAllItems, bulkUpdateItemCogs } from '@/lib/cogs/data';
 import { handleFileUpload, generateCSVTemplate, exportToCSV } from '@/lib/cogs/csvHandler';
-import { useItemsFilter } from '@/lib/cogs/useItemsFilter';
+import { useItemsFilter } from '@/lib/dashboard/useItemsFilter';
 import { ItemsFilter } from '@/components/dashboard/ItemsFilter';
-import { Upload, Download, FileSpreadsheet, Save, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { TagInput } from "@/components/ui/tag-input";
 
 interface ItemRow {
   item_id: string;
@@ -31,17 +33,21 @@ const normalizeCogs = (value: any): string => {
   return String(value);
 };
 
-const CogsManagementPage = () => {
+export default function Page() {
   const [allItems, setAllItems] = useState<ItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [editedItems, setEditedItems] = useState<Map<string, Partial<ItemRow>>>(new Map());
+
+  // Lightweight state for tracking edits without triggering cascade re-renders
+  const [pendingEdits, setPendingEdits] = useState<Map<string, Partial<ItemRow>>>(new Map());
+  const [editedItemIds, setEditedItemIds] = useState<Set<string>>(new Set());
+
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadedData, setUploadedData] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const itemsFilter = useItemsFilter(allItems);
+  const itemsFilter = useItemsFilter();
 
   // Destructure and memoize individual properties to prevent reference changes
   const {
@@ -53,21 +59,15 @@ const CogsManagementPage = () => {
     addItem,
     removeItem,
     clearAll,
-    filteredItems: baseFilteredItems
+    selectAll,
+    appliedItemIds
   } = itemsFilter;
 
-  // Merge edited values into the filtered items data
-  const filteredItemsWithEdits = useMemo(() => {
-    return baseFilteredItems.map((item: ItemRow) => ({
-      ...item,
-      // Add edited values to the data itself
-      _editedCogs: editedItems.get(item.item_id)?.cogs,
-      _editedTags: editedItems.get(item.item_id)?.tags
-    }));
-  }, [baseFilteredItems, editedItems]);
-
-  // Use the merged data
-  const filteredItems = filteredItemsWithEdits;
+  // Filter allItems based on appliedItemIds, or show all if no filter applied
+  const filteredItems = useMemo(() => {
+    if (appliedItemIds.length === 0) return allItems;
+    return allItems.filter(item => appliedItemIds.includes(item.item_id));
+  }, [allItems, appliedItemIds]);
 
   // Create a stable filter props object
   const stableItemsFilter = useMemo(() => ({
@@ -79,10 +79,11 @@ const CogsManagementPage = () => {
     addItem,
     removeItem,
     clearAll,
+    selectAll,
     applyFilter: itemsFilter.applyFilter,
     hasPendingChanges: itemsFilter.hasPendingChanges,
     filteredItems
-  }), [searchTerm, searchResults, isSearching, selectedItems, addItem, removeItem, clearAll, itemsFilter.applyFilter, itemsFilter.hasPendingChanges, filteredItems]);
+  }), [searchTerm, searchResults, isSearching, selectedItems, addItem, removeItem, clearAll, selectAll, itemsFilter.applyFilter, itemsFilter.hasPendingChanges, filteredItems]);
 
   useEffect(() => {
     fetchData();
@@ -107,37 +108,31 @@ const CogsManagementPage = () => {
     }
   };
 
-  const handleCogsChange = useCallback((itemId: string, value: string) => {
-    setEditedItems(prev => {
+  // Mark an item as edited and store pending changes (doesn't trigger table re-render)
+  const markItemEdited = useCallback((itemId: string, changes: Partial<ItemRow>) => {
+    setPendingEdits(prev => {
       const newMap = new Map(prev);
-      const updatedItem = {
-        ...newMap.get(itemId),
-        cogs: value
-      };
-      newMap.set(itemId, updatedItem);
+      const existing = newMap.get(itemId) || {};
+      newMap.set(itemId, { ...existing, ...changes });
       return newMap;
     });
+    setEditedItemIds(prev => new Set(prev).add(itemId));
   }, []);
 
-  const handleTagsChange = useCallback((itemId: string, value: string) => {
-    const tagsArray = value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-    setEditedItems(prev => {
-      const newMap = new Map(prev);
-      const updatedItem = {
-        ...newMap.get(itemId),
-        tags: tagsArray
-      };
-      newMap.set(itemId, updatedItem);
-      return newMap;
-    });
-  }, []);
+  const handleCogsChange = useCallback((itemId: string, value: string) => {
+    markItemEdited(itemId, { cogs: value });
+  }, [markItemEdited]);
+
+  const handleTagsChange = useCallback((itemId: string, tags: string[]) => {
+    markItemEdited(itemId, { tags });
+  }, [markItemEdited]);
 
   const saveChanges = async () => {
-    if (editedItems.size === 0) return;
+    if (pendingEdits.size === 0) return;
 
     setSaving(true);
     try {
-      const updates = Array.from(editedItems.entries()).map(([itemId, changes]) => {
+      const updates = Array.from(pendingEdits.entries()).map(([itemId, changes]) => {
         const item = allItems.find(i => i.item_id === itemId);
         const processedChanges = {
           ...changes,
@@ -152,7 +147,8 @@ const CogsManagementPage = () => {
       });
 
       const result = await bulkUpdateItemCogs(updates);
-      setEditedItems(new Map());
+      setPendingEdits(new Map());
+      setEditedItemIds(new Set());
       await fetchData();
 
       // Handle both old array return and new object return
@@ -233,14 +229,22 @@ const CogsManagementPage = () => {
     />
   ), []);
 
-  // Simple input component that uses data from the row
+  // Simple input component with local state to prevent re-renders
   const CogsInputSimple = React.memo(({ itemId, displayValue, onChange }: any) => {
+    const [localValue, setLocalValue] = useState(displayValue);
+
+    // Sync with external changes (from initial load or save)
+    useEffect(() => {
+      setLocalValue(displayValue);
+    }, [displayValue]);
+
     return (
       <input
         type="number"
         step="0.01"
-        value={displayValue}
-        onChange={(e) => onChange(itemId, e.target.value)}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={(e) => onChange(itemId, e.target.value)}
         className="px-2 py-1 border rounded w-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
         placeholder="0.00"
         data-item-id={itemId}
@@ -250,10 +254,7 @@ const CogsManagementPage = () => {
 
   const formatCogs = useCallback(({ row }: { row: any }) => {
     const itemId = row.original.item_id;
-    // Get edited value from the row data itself (passed through filteredItemsWithEdits)
-    const displayValue = row.original._editedCogs !== undefined
-      ? row.original._editedCogs
-      : row.original.cogs;
+    const displayValue = row.original.cogs;
 
     return (
       <CogsInputSimple
@@ -262,23 +263,36 @@ const CogsManagementPage = () => {
         onChange={handleCogsChange}
       />
     );
-  }, [handleCogsChange]); // Only depends on stable handleCogsChange!
+  }, [handleCogsChange]);
+
+  // Get all unique tags from all items for suggestions
+  const allUniqueTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    allItems.forEach(item => {
+      if (item.tags && Array.isArray(item.tags)) {
+        item.tags.forEach(tag => {
+          if (tag) tagsSet.add(tag);
+        });
+      }
+    });
+    return Array.from(tagsSet).sort();
+  }, [allItems]);
 
   const formatTags = useCallback(({ row }: { row: any }) => {
-    const editedTags = editedItems.get(row.original.item_id)?.tags;
-    const displayTags = editedTags !== undefined ? editedTags : row.original.tags;
+    const itemId = row.original.item_id;
+    // Check pendingEdits first, then fall back to original data
+    const pendingTags = pendingEdits.get(itemId)?.tags;
+    const displayTags = pendingTags !== undefined ? pendingTags : row.original.tags || [];
 
     return (
-      <input
-        type="text"
-        value={displayTags?.join(', ') || ''}
-        onChange={(e) => handleTagsChange(row.original.item_id, e.target.value)}
-        className="px-2 py-1 border rounded w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="tag, tag"
-        key={`tags-${row.original.item_id}`}
+      <TagInput
+        value={displayTags}
+        onChange={(tags) => handleTagsChange(itemId, tags)}
+        availableTags={allUniqueTags}
+        placeholder="Select tags..."
       />
     );
-  }, [editedItems, handleTagsChange]);
+  }, [pendingEdits, handleTagsChange, allUniqueTags]);
 
   const SortableHeader = ({ column, children }: { column: any; children: React.ReactNode }) => (
     <div
@@ -294,18 +308,18 @@ const CogsManagementPage = () => {
     </div>
   );
 
-  const formatItemInfo = ({row}) => (
+  const formatItemInfo = ({ row }: { row: any }) => (
     <div style={{ lineHeight: '1.2', padding: '8px' }}>
       <div style={{ fontSize: '11px', color: '#999' }}>{row.original.item_id}</div>
-      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{row.original.title}</div>
+      <div style={{ fontSize: '13px', fontWeight: '500', color: '#000' }}>{row.original.title}</div>
     </div>
   );
 
   const columns = useMemo<ColumnDef<ItemRow>[]>(() => [
-    { id: 'thumbnail', accessorKey: 'thumbnail', header: '', cell: formatImage, enableSorting: false, size: 70, meta: { noPadding: true } as any },
-    { id: 'item', accessorKey: 'title', header: ({ column }) => <SortableHeader column={column}>Item</SortableHeader>, cell: formatItemInfo, size: 350, meta: { noPadding: true } as any },
-    { id: 'cogs', accessorKey: 'cogs', header: ({ column }) => <SortableHeader column={column}>COGS ($)</SortableHeader>, cell: formatCogs, size: 120 },
-    { id: 'tags', accessorKey: 'tags', header: 'Tags', cell: formatTags, size: 250, enableSorting: false }
+    { id: 'thumbnail', accessorKey: 'thumbnail', header: '', cell: formatImage, enableSorting: false, meta: { noPadding: true } as any },
+    { id: 'item', accessorKey: 'title', header: ({ column }) => <SortableHeader column={column}>Item</SortableHeader>, cell: formatItemInfo, meta: { noPadding: true } as any },
+    { id: 'cogs', accessorKey: 'cogs', header: ({ column }) => <SortableHeader column={column}>COGS ($)</SortableHeader>, cell: formatCogs },
+    { id: 'tags', accessorKey: 'tags', header: 'Tags', cell: formatTags, enableSorting: false }
   ], [formatImage, formatCogs, formatTags]);
 
   const table = useReactTable({
@@ -320,170 +334,200 @@ const CogsManagementPage = () => {
 
   return (
     <LayoutWrapper>
-      <div className="p-4">
-        {/* Top Controls */}
-        <div className="flex justify-between items-start w-full mb-4">
-          <div className="min-w-[300px]">
-            <ItemsFilter {...stableItemsFilter} />
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {editedItems.size > 0 && (
-              <button
-                onClick={saveChanges}
-                disabled={saving}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Save size={14} />
-                {saving ? 'Saving...' : `Save ${editedItems.size} Changes`}
-              </button>
-            )}
-            <button
-              onClick={() => generateCSVTemplate()}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
-            >
-              <FileSpreadsheet size={14} />
-              Template
-            </button>
-            <button
-              onClick={() => exportToCSV(filteredItems)}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50"
-            >
-              <Download size={14} />
-              Export
-            </button>
-            <label className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-gray-600 rounded hover:bg-gray-50 cursor-pointer">
-              <Upload size={14} />
-              Upload
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-md border overflow-auto">
-          <Table style={{ width: table.getTotalSize() }}>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} style={{ width: header.getSize() }}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center py-8">
-                    Loading data...
-                  </TableCell>
-                </TableRow>
-              ) : table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        style={{
-                          width: cell.column.getSize(),
-                          padding: cell.column.columnDef.meta?.noPadding ? '0' : undefined
-                        }}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center">
-                    No data available
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Upload Preview Modal */}
-        {uploadModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Preview Upload Data</h2>
-                <button
-                  onClick={() => setUploadModalOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-sm text-gray-600">
-                  Found {uploadedData.length} items to update. Review the data below:
-                </p>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border px-4 py-2 text-left">Item ID</th>
-                      <th className="border px-4 py-2 text-left">Title</th>
-                      <th className="border px-4 py-2 text-left">COGS</th>
-                      <th className="border px-4 py-2 text-left">Tags</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {uploadedData.slice(0, 10).map((item, index) => (
-                      <tr key={index}>
-                        <td className="border px-4 py-2">{item.item_id}</td>
-                        <td className="border px-4 py-2">{item.title}</td>
-                        <td className="border px-4 py-2">${item.cogs}</td>
-                        <td className="border px-4 py-2">
-                          {item.tags?.join(', ')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {uploadedData.length > 10 && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    ... and {uploadedData.length - 10} more items
+      <SiteHeader title="COGS Management" />
+      <div className="flex flex-1 flex-col">
+        <div className="@container/main flex flex-1 flex-col gap-6">
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            {/* Placeholder Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 px-4 lg:px-6">
+              <div className="col-span-full flex items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/10 p-12">
+                <div className="text-center">
+                  <p className="text-lg font-medium text-muted-foreground">
+                    ¿Qué otros gastos te gustaría calcular en tus ganancias?
                   </p>
-                )}
+                  <p className="mt-2 text-sm text-muted-foreground/70">
+                    Comparte tus ideas para personalizar este espacio con métricas importantes para tu negocio
+                  </p>
+                </div>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  onClick={() => setUploadModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-100"
+            {/* Table Controls */}
+            <div className="flex items-center justify-between px-4 lg:px-6">
+              <div className="min-w-[300px]">
+                <ItemsFilter {...stableItemsFilter} />
+              </div>
+              <div className="flex items-center gap-2">
+                {editedItemIds.size > 0 && (
+                  <Button
+                    onClick={saveChanges}
+                    disabled={saving}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Save />
+                    <span className="hidden lg:inline">{saving ? 'Saving...' : `Save ${editedItemIds.size} Changes`}</span>
+                    <span className="lg:hidden">{saving ? 'Save' : `${editedItemIds.size}`}</span>
+                  </Button>
+                )}
+                <Button
+                  onClick={() => generateCSVTemplate()}
+                  variant="outline"
+                  size="sm"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmUpload}
-                  disabled={saving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  <FileSpreadsheet />
+                  <span className="hidden lg:inline">Template</span>
+                </Button>
+                <Button
+                  onClick={() => exportToCSV(filteredItems)}
+                  variant="outline"
+                  size="sm"
                 >
-                  {saving ? 'Uploading...' : 'Confirm Upload'}
-                </button>
+                  <Download />
+                  <span className="hidden lg:inline">Export</span>
+                </Button>
+                <label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="cursor-pointer"
+                    asChild
+                  >
+                    <span>
+                      <Upload />
+                      <span className="hidden lg:inline">Upload</span>
+                    </span>
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* COGS Table */}
+            <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+              <div className="overflow-hidden rounded-lg border">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-muted">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead key={header.id}>
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="text-center py-8">
+                          Loading data...
+                        </TableCell>
+                      </TableRow>
+                    ) : table.getRowModel().rows.length > 0 ? (
+                      table.getRowModel().rows.map((row) => (
+                        <TableRow key={row.id}>
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell
+                              key={cell.id}
+                              style={{
+                                padding: cell.column.columnDef.meta?.noPadding ? '0' : undefined
+                              }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="text-center">
+                          No data available
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
-    </LayoutWrapper>
-  );
-};
 
-export default CogsManagementPage;
+      {/* Upload Preview Modal */}
+      {uploadModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Preview Upload Data</h2>
+              <button
+                onClick={() => setUploadModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">
+                Found {uploadedData.length} items to update. Review the data below:
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border px-4 py-2 text-left">Item ID</th>
+                    <th className="border px-4 py-2 text-left">Title</th>
+                    <th className="border px-4 py-2 text-left">COGS</th>
+                    <th className="border px-4 py-2 text-left">Tags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {uploadedData.slice(0, 10).map((item, index) => (
+                    <tr key={index}>
+                      <td className="border px-4 py-2">{item.item_id}</td>
+                      <td className="border px-4 py-2">{item.title}</td>
+                      <td className="border px-4 py-2">${item.cogs}</td>
+                      <td className="border px-4 py-2">
+                        {item.tags?.join(', ')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {uploadedData.length > 10 && (
+                <p className="text-sm text-gray-600 mt-2">
+                  ... and {uploadedData.length - 10} more items
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                onClick={() => setUploadModalOpen(false)}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmUpload}
+                disabled={saving}
+              >
+                {saving ? 'Uploading...' : 'Confirm Upload'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </LayoutWrapper>
+  )
+}

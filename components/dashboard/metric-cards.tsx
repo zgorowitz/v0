@@ -127,45 +127,45 @@ const MetricCard: React.FC<{
           </div>
         </CardHeader>
 
-        <CardContent className="px-4 py-4">
+        <CardContent className="px-4 py-3">
         {/* Revenue */}
-        <div className="mb-4">
-          <div className="text-xs font-light text-gray-500 mb-1">Sales</div>
+        <div className="mb-3">
+          <div className="text-xs font-light text-gray-500 mb-0.5">Sales</div>
           <div className="text-2xl text-gray-800">
             {loading ? <Skeleton className="h-8 w-32" /> : formatCurrency(data.total_sales || 0)}
           </div>
         </div>
 
         {/* Orders / Units (smaller, under revenue) */}
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start mb-3">
           <div>
-            <div className="text-xs font-light text-gray-500 mb-1">Orders / Units</div>
-            <div className="text-sm text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">Orders / Units</div>
+            <div className="text-sm font-semibold text-gray-800">
               {loading ? <Skeleton className="h-5 w-20" /> : `${formatNumber(data.total_orders || 0)} / ${formatNumber(data.total_units || 0)}`}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-light text-gray-500 mb-1">Refund Rate</div>
-            <div className="text-sm text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">Refund Rate</div>
+            <div className="text-sm font-semibold text-gray-800">
               {loading ? <Skeleton className="h-5 w-12" /> : `${data.refund_rate?.toFixed(2)}%`}
             </div>
           </div>
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200 my-3"></div>
+        <div className="border-t border-gray-200 my-2"></div>
 
         {/* Ad Spend and TACOS */}
-        <div className="flex justify-between items-start mb-3">
+        <div className="flex justify-between items-start mb-2">
           <div>
-            <div className="text-xs font-light text-gray-500 mb-1">Ad Spend</div>
-            <div className="text-lg text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">Ad Spend</div>
+            <div className="text-base font-semibold text-gray-800">
               {loading ? <Skeleton className="h-6 w-24" /> : formatCurrency(data.ad_cost || 0)}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-light text-gray-500 mb-1">TACOS</div>
-            <div className="text-lg text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">TACOS</div>
+            <div className="text-base font-semibold text-gray-800">
               {loading ? <Skeleton className="h-6 w-16" /> : `${data.tacos?.toFixed(2)}%`}
             </div>
           </div>
@@ -174,14 +174,14 @@ const MetricCard: React.FC<{
         {/* Profit and Margin */}
         <div className="flex justify-between items-start">
           <div>
-            <div className="text-xs font-light text-gray-500 mb-1">Profit</div>
-            <div className="text-lg text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">Profit</div>
+            <div className="text-base font-semibold text-gray-800">
               {loading ? <Skeleton className="h-6 w-24" /> : formatCurrency(data.net_profit || 0)}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-light text-gray-500 mb-1">Margin</div>
-            <div className="text-lg text-gray-800">
+            <div className="text-xs font-light text-gray-500 mb-0.5">Margin</div>
+            <div className="text-base font-semibold text-gray-800">
               {loading ? <Skeleton className="h-6 w-16" /> : `${data.profit_margin?.toFixed(2)}%`}
             </div>
           </div>

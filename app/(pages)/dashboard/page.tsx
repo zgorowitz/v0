@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LayoutWrapper } from "@/components/layout-wrapper"
+import { SiteHeader } from "@/components/site-header"
 import { itemSalesData } from '@/lib/dashboard/data';
 import { fetchCogsMap } from '@/lib/cogs/actions';
 import { useMetricCards } from '@/lib/dashboard/useMetricCards';
@@ -373,18 +374,16 @@ const DashboardContent = () => {
 
   return (
     <LayoutWrapper>
-      <div className="p-4">
-        {/* Top Controls - Item Filter and Date Preset Selector */}
-        <div className="flex justify-between items-center w-full mb-6 gap-4">
-          <div className="min-w-[300px]">
-            <ItemsFilter {...itemsFilter} />
-          </div>
+      <SiteHeader title="Dashboard">
+        <div className="flex items-center gap-2">
+          <ItemsFilter {...itemsFilter} />
           <DatePresetSelector
             onPresetSelect={handlePresetSelect}
             selectedLabel="Select date range"
           />
         </div>
-
+      </SiteHeader>
+      <div className="p-4">
         {/* Metric Cards */}
         <MetricCards
           data={metricCards}
@@ -396,11 +395,11 @@ const DashboardContent = () => {
 
         <div className="mt-4">
           {/* Table Controls - Only Column Settings and Download */}
-          <div className="flex justify-end items-center w-full mb-4 gap-2">
+          <div className="flex justify-end items-center w-full mb-1 gap-1">
             {/* Column Customization Button */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 border-0">
                     <Settings2 className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -441,7 +440,7 @@ const DashboardContent = () => {
             </DropdownMenu>
 
             {/* Download Button */}
-            <Button variant="outline" size="icon" onClick={handleDownload}>
+            <Button variant="ghost" size="icon" className="h-7 w-7 border-0" onClick={handleDownload}>
               <Download className="h-4 w-4" />
             </Button>
           </div>

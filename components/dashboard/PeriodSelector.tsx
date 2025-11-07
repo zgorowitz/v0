@@ -1,7 +1,13 @@
 "use client"
 
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface PeriodSelectorProps {
   period: 'day' | 'week' | 'month';
@@ -17,38 +23,9 @@ export function PeriodSelector({
   onDateRangeError
 }: PeriodSelectorProps) {
 
-  const validateDateRange = (newPeriod: 'day' | 'week' | 'month', dates: [Date | null, Date | null]) => {
-    if (!dates[0] || !dates[1]) return true;
-
-    const diffTime = Math.abs(dates[1].getTime() - dates[0].getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    switch (newPeriod) {
-      case 'day':
-        if (diffDays > 30) {
-          onDateRangeError?.('Daily view limited to 30 days');
-          return false;
-        }
-        break;
-      case 'week':
-        if (diffDays > 90) {
-          onDateRangeError?.('Weekly view limited to 3 months');
-          return false;
-        }
-        break;
-      case 'month':
-        // No limit for monthly view
-        break;
-    }
-
-    onDateRangeError?.(null);
-    return true;
-  };
-
   const handlePeriodChange = (newPeriod: 'day' | 'week' | 'month') => {
-    if (validateDateRange(newPeriod, dateRange)) {
-      onChange(newPeriod);
-    }
+    // Always allow period change - the parent component will handle date range adjustment
+    onChange(newPeriod);
   };
 
   const getPeriodLabel = () => {
@@ -59,21 +36,41 @@ export function PeriodSelector({
     }
   };
 
+  const getPeriodDescription = () => {
+    switch (period) {
+      case 'day': return 'Last 30 days';
+      case 'week': return 'Last 3 months';
+      case 'month': return 'Last 12 months';
+    }
+  };
+
   return (
-    <div className="relative">
-      <select
-        value={period}
-        onChange={(e) => handlePeriodChange(e.target.value as 'day' | 'week' | 'month')}
-        className="appearance-none px-4 py-2 pr-10 bg-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-      >
-        <option value="day">Daily</option>
-        <option value="week">Weekly</option>
-        <option value="month">Monthly</option>
-      </select>
-      <ChevronDown
-        size={16}
-        className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500"
-      />
-    </div>
+    <Select value={period} onValueChange={handlePeriodChange}>
+      <SelectTrigger className="w-[120px]">
+        <SelectValue>
+          {getPeriodLabel()}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="day">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Daily</span>
+            <span className="text-xs text-muted-foreground">Last 30 days</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="week">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Weekly</span>
+            <span className="text-xs text-muted-foreground">Last 3 months</span>
+          </div>
+        </SelectItem>
+        <SelectItem value="month">
+          <div className="flex flex-col items-start">
+            <span className="font-medium">Monthly</span>
+            <span className="text-xs text-muted-foreground">Last 12 months</span>
+          </div>
+        </SelectItem>
+      </SelectContent>
+    </Select>
   );
 }

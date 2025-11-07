@@ -9,6 +9,7 @@ import {
   Settings,
   ChevronRight,
   PanelLeft,
+  Truck,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -35,6 +36,7 @@ const iconMap = {
   Package,
   ScanLine,
   Settings,
+  Truck,
 }
 
 interface NavigationItem {
