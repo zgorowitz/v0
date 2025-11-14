@@ -70,7 +70,7 @@ export async function middleware(request) {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
     
     if (pathname === '/' && !isMobile && userRole === 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        return NextResponse.redirect(new URL('/analytics', request.url))
     }
     
     if (pathname === '/' && isMobile) {
